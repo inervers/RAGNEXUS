@@ -1,0 +1,212 @@
+/* =============================================
+   RAG Agent API — 自定义样式
+   基于 DESIGN.md 设计系统
+   加载方式：streamlit 通过 st.markdown 注入
+   ============================================= */
+
+/* --- 全局 --- */
+.stApp {
+    background-color: #FAFAFA;
+}
+
+/* --- 主标题区 --- */
+.st-emotion-cache-18ni7ap {
+    font-size: 24px !important;
+    font-weight: 700 !important;
+    color: #18181B !important;
+    letter-spacing: -0.02em;
+}
+
+/* --- 副标题（subheader） --- */
+.st-emotion-cache-10trblm {
+    font-size: 20px !important;
+    font-weight: 600 !important;
+    color: #18181B !important;
+}
+
+/* --- 侧边栏 --- */
+section[data-testid="stSidebar"] {
+    background-color: #FFFFFF;
+    border-right: 1px solid #E4E4E7;
+}
+
+section[data-testid="stSidebar"] .st-emotion-cache-1wrcr25 {
+    background-color: #FFFFFF;
+}
+
+/* 侧边栏标题 */
+section[data-testid="stSidebar"] h1 {
+    font-size: 20px !important;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+/* 侧边栏分割线 */
+section[data-testid="stSidebar"] hr {
+    border-color: #E4E4E7;
+    margin: 16px 0;
+}
+
+/* --- 卡片容器 --- */
+.st-emotion-cache-1r6slb0, 
+.element-container > div[data-testid="stVerticalBlock"] > div[data-testid="column"] > div {
+    background-color: #FFFFFF;
+    border: 1px solid #E4E4E7;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+}
+
+/* --- 指标卡 Metric --- */
+[data-testid="stMetricValue"] {
+    font-size: 24px !important;
+    font-weight: 700 !important;
+    color: #2563EB !important;
+}
+
+[data-testid="stMetricLabel"] {
+    font-size: 12px !important;
+    color: #52525B !important;
+    font-weight: 400 !important;
+}
+
+/* --- 按钮 --- */
+.stButton button {
+    border-radius: 8px !important;
+    height: 36px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 150ms ease-out;
+}
+
+.stButton button[kind="primary"] {
+    background-color: #2563EB !important;
+    border: none !important;
+    color: #FFFFFF !important;
+}
+
+.stButton button[kind="primary"]:hover {
+    background-color: #1D4ED8 !important;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+}
+
+.stButton button:not([kind="primary"]) {
+    background-color: transparent !important;
+    border: 1px solid #E4E4E7 !important;
+    color: #18181B !important;
+}
+
+.stButton button:not([kind="primary"]):hover {
+    background-color: #F4F4F5 !important;
+    border-color: #D4D4D8 !important;
+}
+
+/* --- 输入框 --- */
+.stTextInput input, .stTextArea textarea {
+    border-radius: 8px !important;
+    border: 1px solid #E4E4E7 !important;
+    font-size: 14px;
+    transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.stTextInput input:focus, .stTextArea textarea:focus {
+    border-color: #2563EB !important;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15) !important;
+}
+
+/* --- 标签页 Tabs --- */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 24px;
+    border-bottom: 1px solid #E4E4E7;
+}
+
+.stTabs [data-baseweb="tab"] {
+    font-size: 14px;
+    font-weight: 500;
+    color: #52525B;
+    padding-bottom: 8px;
+}
+
+.stTabs [data-baseweb="tab"][aria-selected="true"] {
+    color: #2563EB;
+    font-weight: 600;
+}
+
+.stTabs [data-baseweb="tab"]:hover:not([aria-selected="true"]) {
+    color: #18181B;
+}
+
+/* --- 展开器 Expander --- */
+.streamlit-expanderHeader {
+    font-size: 14px;
+    font-weight: 500;
+    color: #52525B;
+    background-color: #F4F4F5;
+    border-radius: 6px;
+    padding: 8px 12px;
+}
+
+/* --- 代码块 --- */
+.stCodeBlock {
+    border-radius: 6px !important;
+    border: 1px solid #E4E4E7 !important;
+    font-size: 13px !important;
+}
+
+/* --- 成功/错误/警告消息 --- */
+.stAlert {
+    border-radius: 8px !important;
+    border: none !important;
+}
+
+div[data-testid="stAlert"] {
+    padding: 10px 16px;
+}
+
+/* --- 分割线 --- */
+hr {
+    border-color: #E4E4E7 !important;
+    margin: 24px 0 !important;
+}
+
+/* --- 页脚 caption --- */
+.stCaption {
+    font-size: 12px !important;
+    color: #A1A1AA !important;
+}
+
+/* --- 状态消息（success/error/info/warning）--- */
+.st-emotion-cache-1vt4y43 {
+    border-radius: 8px;
+}
+
+/* --- 侧边栏展开/收起按钮 --- */
+button[kind="header"] {
+    background-color: transparent !important;
+}
+
+/* --- 禁用状态 --- */
+.stButton button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* --- 上传区域 --- */
+[data-testid="stFileUploader"] {
+    border: 2px dashed #D4D4D8;
+    border-radius: 8px;
+    padding: 16px;
+    transition: border-color 150ms ease-out;
+}
+
+[data-testid="stFileUploader"]:hover {
+    border-color: #2563EB;
+}
+
+/* --- 响应式：窄屏辅助 --- */
+@media (max-width: 768px) {
+    .st-emotion-cache-1r6slb0, 
+    .element-container > div[data-testid="stVerticalBlock"] > div[data-testid="column"] > div {
+        padding: 12px;
+    }
+}

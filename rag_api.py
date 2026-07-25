@@ -506,7 +506,8 @@ def agent_write(req: AgentWriteRequest, request: Request):
     _log(trace_id, "agent_write_start", topic=req.topic[:40])
     from rag_multiagent import MultiAgentWorkflow
     wf = MultiAgentWorkflow(api_key=DEEPSEEK_API_KEY,
-                            base_url="https://api.deepseek.com/v1")
+                            base_url="https://api.deepseek.com/v1",
+                            model="deepseek-v4-flash")
     result = wf.run(req.topic, max_retries=req.max_retries)
     _log(trace_id, "agent_write_done", passed=str(result["passed"]),
          rating=result["rating"], attempts=result["attempts"],
