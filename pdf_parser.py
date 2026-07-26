@@ -211,15 +211,24 @@ def _try_ocr(pdf_stream: bytes) -> str | None:
 def parse_pdf_with_ocr(pdf_stream: bytes) -> dict:
     """
     解析 PDF，扫描件自动触发 OCR 兜底。
+    也处理文字量极少的 PDF（如只有扫描全能王水印）。
     返回格式与 parse_pdf() 完全一致。
     """
     result = parse_pdf(pdf_stream)
-    if result["is_scanned"]:
+
+    # 条件①：完全无文字 → 扫描件
+    # 条件②：文字极少但页数不少 → 水印覆盖的正常扫描件
+    likely_scanned = (
+        result["is_scanned"]
+        or (result["chars"] < 50 and result["pages"] >= 1)
+    )
+
+    if likely_scanned:
         ocr_text = _try_ocr(pdf_stream)
-        if ocr_text:
+        if ocr_text and len(ocr_text) > result["chars"]:
             result["text"] = ocr_text
             result["chars"] = len(ocr_text)
-            result["is_scanned"] = False  # OCR 后视为已处理
+            result["is_scanned"] = False
             result["summary"] = f"{result['pages']}页 · OCR 识别 · {len(ocr_text)}字"
             result["ocr_used"] = True
         else:

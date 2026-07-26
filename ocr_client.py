@@ -28,10 +28,12 @@ import logging
 import os
 import time
 
+import httpx
+
 logger = logging.getLogger(__name__)
 
 BAIDU_TOKEN_URL = "https://aip.baidubce.com/oauth/2.0/token"
-BAIDU_OCR_URL = "https://aip.baidubce.com/rest/2.0/ocr/v1/accurate_basic"
+BAIDU_OCR_URL = "https://aip.baidubce.com/rest/2.0/ocr/v1/general_basic"
 
 
 class OcrClient:
@@ -77,24 +79,34 @@ class OcrClient:
     # 单页图片 OCR
     # =============================================
 
-    def ocr_image(self, image_bytes: bytes) -> str:
-        """识别一张图片，返回文本"""
+    def ocr_image(self, image_bytes: bytes, retries: int = 3) -> str:
+        """识别一张图片，返回文本。QPS 超限时指数退避重试。"""
         token = self._get_token()
         img_b64 = base64.b64encode(image_bytes).decode("ascii")
         self._ensure_http()
-        resp = self._http.post(
-            BAIDU_OCR_URL,
-            params={"access_token": token},
-            data={"image": img_b64},
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-        )
-        data = resp.json()
-        if "words_result" not in data:
+
+        for attempt in range(1 + retries):
+            if attempt > 0:
+                wait = 2 ** attempt  # 2s, 4s, 8s
+                logger.warning("OCR QPS 超限，等待 %ds 后第 %d 次重试...", wait, attempt)
+                time.sleep(wait)
+            resp = self._http.post(
+                BAIDU_OCR_URL,
+                params={"access_token": token},
+                data={"image": img_b64},
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            data = resp.json()
+            if "words_result" in data:
+                lines = [item["words"] for item in data["words_result"]]
+                return "\n".join(lines)
+            error_code = data.get("error_code", 0)
             error_msg = data.get("error_msg", str(data))
-            logger.warning("百度 OCR 识别失败: %s", error_msg)
-            return ""
-        lines = [item["words"] for item in data["words_result"]]
-        return "\n".join(lines)
+            if error_code != 18:
+                logger.warning("百度 OCR 识别失败(%d): %s", error_code, error_msg)
+                return ""
+        logger.error("百度 OCR 重试 %d 次后仍失败", retries)
+        return ""
 
     # =============================================
     # PDF 全文 OCR
@@ -107,14 +119,15 @@ class OcrClient:
         results = []
         total = len(doc)
         for i, page in enumerate(doc, 1):
-            # 每页转为 PNG 图片（200 DPI）
-            mat = fitz.Matrix(2, 2)  # 2x zoom = ~144 DPI，足够 OCR
+            mat = fitz.Matrix(2, 2)
             pix = page.get_pixmap(matrix=mat)
             img_bytes = pix.tobytes("png")
-            text = self.ocr_image(img_bytes)
+            text = self.ocr_image(img_bytes, retries=3)
             if text:
                 results.append(text)
             logger.info("OCR 第 %d/%d 页: %d 字", i, total, len(text))
+            # 百度免费版 QPS 限制严格，页之间间隔 2 秒
+            time.sleep(2.0)
         return "\n\n".join(results)
 
     def ocr_pdf_pages(self, pdf_stream: bytes) -> list[str]:

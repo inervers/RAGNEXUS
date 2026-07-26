@@ -32,6 +32,8 @@ services:
       - ./rag_app.py:/app/rag_app.py
       - ./style.css:/app/style.css
       - ./.streamlit:/app/.streamlit
+    env_file:
+      - .env
     environment:
       - API_BASE=http://rag-api:8000
       - STREAMLIT_SERVER_PORT=8501
