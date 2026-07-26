@@ -1,7 +1,7 @@
 services:
   rag-api:
     build: .
-    container_name: rag-agent-api
+    container_name: ragnxus-api
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -21,9 +21,9 @@ services:
       - HF_HUB_DISABLE_SYMLINKS=1
 
   rag-frontend:
-    image: rag-agent-api-rag-api
+    image: ragnxus-frontend
     build: .
-    container_name: rag-agent-frontend
+    container_name: ragnxus-frontend
     restart: unless-stopped
     ports:
       - "8501:8501"

@@ -1,7 +1,7 @@
 """
 rag_app.py — RAG Agent API 前端界面（Streamlit）
 ================================================
-连接本地或远程 rag-agent-api 服务。
+连接本地或远程 RAGNEXUS API 服务。
 支持：文档上传、标准问答、混合检索、Multi-Agent 写作。
 """
 
@@ -297,4 +297,4 @@ with tab4:
 # =============================================
 
 st.divider()
-st.caption("RAG Agent API · GitHub: github.com/inervers/rag-agent-api")
+st.caption("RAGNEXUS · GitHub: github.com/inervers/RAGNEXUS")

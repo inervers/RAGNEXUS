@@ -1,4 +1,4 @@
-# RAG Agent API
+# RAGNEXUS
 
 生产级 RAG 服务，集成 Hybrid Search、Cross-Encoder Reranker、Multi-Agent 编排。  
 Docker 一键部署，带 Streamlit 可视化前端。
@@ -8,7 +8,7 @@ Docker 一键部署，带 Streamlit 可视化前端。
 ## 项目结构
 
 ```
-rag-agent-api/
+RAGNEXUS/
 ├── rag_api.py           ← FastAPI 服务（鉴权/限流/日志/RAG）
 ├── rag_advanced.py      ← 混合检索 + Reranker
 ├── rag_multiagent.py    ← Multi-Agent 工作流（研究员→写作者→审核员）
@@ -148,4 +148,4 @@ python tests\test_api.py
 
 `Python 3.11` `FastAPI` `ChromaDB` `Sentence-Transformers` `BM25` `Cross-Encoder` `Streamlit` `Docker`
 
-[→ GitHub](https://github.com/inervers/rag-agent-api)
+[→ GitHub](https://github.com/inervers/RAGNEXUS)
