@@ -1,0 +1,9 @@
+Reranker 是两阶段检索中的第二阶段精排模块。第一阶段用 Bi-Encoder 做粗筛，速度快但精度有限；第二阶段用 Cross-Encoder 做精排，对 query 和 document 做全注意力交互计算。
+
+Bi-Encoder 将 query 和 document 分别编码为独立向量，用余弦相似度计算分数。优点是支持百万级文档批量检索，缺点是没有 query-document 之间的交叉注意力，可能漏掉需要深入理解才能判断的匹配关系。
+
+Cross-Encoder 将 query 和 document 拼接后一起送入 Transformer，通过自注意力层让两者充分交互。优点是打分精度远高于 Bi-Encoder，缺点是无法预计算向量，每次需要对每个 query-document 对单独计算，速度慢。
+
+典型的两阶段流水线：Bi-Encoder 粗筛出 Top-100 → Cross-Encoder 重排取 Top-5/10。通过合理的粗筛召回率保证，可以在不降低精度的前提下大幅减少 Cross-Encoder 的计算量。
+
+常用的 Cross-Encoder 模型有 cross-encoder/ms-marco-MiniLM-L-6-v2，在小体积（80MB）下取得不错的排序效果。

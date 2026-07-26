@@ -2,17 +2,17 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# 安装依赖
+# === 第①层：核心依赖（chromadb、torch、sentence-transformers）===
+# 这些几乎不动，装好后缓存基本不失效
+COPY requirements-base.txt .
+RUN pip install --no-cache-dir -r requirements-base.txt
+
+# === 第②层：应用依赖（FastAPI、streamlit、openai）===
+# 加新接口时可能变动，但重装快（不含 torch 那 3.5GB）
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 预下载嵌入模型
-# 预下载嵌入模型（建议：若网络不通则首次请求时自动下载）
-# RUN python -c "from transformers import AutoTokenizer, AutoModel; \
-#     AutoTokenizer.from_pretrained('sentence-transformers/all-MiniLM-L6-v2'); \
-#     AutoModel.from_pretrained('sentence-transformers/all-MiniLM-L6-v2')"
-
-# 复制代码
+# === 第③层：代码（变动最频繁）===
 COPY rag_api.py rag_advanced.py rag_multiagent.py .
 RUN mkdir -p /data/chroma_db /data/logs /app/memory
 

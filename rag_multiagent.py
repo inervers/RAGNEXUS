@@ -131,14 +131,24 @@ class MultiAgentWorkflow:
     Researcher → Writer → Reviewer
     带持久化记忆 + 执行追踪。
 
+    支持注入知识库搜索函数，让研究员基于真实文档输出研究结论。
+
     注意：使用 OpenAI 兼容 API（DeepSeek / 其他）。
     """
 
     def __init__(self, api_key: str, base_url: str = "https://api.deepseek.com/v1",
-                 model: str = "deepseek-v4-flash"):
+                 model: str = "deepseek-v4-flash",
+                 knowledge_fn=None):
+        """
+        knowledge_fn: 可选的检索函数。
+            签名: fn(query: str, top_k: int) -> list[dict]
+            返回: [{"text": "...", "id": "...", "rrf_score": ...}, ...]
+            传 None 时研究员用 LLM 自有知识。
+        """
         self.client = OpenAI(api_key=api_key, base_url=base_url)
         self.model = model
         self.trace = TraceLogger()
+        self.knowledge_fn = knowledge_fn
 
     def _call_llm(self, system: str, user: str,
                   temperature: float = 0.3) -> str:
@@ -190,14 +200,32 @@ class MultiAgentWorkflow:
         writer_mem = AgentMemory("writer")
         reviewer_mem = AgentMemory("reviewer")
 
-        # === 研究员 ===
+        # === 研究员：先查知识库，再产出研究结论 ===
         self.trace.log("researcher", "research", "ok", detail=f"topic={topic[:40]}")
+
+        kb_docs = []
+        if self.knowledge_fn:
+            self.trace.log("researcher", "kb_search", "ok", detail=f"query={topic[:40]}")
+            try:
+                kb_docs = self.knowledge_fn(topic, top_k=5)
+                self.trace.log("researcher", "kb_result", "ok",
+                               detail=f"found={len(kb_docs)} docs")
+            except Exception as e:
+                self.trace.log("researcher", "kb_search", "fail", detail=str(e)[:60])
+
+        kb_context = ""
+        if kb_docs:
+            kb_context = "\n\n以下是从知识库检索到的相关文档：\n" + "\n".join(
+                f"[文档 {i+1}] {d['text'][:300]}" for i, d in enumerate(kb_docs)
+            )
+
         research = self._call_llm(
             "你是研究员。输出 JSON：{\"key_points\": [\"...\"], \"confidence\": 0-1}",
-            f"研究：{topic}",
+            f"研究：{topic}\n请基于知识库内容（如有）和你的知识综合分析。{kb_context}",
             temperature=0.1
         )
-        researcher_mem.add({"task": topic, "outcome": research[:200], "role": "research"})
+        researcher_mem.add({"task": topic, "outcome": research[:200],
+                           "role": "research", "kb_docs": len(kb_docs)})
 
         # === 写作 + 审核循环 ===
         article = ""
@@ -220,7 +248,9 @@ class MultiAgentWorkflow:
             article = self._call_llm(
                 "你是科普写作者。输出 JSON：{\"title\": \"...\", \"content\": \"...\", \"word_count\": 0}"
                 + (f"\n\n这是第 {attempt} 次修改，请改进之前的不足。" if attempt > 1 else ""),
-                f"主题：{topic}\n研究资料：{research}\n{mem_context}",
+                f"主题：{topic}\n研究资料：{research}\n"
+                + (f"知识库来源：{kb_context}\n" if kb_context else "")
+                + f"{mem_context}",
                 temperature=0.4
             )
             writer_mem.add({"task": f"写作{topic}第{attempt}稿",
@@ -281,6 +311,7 @@ class MultiAgentWorkflow:
             "article": article[:500],
             "trace_id": self.trace.trace_id,
             "monitor": monitor,
+            "kb_docs": len(kb_docs) if kb_docs else 0,
             "memory_sizes": {
                 "researcher": researcher_mem.size(),
                 "writer": writer_mem.size(),

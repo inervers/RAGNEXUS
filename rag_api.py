@@ -498,6 +498,25 @@ def hybrid_query(req: HybridQueryRequest, request: Request):
 # Multi-Agent 编排
 # =============================================
 
+def _kb_search(query: str, top_k: int = 5) -> list[dict]:
+    """知识库检索函数，注入到 MultiAgentWorkflow 供研究员使用。"""
+    try:
+        hs = _get_hybrid_search()
+        raw = hs.search(query=query, top_k=top_k)
+        hybrid = raw.get("hybrid_top", [])
+        # 如果混合结果太少，补上稠密结果
+        if len(hybrid) < 3:
+            dense = raw.get("dense_top", [])
+            seen = set(d.get("id") for d in hybrid)
+            for d in dense:
+                if d["id"] not in seen:
+                    hybrid.append(d)
+                    seen.add(d["id"])
+        return hybrid[:top_k]
+    except Exception:
+        return []
+
+
 @app.post("/agent/write")
 def agent_write(req: AgentWriteRequest, request: Request):
     if not req.topic.strip():
@@ -507,11 +526,13 @@ def agent_write(req: AgentWriteRequest, request: Request):
     from rag_multiagent import MultiAgentWorkflow
     wf = MultiAgentWorkflow(api_key=DEEPSEEK_API_KEY,
                             base_url="https://api.deepseek.com/v1",
-                            model="deepseek-v4-flash")
+                            model="deepseek-v4-flash",
+                            knowledge_fn=_kb_search)
     result = wf.run(req.topic, max_retries=req.max_retries)
     _log(trace_id, "agent_write_done", passed=str(result["passed"]),
          rating=result["rating"], attempts=result["attempts"],
-         duration=f"{result['duration_s']}s")
+         duration=f"{result['duration_s']}s",
+         kb_docs=result.get("kb_docs", 0))
     return {"result": result, "trace_id": trace_id}
 
 if __name__ == "__main__":
