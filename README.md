@@ -107,6 +107,18 @@ curl.exe -X POST http://localhost:8000/agent/write -H "Content-Type: application
 
 ---
 
+## 检索评测
+
+在 28 篇技术文档的知识库上，5 道测试题的三种检索方法对比：
+
+| 方法 | Recall@5 平均 | Recall@10 平均 | 说明 |
+|------|:------------:|:-------------:|------|
+| 单路向量 | **0.56** | **0.56** | 小知识库下单凭语义匹配已够用 |
+| 混合+RRF 融合 | 0.56 | 0.32 | BM25 引入噪声，RRF 未有效过滤 |
+| 混合+Reranker | **0.56** | **0.56** | Cross-Encoder 压制噪声，追平单路 |
+
+> **结论：** 在小规模、高质量知识库中，单路向量检索已经足够。混合+RRF 的优势在百篇以上、含噪声的语料中才真正体现。生产级系统采用多路召回+Reranker 的核心原因是在大规模语料下保证语义与关键词的双向高召回。
+
 ## 技术栈
 
 `Python 3.11` `FastAPI` `ChromaDB` `Sentence-Transformers` `BM25` `Cross-Encoder` `Streamlit` `Docker`
