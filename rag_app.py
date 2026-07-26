@@ -160,7 +160,11 @@ with tab1:
 
             title = Path(uploaded.name).stem
             with st.expander(f"预览文本（共 {len(text)} 字）", expanded=False):
-                st.text(text[:800] + ("..." if len(text) > 800 else ""))
+                # 表格 OCR 结果用 markdown 渲染，普通文本用 textarea
+                if "| --- |" in text:
+                    st.markdown(text[:800] + ("..." if len(text) > 800 else ""))
+                else:
+                    st.text(text[:800] + ("..." if len(text) > 800 else ""))
 
             if st.button("确认添加", key="confirm_upload", type="primary", use_container_width=True):
                 resp = api_post("/doc", {"title": title, "content": text})

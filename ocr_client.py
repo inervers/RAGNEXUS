@@ -33,7 +33,8 @@ import httpx
 logger = logging.getLogger(__name__)
 
 BAIDU_TOKEN_URL = "https://aip.baidubce.com/oauth/2.0/token"
-BAIDU_OCR_URL = "https://aip.baidubce.com/rest/2.0/ocr/v1/general_basic"
+BAIDU_OCR_URL = "https://aip.baidubce.com/rest/2.0/ocr/v1/accurate_basic"
+BAIDU_TABLE_URL = "https://aip.baidubce.com/rest/2.0/ocr/v1/table"
 
 
 class OcrClient:
@@ -130,6 +131,61 @@ class OcrClient:
             time.sleep(2.0)
         return "\n\n".join(results)
 
+    # =============================================
+    # 表格识别
+    # =============================================
+
+    def ocr_image_table(self, image_bytes: bytes, retries: int = 3) -> str:
+        """
+        表格识别，返回 Markdown 表格字符串。
+        QPS 超限时指数退避重试。
+        """
+        token = self._get_token()
+        img_b64 = base64.b64encode(image_bytes).decode("ascii")
+        self._ensure_http()
+
+        for attempt in range(1 + retries):
+            if attempt > 0:
+                wait = 2 ** attempt
+                logger.warning("表OCR QPS 超限，等待 %ds 后重试...", wait)
+                time.sleep(wait)
+            resp = self._http.post(
+                BAIDU_TABLE_URL,
+                params={"access_token": token},
+                data={"image": img_b64},
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            data = resp.json()
+            error_code = data.get("error_code", 0)
+            if error_code == 18 and attempt < retries:
+                continue
+            if error_code:
+                logger.warning("表格识别失败(%d): %s", error_code, data.get("error_msg", ""))
+                return ""
+            # 解析表格
+            tables = data.get("tables_result", [])
+            if not tables:
+                return ""
+            return _table_to_markdown(tables[0])
+        return ""
+
+    def ocr_pdf_table(self, pdf_stream: bytes) -> str:
+        """PDF 每页用表格 API 识别，返回 Markdown"""
+        import fitz
+        doc = fitz.open(stream=pdf_stream, filetype="pdf")
+        results = []
+        total = len(doc)
+        for i, page in enumerate(doc, 1):
+            mat = fitz.Matrix(2, 2)
+            pix = page.get_pixmap(matrix=mat)
+            img_bytes = pix.tobytes("png")
+            md = self.ocr_image_table(img_bytes)
+            if md:
+                results.append(md)
+            logger.info("表OCR 第 %d/%d 页: %d 字", i, total, len(md))
+            time.sleep(2.0)
+        return "\n\n".join(results)
+
     def ocr_pdf_pages(self, pdf_stream: bytes) -> list[str]:
         """返回每页 OCR 结果列表，每页独立"""
         import fitz
@@ -147,3 +203,40 @@ class OcrClient:
     def is_configured(self) -> bool:
         """检查是否已配置百度 OCR 密钥"""
         return bool(self.api_key and self.secret_key)
+
+
+# =============================================
+# 表格 JSON → Markdown
+# =============================================
+
+def _table_to_markdown(table: dict) -> str:
+    """百度表格 API 返回的 table 结构 → Markdown 表格字符串"""
+    body = table.get("body", [])
+    if not body:
+        return ""
+
+    # 计算行列数
+    max_row = max(cell.get("row_end", 0) for cell in body)
+    max_col = max(cell.get("col_end", 0) for cell in body)
+    rows = max_row + 1
+    cols = max_col + 1
+
+    # 建立网格
+    grid = [["" for _ in range(cols)] for _ in range(rows)]
+    for cell in body:
+        r = cell.get("row_start", 0)
+        c = cell.get("col_start", 0)
+        words = cell.get("words", "")
+        if words:
+            words = words.replace("\n", " ")
+        grid[r][c] = words
+
+    # 转 Markdown
+    md_lines = []
+    for ri, row in enumerate(grid):
+        line = "| " + " | ".join(row) + " |"
+        md_lines.append(line)
+        if ri == 0:
+            md_lines.append("| " + " | ".join(["---"] * cols) + " |")
+
+    return "\n".join(md_lines)

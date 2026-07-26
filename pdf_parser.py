@@ -208,11 +208,32 @@ def _try_ocr(pdf_stream: bytes) -> str | None:
         return None
 
 
-def parse_pdf_with_ocr(pdf_stream: bytes) -> dict:
+def _try_table_ocr(pdf_stream: bytes) -> str | None:
+    """尝试表格 OCR，返回 Markdown 表格文本"""
+    try:
+        from ocr_client import OcrClient
+        client = OcrClient()
+        if not client.is_configured:
+            return None
+        text = client.ocr_pdf_table(pdf_stream)
+        logger.info("表格OCR 完成: %d 字", len(text))
+        return text
+    except ImportError:
+        logger.debug("ocr_client 模块未安装")
+        return None
+    except Exception as e:
+        logger.warning("表格OCR 异常: %s", e)
+        return None
+
+
+def parse_pdf_with_ocr(pdf_stream: bytes, prefer_table: bool = True) -> dict:
     """
     解析 PDF，扫描件自动触发 OCR 兜底。
     也处理文字量极少的 PDF（如只有扫描全能王水印）。
     返回格式与 parse_pdf() 完全一致。
+
+    参数:
+      prefer_table: 优先尝试表格 OCR（适合表格/表单类 PDF）
     """
     result = parse_pdf(pdf_stream)
 
@@ -224,7 +245,15 @@ def parse_pdf_with_ocr(pdf_stream: bytes) -> dict:
     )
 
     if likely_scanned:
-        ocr_text = _try_ocr(pdf_stream)
+        if prefer_table:
+            ocr_text = _try_table_ocr(pdf_stream)
+        else:
+            ocr_text = None
+
+        # 表格 OCR 没有结果时回落文字 OCR
+        if not ocr_text:
+            ocr_text = _try_ocr(pdf_stream)
+
         if ocr_text and len(ocr_text) > result["chars"]:
             result["text"] = ocr_text
             result["chars"] = len(ocr_text)
