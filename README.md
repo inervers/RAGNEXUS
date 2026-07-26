@@ -123,11 +123,26 @@ curl.exe -X POST http://localhost:8000/agent/write -H "Content-Type: application
 
 | 方法 | Recall@5 平均 | Recall@10 平均 | 说明 |
 |------|:------------:|:-------------:|------|
-| 单路向量 | **0.56** | **0.56** | 小知识库下单凭语义匹配已够用 |
-| 混合+RRF 融合 | 0.56 | 0.32 | BM25 引入噪声，RRF 未有效过滤 |
-| 混合+Reranker | **0.56** | **0.56** | Cross-Encoder 压制噪声，追平单路 |
+| 单路向量 | 0.56 | 0.56 | 仅依赖语义匹配 |
+| 混合+RRF 融合 | 0.60 | 0.42 | BM25 引入噪声，RRF 未有效过滤 |
+| 混合+Reranker | **0.56** | **0.58** | Cross-Encoder 压制噪声，Top-10 略有提升 |
 
-> **结论：** 在小规模、高质量知识库中，单路向量检索已经足够。混合+RRF 的优势在百篇以上、含噪声的语料中才真正体现。生产级系统采用多路召回+Reranker 的核心原因是在大规模语料下保证语义与关键词的双向高召回。
+运行方法：
+
+```bash
+# 确保 Docker 容器运行中
+python eval_retrieval.py
+```
+
+> **结论：** 在小规模、高质量知识库中，单路向量和混合+Reranker 表现接近。混合+RRF 在 Top-10 上 Recall 较低，因为 BM25 拉入了不相关文档。Reranker 通过 Cross-Encoder 二次排序恢复了召回率。生产级系统采用多路召回+Reranker 的核心原因是在大规模、含噪声的语料中，同时覆盖语义与关键词的检索盲区。
+
+## 运行测试
+
+```powershell
+python tests\test_api.py
+```
+
+需要 Docker 容器运行中。测试项包括：健康检查、RAG 查询、混合检索、Reranker、API 鉴权、知识库统计、限流。
 
 ## 技术栈
 
