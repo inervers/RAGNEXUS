@@ -6,3 +6,4 @@ stream_out*
 .env
 memory/
 models/
+test_*.py

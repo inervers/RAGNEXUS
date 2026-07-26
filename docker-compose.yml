@@ -9,8 +9,9 @@ services:
       - chroma_data:/data/chroma_db
       - ./logs:/data/logs
       - ./memory:/app/memory
-      - C:\Users\inervers\Desktop\OH-WorkSpace\dl-learning\hf_cache:/root/.cache/huggingface
-      - C:\Users\inervers\Desktop\OH-WorkSpace\rag-advanced\models\cross-encoder:/app/models/cross-encoder
+      # 以下路径按你的实际环境调整（HF 缓存 + Cross-Encoder 模型）
+      # - C:\path\to\hf_cache:/root/.cache/huggingface
+      # - C:\path\to\cross-encoder:/app/models/cross-encoder
     env_file:
       - .env
     environment:

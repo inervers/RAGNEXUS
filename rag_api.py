@@ -12,7 +12,7 @@ _REAL_USER_SITE = os.environ.get("PYTHON_USER_SITE")
 if _REAL_USER_SITE and os.path.isdir(_REAL_USER_SITE) and _REAL_USER_SITE not in sys.path:
     sys.path.insert(0, _REAL_USER_SITE)
 
-os.environ.setdefault("HF_HOME", r"C:\Users\inervers\Desktop\OH-WorkSpace\dl-learning\hf_cache")
+# HF_HOME 在 Docker 中通过 docker-compose.yml 设置，本地环境请手动设置环境变量或从 .env 加载
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS", "1")
 
 # =============================================
