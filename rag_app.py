@@ -127,17 +127,21 @@ with tab1:
         st.caption("支持 .txt / .pdf 格式")
         uploaded = st.file_uploader("选择文件", type=["txt", "pdf"], label_visibility="collapsed")
         if uploaded:
-            from pdf_parser import parse_pdf
+            from pdf_parser import parse_pdf_with_ocr
             raw = uploaded.read()
 
             if uploaded.name.endswith(".pdf"):
-                result = parse_pdf(raw)
+                result = parse_pdf_with_ocr(raw)
 
                 st.info(f"📄 {result['summary']}")
 
                 if result["is_scanned"]:
-                    st.warning("⚠️ 该 PDF 是扫描件，没有可提取的文字层。")
-                    st.stop()
+                    if result.get("ocr_used"):
+                        st.info("🔍 该 PDF 是扫描件，已通过 OCR 识别文字")
+                    else:
+                        st.warning("⚠️ 该 PDF 是扫描件，没有可提取的文字层。")
+                        st.warning("💡 配置百度 OCR 可自动识别：在 .env 中添加 BAIDU_OCR_API_KEY 和 BAIDU_OCR_SECRET_KEY")
+                        st.stop()
 
                 if result["has_tables"]:
                     st.success(f"提取到 {len(result['tables'])} 个表格，已转为 Markdown 格式")

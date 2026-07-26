@@ -182,44 +182,48 @@ def parse_pdf(pdf_stream: bytes) -> dict:
 
 
 # =============================================
-# Layer 2 预留：OCR 接口
+# Layer 2：OCR 集成
 # =============================================
 
-def ocr_pdf(pdf_stream: bytes) -> dict:
+def _try_ocr(pdf_stream: bytes) -> str | None:
     """
-    对扫描件 PDF 执行 OCR 识别。
-    当前返回占位结果，集成方案参考：
-
-    方案 A — PaddleOCR（自建，高精度中文）：
-        from paddleocr import PaddleOCR
-        ocr = PaddleOCR(use_angle_cls=True, lang="ch")
-        for page_img in pdf_to_images(pdf_stream):
-            result = ocr.ocr(page_img)
-            ...
-
-    方案 B — 云 API（零部署，按量付费）：
-        import requests
-        resp = requests.post("https://api.xxx.com/ocr", files={"file": pdf_stream})
-        ...
-
-    方案 C — Tesseract（离线，精度中等）：
-        import pytesseract
-        from PIL import Image
-        for page_img in pdf_to_images(pdf_stream):
-            text = pytesseract.image_to_string(page_img, lang="chi_sim+eng")
-
-    返回格式与 parse_pdf() 一致。
+    如果配置了百度 OCR，对扫描件执行识别。
+    返回识别文本，未配置时返回 None。
     """
-    import fitz
-    doc = fitz.open(stream=pdf_stream, filetype="pdf")
-    result = {
-        "text": "",
-        "pages": len(doc),
-        "chars": 0,
-        "is_scanned": True,
-        "tables": [],
-        "has_tables": False,
-        "summary": f"{len(doc)}页 · 扫描件（未启用 OCR）",
-        "ocr_note": "OCR 未启用，请在 pdf_parser.py 中配置 OCR 方案后重试",
-    }
+    try:
+        from ocr_client import OcrClient
+        client = OcrClient()
+        if not client.is_configured:
+            logger.info("百度 OCR 未配置，跳过扫描件识别")
+            return None
+        logger.info("百度 OCR 已配置，开始识别扫描件...")
+        text = client.ocr_pdf(pdf_stream)
+        logger.info("OCR 完成: %d 字", len(text))
+        return text
+    except ImportError:
+        logger.debug("ocr_client 模块未安装")
+        return None
+    except Exception as e:
+        logger.warning("OCR 识别异常: %s", e)
+        return None
+
+
+def parse_pdf_with_ocr(pdf_stream: bytes) -> dict:
+    """
+    解析 PDF，扫描件自动触发 OCR 兜底。
+    返回格式与 parse_pdf() 完全一致。
+    """
+    result = parse_pdf(pdf_stream)
+    if result["is_scanned"]:
+        ocr_text = _try_ocr(pdf_stream)
+        if ocr_text:
+            result["text"] = ocr_text
+            result["chars"] = len(ocr_text)
+            result["is_scanned"] = False  # OCR 后视为已处理
+            result["summary"] = f"{result['pages']}页 · OCR 识别 · {len(ocr_text)}字"
+            result["ocr_used"] = True
+        else:
+            result["ocr_used"] = False
+    else:
+        result["ocr_used"] = False
     return result
