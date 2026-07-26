@@ -7,6 +7,7 @@ services:
       - "8000:8000"
     volumes:
       - chroma_data:/data/chroma_db
+      - hf_cache:/root/.cache/huggingface
       - ./logs:/data/logs
       - ./memory:/app/memory
       # 以下路径按你的实际环境调整（HF 缓存 + Cross-Encoder 模型）
@@ -41,3 +42,4 @@ services:
 
 volumes:
   chroma_data:
+  hf_cache:

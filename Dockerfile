@@ -13,7 +13,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # === 第③层：代码（变动最频繁）===
-COPY rag_api.py rag_advanced.py rag_multiagent.py .
+COPY rag_api.py rag_advanced.py rag_multiagent.py pdf_parser.py .
 RUN mkdir -p /data/chroma_db /data/logs /app/memory
 
 EXPOSE 8000

@@ -127,20 +127,44 @@ with tab1:
         st.caption("支持 .txt / .pdf 格式")
         uploaded = st.file_uploader("选择文件", type=["txt", "pdf"], label_visibility="collapsed")
         if uploaded:
-            import fitz  # PyMuPDF
+            from pdf_parser import parse_pdf
             raw = uploaded.read()
+
             if uploaded.name.endswith(".pdf"):
-                doc = fitz.open(stream=raw, filetype="pdf")
-                text = "\n".join(page.get_text() for page in doc)
+                result = parse_pdf(raw)
+
+                st.info(f"📄 {result['summary']}")
+
+                if result["is_scanned"]:
+                    st.warning("⚠️ 该 PDF 是扫描件，没有可提取的文字层。")
+                    st.stop()
+
+                if result["has_tables"]:
+                    st.success(f"提取到 {len(result['tables'])} 个表格，已转为 Markdown 格式")
+                    with st.expander("预览表格"):
+                        for t in result["tables"]:
+                            st.markdown(f"**第 {t['page']} 页 · 表格 {t['table_index']+1}（{t['rows']}行×{t['cols']}列）**")
+                            st.markdown(t["markdown"])
+
+                text = result["text"]
+                if result["has_tables"]:
+                    table_block = "\n\n## 表格数据\n\n"
+                    table_block += "\n\n".join(t["markdown"] for t in result["tables"])
+                    text += table_block
             else:
                 text = raw.decode("utf-8", errors="ignore")
 
             title = Path(uploaded.name).stem
-            resp = api_post("/doc", {"title": title, "content": text})
-            if "error" in resp:
-                st.error(resp["error"])
-            else:
-                st.success(f"《{title}》已添加（{len(text)} 字符）")
+            with st.expander(f"预览文本（共 {len(text)} 字）", expanded=False):
+                st.text(text[:800] + ("..." if len(text) > 800 else ""))
+
+            if st.button("确认添加", key="confirm_upload", type="primary", use_container_width=True):
+                resp = api_post("/doc", {"title": title, "content": text})
+                if "error" in resp:
+                    st.error(resp["error"])
+                else:
+                    st.success(f"《{title}》已添加（{len(text)} 字符）")
+                    st.rerun()
 
     st.divider()
     st.subheader("知识库全部文档")
