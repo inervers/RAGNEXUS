@@ -1,0 +1,31 @@
+# ============================================
+# Secrets Guard pre-commit 配置
+# 安装: pip install pre-commit && pre-commit install
+# 手动全仓扫描: pre-commit run detect-secrets --all-files
+# ============================================
+
+repos:
+  # detect-secrets: Yelp 出品，专门检测密钥泄露
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: >
+          (?x)^(
+            package-lock\.json|
+            poetry\.lock|
+            Pipfile\.lock|
+            yarn\.lock|
+            .*\.(svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot)$
+          )$
+
+  # 通用检查：防止私钥、密码直接提交
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: detect-private-key
+      - id: check-merge-conflict
+      - id: fix-byte-order-marker
+      - id: mixed-line-ending
+        args: ['--fix=lf']
