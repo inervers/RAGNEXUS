@@ -28,7 +28,8 @@ if css_path.exists():
     with open(css_path, encoding="utf-8") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-API_BASE = "http://localhost:8000"
+import os
+API_BASE = os.environ.get("API_BASE", "http://localhost:8000")
 API_KEY = "rag-secret-key-2024"
 HEADERS = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 

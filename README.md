@@ -44,7 +44,17 @@ streamlit run rag_app.py
 docker compose up -d --build
 ```
 
-访问 `http://localhost:8000/health` 验证 API，打开 `http://localhost:8501` 使用前端。
+启动后：
+- API 服务 → `http://localhost:8000`
+- Streamlit 前端 → `http://localhost:8501`
+
+前端自动通过 Docker 内部网络连接 API，无需手动配置。
+
+### Agent 记忆持久化
+
+Agent 的写作记忆保存在本地 `memory/` 目录，容器重建后记忆不丢失。
+
+> ⚠️ 首次启动前端需等待 API 完全就绪（约 10-30 秒），可通过 `docker compose logs rag-api --tail=5` 确认。
 
 ---
 
