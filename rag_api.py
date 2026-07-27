@@ -284,16 +284,27 @@ TOOLS = [
     }},
 ]
 
+SEARCH_N_RESULTS = 3
+
+
 def _tool_search(query: str) -> str:
-    results = collection.query(query_texts=[query], n_results=3)
+    results = collection.query(query_texts=[query], n_results=SEARCH_N_RESULTS)
     docs = results.get("documents", [[]])[0]
     return "\n".join(docs) if docs else "未找到相关信息"
+
+
+def _tool_search_chunks(query: str) -> list:
+    results = collection.query(query_texts=[query], n_results=SEARCH_N_RESULTS)
+    return results.get("documents", [[]])[0]
 
 def _tool_add(title: str, content: str) -> str:
     full = f"{title}：{content}"
     chunks = splitter.split_documents([Document(full)])
     ids = _doc_ids(_doc_count() + 1, len(chunks))
     collection.add(ids=ids, documents=[c.page_content for c in chunks], metadatas=[{"source": title} for _ in chunks])
+    # 标记语料过期，下次 hybrid 查询会重建 BM25
+    global _corpus_version
+    _corpus_version = -1
     return f"添加成功（{len(chunks)} 个分块），共 {_doc_count()} 个块"
 
 def _tool_summarize(text: str) -> str:
@@ -310,7 +321,7 @@ TOOL_IMPLS = {
 }
 
 SYSTEM_PROMPT = (
-    "You are an AI assistant with dedicated tools.\n"
+    "You are an AI assistant with a knowledge base.\n"
     "Available tools: search_knowledge, add_document, summarize, translate.\n"
     "Rules:\n"
     "1. FOR TECHNICAL QUESTIONS, use search_knowledge first.\n"
@@ -320,15 +331,16 @@ SYSTEM_PROMPT = (
     "5. Answer in the same language as the user."
 )
 
-def rag_with_fc(query: str, trace_id: str = uuid.uuid4().hex) -> str:
+def rag_with_fc(query: str, trace_id: str = uuid.uuid4().hex) -> dict:
     _log(trace_id, "rag_start", query=query[:80])
     msgs = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": query}]
     tool_rounds = 0
+    sources = []
     for _ in range(8):
         msg = call_llm(msgs, tools=TOOLS)
         if not msg.get("tool_calls"):
             _log(trace_id, "rag_done", rounds=tool_rounds)
-            return msg["content"]
+            return {"answer": msg["content"], "sources": sources}
         msgs.append({"role": "assistant", "content": msg.get("content"), "tool_calls": msg["tool_calls"]})
         for tc in msg["tool_calls"]:
             fname = tc["function"]["name"]
@@ -336,9 +348,11 @@ def rag_with_fc(query: str, trace_id: str = uuid.uuid4().hex) -> str:
             result = TOOL_IMPLS[fname](**fargs)
             _log_tool(trace_id, fname, fargs, result)
             msgs.append({"role": "tool", "tool_call_id": tc["id"], "content": str(result)})
+            if fname == "search_knowledge" and result and result != "未找到相关信息":
+                sources.append({"query": fargs.get("query", ""), "content": result[:300]})
             tool_rounds += 1
     _log(trace_id, "rag_max_rounds", rounds=tool_rounds)
-    return msgs[-1].get("content", "")
+    return {"answer": msgs[-1].get("content", ""), "sources": sources}
 
 async def stream_rag(query: str, trace_id: str):
     msgs = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": query}]
@@ -419,8 +433,25 @@ def query(req: QueryRequest, request: Request):
     if not req.question.strip():
         raise HTTPException(400, "问题不能为空")
     trace_id = request.headers.get(TRACE_HEADER, uuid.uuid4().hex)
-    answer = rag_with_fc(req.question, trace_id)
-    return {"answer": answer, "trace_id": trace_id}
+
+    # 混合检索（稠密向量 + BM25 稀疏 + RRF 融合），偏关键词权重
+    hs = _get_hybrid_search()
+    hy_result = hs.search(req.question, top_k=SEARCH_N_RESULTS * 2,
+                          dense_weight=1.0, sparse_weight=2.0)
+    hy_chunks = [item["text"] for item in hy_result.get("hybrid_top", [])]
+    kb_chunks = hy_chunks if hy_chunks else _tool_search_chunks(req.question)
+    context_parts = ["## 知识库检索结果（请基于此回答）"]
+    for i, chunk in enumerate(kb_chunks):
+        context_parts.append(f"--- 文档 {i+1} ---\n{chunk}")
+    context_parts.append(f"\n## 用户问题\n{req.question}")
+    context = "\n".join(context_parts)
+
+    result = rag_with_fc(context, trace_id)
+    sources = result.get("sources", [])
+    if not sources and kb_chunks:
+        sources = [{"query": req.question[:80], "content": c[:300]} for c in kb_chunks]
+
+    return {"answer": result["answer"], "sources": sources, "trace_id": trace_id}
 
 @app.post("/query/stream")
 async def query_stream(req: QueryRequest, request: Request):
@@ -451,14 +482,24 @@ def add_doc(req: DocRequest, request: Request):
 
 _hybrid_search = None
 _reranker = None
+_corpus_version = 0
 
 def _get_hybrid_search():
-    global _hybrid_search
+    global _hybrid_search, _corpus_version
+    current_count = _doc_count()
     if _hybrid_search is None:
         from rag_advanced import HybridSearch
         all_docs = collection.get()
         corpus = all_docs.get("documents", [])
         _hybrid_search = HybridSearch(collection, embed_texts, corpus)
+        _corpus_version = current_count
+    elif _corpus_version != current_count:
+        # 知识库有新增文档，重建 BM25 索引
+        all_docs = collection.get()
+        corpus = all_docs.get("documents", [])
+        _hybrid_search.set_corpus(corpus)
+        _corpus_version = current_count
+        logger.info(f"HybridSearch 语料刷新：{current_count} 个文档")
     return _hybrid_search
 
 def _get_reranker():
