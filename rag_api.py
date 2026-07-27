@@ -288,12 +288,26 @@ SEARCH_N_RESULTS = 3
 
 
 def _tool_search(query: str) -> str:
+    hs = _get_hybrid_search()
+    result = hs.search(query, top_k=SEARCH_N_RESULTS * 2,
+                       dense_weight=1.0, sparse_weight=2.0)
+    hybrid = result.get("hybrid_top", [])
+    if hybrid:
+        return "\n".join(item["text"] for item in hybrid)
+    # 回退纯向量
     results = collection.query(query_texts=[query], n_results=SEARCH_N_RESULTS)
     docs = results.get("documents", [[]])[0]
     return "\n".join(docs) if docs else "未找到相关信息"
 
 
 def _tool_search_chunks(query: str) -> list:
+    hs = _get_hybrid_search()
+    result = hs.search(query, top_k=SEARCH_N_RESULTS * 2,
+                       dense_weight=1.0, sparse_weight=2.0)
+    hybrid = result.get("hybrid_top", [])
+    if hybrid:
+        return [item["text"] for item in hybrid]
+    # 回退纯向量
     results = collection.query(query_texts=[query], n_results=SEARCH_N_RESULTS)
     return results.get("documents", [[]])[0]
 
@@ -435,11 +449,7 @@ def query(req: QueryRequest, request: Request):
     trace_id = request.headers.get(TRACE_HEADER, uuid.uuid4().hex)
 
     # 混合检索（稠密向量 + BM25 稀疏 + RRF 融合），偏关键词权重
-    hs = _get_hybrid_search()
-    hy_result = hs.search(req.question, top_k=SEARCH_N_RESULTS * 2,
-                          dense_weight=1.0, sparse_weight=2.0)
-    hy_chunks = [item["text"] for item in hy_result.get("hybrid_top", [])]
-    kb_chunks = hy_chunks if hy_chunks else _tool_search_chunks(req.question)
+    kb_chunks = _tool_search_chunks(req.question)
     context_parts = ["## 知识库检索结果（请基于此回答）"]
     for i, chunk in enumerate(kb_chunks):
         context_parts.append(f"--- 文档 {i+1} ---\n{chunk}")
