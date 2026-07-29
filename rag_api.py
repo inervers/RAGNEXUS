@@ -56,6 +56,7 @@ import torch
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 import chromadb
@@ -152,7 +153,7 @@ async def logging_middleware(request: Request, call_next):
 
 async def security_middleware(request: Request, call_next):
     """安全检查（鉴权 → 限流）"""
-    if request.url.path == "/health":
+    if request.url.path == "/health" or request.method == "OPTIONS":
         return await call_next(request)
 
     trace_id = request.headers.get(TRACE_HEADER, uuid.uuid4().hex)
@@ -410,6 +411,15 @@ async def stream_rag(query: str, trace_id: str):
 # =============================================
 
 app = FastAPI(title="RAG Agent API (Production)", version="1.3.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.middleware("http")(logging_middleware)
 app.middleware("http")(security_middleware)
 

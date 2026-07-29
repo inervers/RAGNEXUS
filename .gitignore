@@ -7,3 +7,7 @@ stream_out*
 memory/
 models/
 test_*.py
+
+# React 前端
+frontend/node_modules/
+frontend/dist/
