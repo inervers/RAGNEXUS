@@ -136,8 +136,8 @@ class MultiAgentWorkflow:
     注意：使用 OpenAI 兼容 API（DeepSeek / 其他）。
     """
 
-    def __init__(self, api_key: str, base_url: str = "https://open.bigmodel.cn/api/paas/v4",
-                 model: str = "glm-4.7-flash",
+    def __init__(self, api_key: str, base_url: str = "https://api.deepseek.com",
+                 model: str = "deepseek-v4-flash",
                  knowledge_fn=None):
         """
         knowledge_fn: 可选的检索函数。

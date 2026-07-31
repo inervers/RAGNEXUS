@@ -49,7 +49,7 @@ LLM_API_KEY = DEEPSEEK_API_KEY or ZHIPU_API_KEY
 LLM_BASE_URL = os.environ.get("LLM_BASE_URL",
                               "https://api.deepseek.com" if DEEPSEEK_API_KEY else "https://open.bigmodel.cn/api/paas/v4")
 LLM_MODEL = os.environ.get("LLM_MODEL",
-                           "deepseek-chat" if DEEPSEEK_API_KEY else "glm-4.7-flash")
+                           "deepseek-v4-flash" if DEEPSEEK_API_KEY else "glm-4.7-flash")
 RAG_API_KEY = os.environ.get("RAG_API_KEY", "rag-secret-key-2024")
 RATE_LIMIT = int(os.environ.get("RAG_RATE_LIMIT", "30"))
 
