@@ -13,7 +13,7 @@
 | rag-frontend | 8080 | nginx 静态站点（前端改代码必须 **重新 build** 镜像，restart 不够） |
 
 ```powershell
-cd C:\Users\inervers\Desktop\OH-WorkSpace\rag-agent-api
+cd rag-agent-api        # 项目根目录（Docker 命令都在这里执行）
 
 docker compose ps                          # 容器状态（Up 才是活着）
 docker compose up -d rag-frontend          # 创建并启动（注意：build ≠ up，只 build 不会起容器！）
@@ -160,6 +160,7 @@ curl.exe -N -X POST http://localhost:8000/query/stream -H "Content-Type: applica
 3. pre-commit 钩子自动扫描密钥/合并冲突/行尾
 4. 凭据轮换过：ZHIPU / DEEPSEEK / RAG / 百度 OCR 都是新 key
 5. 推送后到 GitHub 页面确认文件内容（commit 信息 ≠ 实际内容，曾出现 commit 只含 2 个文件、其余在更早 commit 的情况）
+6. **commit 元数据也暴露信息**：git 作者邮箱会随每个 commit 公开。做法：GitHub → Settings → Emails 开启 "Keep my email addresses private" + "Block command line pushes that expose my email"，再把本地 `git config user.email` 改成 noreply 地址（格式 `你的ID+用户名@users.noreply.github.com`）
 
 ---
 
