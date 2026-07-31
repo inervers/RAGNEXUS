@@ -721,7 +721,7 @@ function AgentTab() {
             <div className="metric"><span className="metric-val">{result.duration_s}s</span>耗时</div>
           </div>
 
-          {result.article && (
+          {result.article ? (
             <div className="agent-article">
               <h4>生成文章</h4>
               <div className="article-body">
@@ -738,6 +738,8 @@ function AgentTab() {
                 })()}
               </div>
             </div>
+          ) : (
+            <p className="empty-text">本次未生成文章内容，请重试。</p>
           )}
 
           {result.monitor?.agent_metrics && (

@@ -161,7 +161,7 @@ class MultiAgentWorkflow:
                     {"role": "user", "content": user}
                 ],
                 temperature=temperature,
-                max_tokens=1024
+                max_tokens=2048
             )
             result = resp.choices[0].message.content
             tokens = resp.usage.total_tokens if resp.usage else 0
@@ -224,7 +224,7 @@ class MultiAgentWorkflow:
             f"研究：{topic}\n请基于知识库内容（如有）和你的知识综合分析。{kb_context}",
             temperature=0.1
         )
-        researcher_mem.add({"task": topic, "outcome": research[:200],
+        researcher_mem.add({"task": topic, "outcome": (research or "")[:200],
                            "role": "research", "kb_docs": len(kb_docs)})
 
         # === 写作 + 审核循环 ===
@@ -248,11 +248,11 @@ class MultiAgentWorkflow:
             article = self._call_llm(
                 "你是科普写作者。输出 JSON：{\"title\": \"...\", \"content\": \"...\", \"word_count\": 0}"
                 + (f"\n\n这是第 {attempt} 次修改，请改进之前的不足。" if attempt > 1 else ""),
-                f"主题：{topic}\n研究资料：{research}\n"
+                f"主题：{topic}\n研究资料：{research or ''}\n"
                 + (f"知识库来源：{kb_context}\n" if kb_context else "")
                 + f"{mem_context}",
                 temperature=0.4
-            )
+            ) or ""
             writer_mem.add({"task": f"写作{topic}第{attempt}稿",
                            "outcome": article[:200], "round": attempt})
 
@@ -308,7 +308,7 @@ class MultiAgentWorkflow:
             "verdict": verdict,
             "attempts": attempt,
             "duration_s": elapsed,
-            "article": article[:500],
+            "article": article[:5000],
             "trace_id": self.trace.trace_id,
             "monitor": monitor,
             "kb_docs": len(kb_docs) if kb_docs else 0,
@@ -326,10 +326,10 @@ class MultiAgentWorkflow:
 
 if __name__ == "__main__":
     import os
-    key = (os.environ.get("ZHIPU_API_KEY") or os.environ.get("DEEPSEEK_API_KEY")
+    key = (os.environ.get("DEEPSEEK_API_KEY") or os.environ.get("ZHIPU_API_KEY")
            or os.environ.get("OPENAI_API_KEY"))
     if not key:
-        print("需要设置 ZHIPU_API_KEY（推荐）或 DEEPSEEK_API_KEY")
+        print("需要设置 DEEPSEEK_API_KEY（推荐）或 ZHIPU_API_KEY")
         exit(1)
 
     wf = MultiAgentWorkflow(api_key=key)

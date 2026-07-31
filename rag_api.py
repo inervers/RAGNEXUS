@@ -41,20 +41,20 @@ def _load_config():
 
 _load_config()
 
-# LLM 配置：优先智谱（免费 glm-4.7-flash），兼容旧 DeepSeek key
+# LLM 配置：优先 DeepSeek，兼容智谱 key
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
 ZHIPU_API_KEY = os.environ.get("ZHIPU_API_KEY")
-LLM_API_KEY = ZHIPU_API_KEY or DEEPSEEK_API_KEY
+LLM_API_KEY = DEEPSEEK_API_KEY or ZHIPU_API_KEY
 # 未显式指定 LLM_BASE_URL / LLM_MODEL 时，按 key 类型选默认值
 LLM_BASE_URL = os.environ.get("LLM_BASE_URL",
-                              "https://open.bigmodel.cn/api/paas/v4" if ZHIPU_API_KEY else "https://api.deepseek.com")
+                              "https://api.deepseek.com" if DEEPSEEK_API_KEY else "https://open.bigmodel.cn/api/paas/v4")
 LLM_MODEL = os.environ.get("LLM_MODEL",
-                           "glm-4.7-flash" if ZHIPU_API_KEY else "deepseek-v4-flash")
+                           "deepseek-chat" if DEEPSEEK_API_KEY else "glm-4.7-flash")
 RAG_API_KEY = os.environ.get("RAG_API_KEY", "rag-secret-key-2024")
 RATE_LIMIT = int(os.environ.get("RAG_RATE_LIMIT", "30"))
 
 if not LLM_API_KEY:
-    print("需要设置 ZHIPU_API_KEY（推荐）或 DEEPSEEK_API_KEY")
+    print("需要设置 DEEPSEEK_API_KEY（推荐）或 ZHIPU_API_KEY")
     exit(1)
 
 import time, uuid, logging, traceback
