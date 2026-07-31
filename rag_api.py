@@ -5,7 +5,7 @@
 - 日志：trace_id 追踪、工具调用链路、请求耗时、错误记录
 """
 
-import sys, os, json, random
+import sys, os, json, random, base64
 
 # Windows user-site 兼容（Docker 中直接跳过）
 _REAL_USER_SITE = os.environ.get("PYTHON_USER_SITE")
@@ -454,6 +454,10 @@ class DocRequest(BaseModel):
     title: str
     content: str
 
+class UploadDocRequest(BaseModel):
+    filename: str
+    content: str
+
 class HybridQueryRequest(BaseModel):
     question: str
     top_k: int = 10
@@ -464,6 +468,31 @@ class HybridQueryRequest(BaseModel):
 class AgentWriteRequest(BaseModel):
     topic: str
     max_retries: int = 1
+
+@app.post("/doc/preview")
+def preview_doc(req: UploadDocRequest, request: Request):
+    """解析 PDF/TXT 并返回文本（不写入知识库），供前端预览后手动确认"""
+    if not req.filename.strip() or not req.content.strip():
+        raise HTTPException(400, "文件名和内容不能为空")
+    ext = req.filename.rsplit(".", 1)[-1].lower() if "." in req.filename else ""
+    try:
+        raw_bytes = base64.b64decode(req.content)
+    except Exception:
+        raise HTTPException(400, "Base64 解码失败")
+    if ext == "pdf":
+        try:
+            from pdf_parser import extract_text
+            parsed = extract_text(raw_bytes)
+            text = parsed["text"]
+            title = req.filename.rsplit(".", 1)[0]
+        except Exception as e:
+            raise HTTPException(500, f"PDF 解析失败：{e}")
+    elif ext == "txt":
+        text = raw_bytes.decode("utf-8", errors="replace")
+        title = req.filename.rsplit(".", 1)[0]
+    else:
+        raise HTTPException(400, f"不支持的文件格式：.{ext}（仅支持 pdf/txt）")
+    return {"title": title, "content": text[:5000], "full_length": len(text)}
 
 @app.get("/health")
 def health(request: Request):
