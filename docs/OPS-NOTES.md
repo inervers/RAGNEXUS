@@ -184,3 +184,62 @@ curl.exe -N -X POST http://localhost:8000/query/stream -H "Content-Type: applica
   → 后端：docker compose restart rag-api（bind mount）
   → 前端：docker compose build rag-frontend && up -d（镜像内是构建产物，restart 无效）
 ```
+
+---
+
+## 10. 历史排障记录（2026-07 沉淀）
+
+> 更早会话积累的经验，按话题归档，遇到同类问题直接对号入座。
+
+### 10.1 filter-repo 事故与恢复方法论（最痛教训）
+
+**事故**：`git filter-repo` 重写历史时，把已提交的前端最终版（4-tab 终端 UI）和智谱迁移改动全部冲掉。症状是容器里跑的还是旧版代码（问答 500 错误，排查才发现是旧版 DeepSeek 硬编码）。
+
+**恢复方法（已实战验证）**：
+- 会话记录（JSONL）里的 toolUse / edit 消息是重建文件的**权威来源**，逐条重放 edit diff 可完整重建
+- 重建后用 filter-repo 前的 grep 快照做**逐行对照验证**（关键行号吻合才算成功），再跑 tsc / vite build 确认无语法错误
+- 重要文件的最后状态建议平时就留 grep 快照，恢复时对照用
+
+**教训**：
+- 改动先 commit + push，再动其他东西
+- filter-repo / rebase / force push 这类大操作前，先 clone 一份完整备份
+- 恢复工作的验证标准：不是“看起来对”，而是“与事故前快照逐行一致”
+
+### 10.2 智谱 429 限流处理（切 DeepSeek 前的阶段）
+
+**症状链**：问答 500 错误 → 排查发现容器内是旧版 DeepSeek 硬编码（filter-repo 冲掉了智谱迁移）→ 重新应用智谱改动后，错误变成智谱 429 Too Many Requests。
+
+**原因**：智谱免费版模型（glm-4.7-flash）单并发 + 15:00-23:00 高峰限流。
+
+**当时解法**：
+- 超时调大到 120 秒（connect 10s）
+- `_llm_post` 加 4 次重试（httpx.HTTPStatusError / 超时都重试）
+
+**最终方案**：切换 DeepSeek（见第 4 节），免费限流模型不适合做生产依赖。
+
+### 10.3 知识库重复内容清理
+
+**症状**：知识库文档重复、检索结果冗余。
+
+**处理链**：`audit_kb.py` 审计 → `cleanup_kb.py` 清理 → `kb_audit_report.md/json` 出报告 → 最后**把去重逻辑前移到导入入口**（上传时就查重，不再事后清理）。
+
+**教训**：数据质量是入口问题——越早拦截，成本越低。事后清理永远追不上脏数据产生的速度。
+
+### 10.4 前端 TypeScript 死代码策略（Vite 项目通用）
+
+**症状**：旧版/重构后的死代码产生大量 TS 错误（未使用变量 TS6133、多余属性 TS2353）。
+
+**决策**：逐一修补性价比低——修掉核心错误（约 6 个）后**跳过 tsc，直接 vite build**（vite 构建不强制类型检查，能产出产物即可）。
+
+**注意**：RAGNEXUS frontend 的 Dockerfile 里 `npm run build` 包含 `tsc -b`，若以后重构引入死代码类型错误导致构建卡住，可参考此策略（改 build 脚本去掉 tsc 或修核心错误放行）。
+
+### 10.5 凭据轮换记录
+
+已做过一轮完整凭据轮换：ZHIPU / DEEPSEEK / RAG_API_KEY / 百度 OCR 全部换新。
+- GITHUB_TOKEN 已删除，git remote URL 已去 token
+- `.secrets.baseline`（detect-secrets）+ pre-commit 扫描作为防线
+- `.env` / `replacements.txt` 在 .gitignore（已确认）
+
+### 10.6 主题系统经验（前端通用）
+
+CSS 变量只能改颜色——**要独特的设计语言（噪点纹理、像素硬阴影、粒子系统），必须在元素级做 DOM 选择器覆盖**，不能指望换 CSS 变量值搞定。paper / retro / nord 三套主题都是这个思路实现的。
