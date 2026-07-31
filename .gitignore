@@ -8,6 +8,11 @@ memory/
 models/
 test_*.py
 
+# 本地安全备份与知识库清理产物
+.git-backup/
+kb_backups/
+replacements.txt
+
 # React 前端
 frontend/node_modules/
 frontend/dist/
