@@ -18,14 +18,15 @@ interface SearchResult {
   text: string
 }
 
+type TabKey = "qa" | "hybrid"
+
 function App() {
-  const [tab, setTab] = useState<"qa" | "hybrid">("qa")
+  const [tab, setTab] = useState<TabKey>("qa")
 
   return (
     <div className="app">
-      <Sidebar />
+      <Sidebar tab={tab} onTabChange={setTab} />
       <main className="main-area">
-        <TabBar tab={tab} onTabChange={setTab} />
         {tab === "qa" ? <QATab /> : <HybridTab />}
       </main>
     </div>
@@ -33,9 +34,9 @@ function App() {
 }
 
 /* ============================
-   侧边栏组件
+   侧边栏（导航 + 状态）
    ============================ */
-function Sidebar() {
+function Sidebar({ tab, onTabChange }: { tab: TabKey; onTabChange: (t: TabKey) => void }) {
   const [online, setOnline] = useState<boolean | null>(null)
   const [kbCount, setKbCount] = useState(0)
 
@@ -48,12 +49,30 @@ function Sidebar() {
       .catch(() => setOnline(false))
   }, [])
 
+  const navItems: { key: TabKey; label: string }[] = [
+    { key: "qa", label: "qa" },
+    { key: "hybrid", label: "hybrid" },
+  ]
+
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
         <h1>RAGNEXUS</h1>
         <span className="badge">v1.3</span>
       </div>
+
+      <nav className="sidebar-nav">
+        <p className="nav-label">// navigation</p>
+        {navItems.map((item) => (
+          <button
+            key={item.key}
+            className={`nav-btn ${tab === item.key ? "active" : ""}`}
+            onClick={() => onTabChange(item.key)}
+          >
+            ./{item.label}
+          </button>
+        ))}
+      </nav>
 
       <div className="status-card">
         <div className="status-row">
@@ -64,10 +83,12 @@ function Sidebar() {
       </div>
 
       <div className="sidebar-section">
-        <h3>关于</h3>
+        <h3>// about</h3>
         <p>生产级 RAG + Multi-Agent 知识库问答系统。</p>
         <p className="repo-link">
-          <a href="https://github.com/inervers/RAGNEXUS" target="_blank">GitHub →</a>
+          <a href="https://github.com/inervers/RAGNEXUS" target="_blank" rel="noreferrer">
+            github.com/inervers/RAGNEXUS
+          </a>
         </p>
       </div>
     </aside>
@@ -75,33 +96,24 @@ function Sidebar() {
 }
 
 /* ============================
-   标签栏
-   ============================ */
-function TabBar({ tab, onTabChange }: { tab: string; onTabChange: (t: "qa" | "hybrid") => void }) {
-  return (
-    <div className="tab-bar">
-      <button className={`tab-btn ${tab === "qa" ? "active" : ""}`} onClick={() => onTabChange("qa")}>
-        💬 问答
-      </button>
-      <button className={`tab-btn ${tab === "hybrid" ? "active" : ""}`} onClick={() => onTabChange("hybrid")}>
-        🔍 混合检索
-      </button>
-    </div>
-  )
-}
-
-/* ============================
-   问答标签页
+   问答（日志流）
    ============================ */
 function QATab() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
+  const [streamText, setStreamText] = useState("")
+  const [activeTools, setActiveTools] = useState<string[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+  }, [messages, streamText, activeTools])
+
+  function cancel() {
+    abortRef.current?.abort()
+  }
 
   async function handleSend() {
     if (!input.trim() || loading) return
@@ -109,46 +121,98 @@ function QATab() {
     setInput("")
     setMessages((prev) => [...prev, { role: "user", content: question }])
     setLoading(true)
+    setStreamText("")
+    setActiveTools([])
+
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    let full = ""
+    let sources: { query: string; content: string }[] = []
 
     try {
-      const resp = await fetch(`${API_BASE}/query`, {
+      const resp = await fetch(`${API_BASE}/query/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
         body: JSON.stringify({ question }),
+        signal: controller.signal,
       })
-      const data = await resp.json()
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: data.answer ?? "无回答", sources: data.sources },
-      ])
-    } catch {
-      setMessages((prev) => [...prev, { role: "assistant", content: "请求失败，请检查服务是否运行" }])
+
+      if (!resp.ok) {
+        const errText = await resp.text()
+        throw new Error(`HTTP ${resp.status}: ${errText.slice(0, 200)}`)
+      }
+
+      const reader = resp.body?.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ""
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const blocks = buffer.split("\n\n")
+          buffer = blocks.pop() ?? ""
+
+          for (const block of blocks) {
+            const line = block.trim()
+            if (!line.startsWith("data: ")) continue
+            const payload = line.slice(6)
+            try {
+              const obj = JSON.parse(payload)
+              if (obj.type === "tool") {
+                setActiveTools((prev) => [...prev, `${obj.name}(${JSON.stringify(obj.args)})`])
+              } else if (obj.type === "token" && obj.content) {
+                full += obj.content
+                setStreamText(full)
+              } else if (obj.type === "done") {
+                // done
+              }
+            } catch { /* ignore malformed */ }
+          }
+        }
+      }
+
+      setMessages((prev) => [...prev, { role: "assistant", content: full || "（无回答）", sources }])
+    } catch (err: unknown) {
+      const e = err as Error
+      if (e.name !== "AbortError") {
+        setMessages((prev) => [...prev, { role: "assistant", content: `请求失败：${e.message}` }])
+      }
     }
+
+    setStreamText("")
+    setActiveTools([])
     setLoading(false)
   }
 
   return (
-    <div className="tab-content">
-      <div className="messages">
-        {messages.length === 0 && (
+    <div className="tab-content qa-tab">
+      <div className="log-stream">
+        {messages.length === 0 && !loading && (
           <div className="welcome">
-            <h2>RAGNEXUS 知识库</h2>
-            <p>基于检索增强生成的知识库问答系统。输入问题开始对话。</p>
+            <p className="welcome-prompt">$ ragnxus --start</p>
+            <p>RAG 知识库问答系统。输入问题开始对话。</p>
+            <p className="welcome-hint">// 支持流式输出、知识来源追溯、混合检索</p>
           </div>
         )}
 
         {messages.map((msg, i) => (
-          <div key={i} className={`message ${msg.role}`}>
-            <div className="avatar">{msg.role === "user" ? "👤" : "🤖"}</div>
-            <div className="bubble">
-              <div className="content">{msg.content}</div>
+          <div key={i} className={`log-entry ${msg.role}`}>
+            <div className="msg-meta">
+              <span className="msg-prefix">{msg.role === "user" ? "USER" : "RAG"}</span>
+              <span className="msg-caret">{msg.role === "user" ? "❯" : "↳"}</span>
+            </div>
+            <div className="msg-body">
+              <pre className="msg-content">{msg.content}</pre>
               {msg.sources && msg.sources.length > 0 && (
                 <details className="sources">
-                  <summary>📚 知识来源（{msg.sources.length} 篇）</summary>
+                  <summary>[source] 知识来源（{msg.sources.length} 篇）</summary>
                   {msg.sources.map((src, j) => (
                     <div key={j} className="source-item">
-                      <p className="source-query">{src.query}</p>
-                      <p className="source-text">{src.content.slice(0, 200)}...</p>
+                      <p className="source-query">$ {src.query}</p>
+                      <p className="source-text">{src.content.slice(0, 240)}</p>
                     </div>
                   ))}
                 </details>
@@ -157,11 +221,22 @@ function QATab() {
           </div>
         ))}
 
+        {activeTools.length > 0 && (
+          <div className="tool-log">
+            {activeTools.map((t, i) => (
+              <p key={i} className="tool-line">tool ▸ {t}</p>
+            ))}
+          </div>
+        )}
+
         {loading && (
-          <div className="message assistant">
-            <div className="avatar">🤖</div>
-            <div className="bubble">
-              <div className="typing-dots"><span /><span /><span /></div>
+          <div className="log-entry assistant">
+            <div className="msg-meta">
+              <span className="msg-prefix">RAG</span>
+              <span className="msg-caret">↳</span>
+            </div>
+            <div className="msg-body">
+              <pre className="msg-content">{streamText}<span className="cursor-block" /></pre>
             </div>
           </div>
         )}
@@ -170,6 +245,7 @@ function QATab() {
       </div>
 
       <div className="input-bar">
+        <span className="input-prompt">❯</span>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -177,14 +253,18 @@ function QATab() {
           placeholder="输入问题..."
           disabled={loading}
         />
-        <button onClick={handleSend} disabled={loading || !input.trim()}>发送</button>
+        {loading ? (
+          <button className="send-btn cancel-btn" onClick={cancel}>取消</button>
+        ) : (
+          <button className="send-btn" onClick={handleSend} disabled={!input.trim()}>发送</button>
+        )}
       </div>
     </div>
   )
 }
 
 /* ============================
-   混合检索标签页
+   混合检索
    ============================ */
 function HybridTab() {
   const [query, setQuery] = useState("")
@@ -227,8 +307,8 @@ function HybridTab() {
 
   return (
     <div className="tab-content hybrid-tab">
-      {/* 搜索表单 */}
       <div className="hybrid-form">
+        <span className="input-prompt">❯</span>
         <input
           className="hybrid-input"
           value={query}
@@ -239,14 +319,14 @@ function HybridTab() {
         />
         <div className="hybrid-controls">
           <label>
-            召回数量
+            top_k
             <input type="number" min={3} max={50} value={topK}
               onChange={(e) => setTopK(Number(e.target.value))} />
           </label>
           <label className="checkbox-label">
             <input type="checkbox" checked={useReranker}
               onChange={(e) => setUseReranker(e.target.checked)} />
-            Reranker 重排序
+            reranker
           </label>
           <button className="search-btn" onClick={handleSearch} disabled={loading || !query.trim()}>
             {loading ? "检索中..." : "检索"}
@@ -254,14 +334,12 @@ function HybridTab() {
         </div>
       </div>
 
-      {/* 结果 */}
-      {loading && <div className="loading-text">正在检索...</div>}
+      {loading && <div className="loading-text">// 正在检索...</div>}
 
       {result && (
         <div className="hybrid-results">
-          {/* 稠密检索 */}
           <section>
-            <h3>📊 稠密向量检索 Top-{result.dense_top.length}</h3>
+            <h3># dense 稠密向量 Top-{result.dense_top.length}</h3>
             {result.dense_top.map((doc, i) => (
               <div key={i} className="result-card">
                 <div className="result-header">
@@ -274,9 +352,8 @@ function HybridTab() {
             ))}
           </section>
 
-          {/* 混合检索 */}
           <section>
-            <h3>🔄 混合检索 Top-{result.hybrid_top.length}</h3>
+            <h3># hybrid 混合检索 Top-{result.hybrid_top.length}</h3>
             {result.hybrid_top.map((doc, i) => (
               <div key={i} className="result-card">
                 <div className="result-header">
@@ -289,10 +366,9 @@ function HybridTab() {
             ))}
           </section>
 
-          {/* Reranker */}
           {result.reranked && (
             <section>
-              <h3>🎯 Reranker 重排序 Top-{result.reranked.length}</h3>
+              <h3># rerank 重排序 Top-{result.reranked.length}</h3>
               {result.reranked.map((doc, i) => (
                 <div key={i} className="result-card">
                   <div className="result-header">

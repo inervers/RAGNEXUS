@@ -136,8 +136,8 @@ class MultiAgentWorkflow:
     注意：使用 OpenAI 兼容 API（DeepSeek / 其他）。
     """
 
-    def __init__(self, api_key: str, base_url: str = "https://api.deepseek.com/v1",
-                 model: str = "deepseek-v4-flash",
+    def __init__(self, api_key: str, base_url: str = "https://open.bigmodel.cn/api/paas/v4",
+                 model: str = "glm-4.7-flash",
                  knowledge_fn=None):
         """
         knowledge_fn: 可选的检索函数。
@@ -326,9 +326,10 @@ class MultiAgentWorkflow:
 
 if __name__ == "__main__":
     import os
-    key = os.environ.get("DEEPSEEK_API_KEY") or os.environ.get("OPENAI_API_KEY")
+    key = (os.environ.get("ZHIPU_API_KEY") or os.environ.get("DEEPSEEK_API_KEY")
+           or os.environ.get("OPENAI_API_KEY"))
     if not key:
-        print("需要设置 DEEPSEEK_API_KEY")
+        print("需要设置 ZHIPU_API_KEY（推荐）或 DEEPSEEK_API_KEY")
         exit(1)
 
     wf = MultiAgentWorkflow(api_key=key)

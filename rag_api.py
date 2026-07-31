@@ -5,7 +5,7 @@
 - 日志：trace_id 追踪、工具调用链路、请求耗时、错误记录
 """
 
-import sys, os, json
+import sys, os, json, random
 
 # Windows user-site 兼容（Docker 中直接跳过）
 _REAL_USER_SITE = os.environ.get("PYTHON_USER_SITE")
@@ -41,12 +41,20 @@ def _load_config():
 
 _load_config()
 
+# LLM 配置：优先智谱（免费 glm-4.7-flash），兼容旧 DeepSeek key
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
+ZHIPU_API_KEY = os.environ.get("ZHIPU_API_KEY")
+LLM_API_KEY = ZHIPU_API_KEY or DEEPSEEK_API_KEY
+# 未显式指定 LLM_BASE_URL / LLM_MODEL 时，按 key 类型选默认值
+LLM_BASE_URL = os.environ.get("LLM_BASE_URL",
+                              "https://open.bigmodel.cn/api/paas/v4" if ZHIPU_API_KEY else "https://api.deepseek.com")
+LLM_MODEL = os.environ.get("LLM_MODEL",
+                           "glm-4.7-flash" if ZHIPU_API_KEY else "deepseek-v4-flash")
 RAG_API_KEY = os.environ.get("RAG_API_KEY", "rag-secret-key-2024")
 RATE_LIMIT = int(os.environ.get("RAG_RATE_LIMIT", "30"))
 
-if not DEEPSEEK_API_KEY:
-    print("需要设置 DEEPSEEK_API_KEY")
+if not LLM_API_KEY:
+    print("需要设置 ZHIPU_API_KEY（推荐）或 DEEPSEEK_API_KEY")
     exit(1)
 
 import time, uuid, logging, traceback
@@ -232,31 +240,47 @@ else:
     logger.info(f"知识库已加载：{_doc_count()} 个块")
 
 # =============================================
-# DeepSeek LLM
-# =============================================
-llm_client = httpx.Client(timeout=30)
+# LLM 客户端：120s 读超时（智谱免费版单并发+高峰期间响应慢）
+llm_client = httpx.Client(timeout=httpx.Timeout(120.0, connect=10.0))
+
+
+def _llm_post(body: dict) -> dict:
+    """带 429/超时重试的 LLM POST，返回响应 JSON。"""
+    for attempt in range(4):
+        try:
+            r = llm_client.post(f"{LLM_BASE_URL}/chat/completions",
+                json=body, headers={"Authorization": f"Bearer {LLM_API_KEY}"})
+            r.raise_for_status()
+            return r.json()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429 and attempt < 3:
+                wait = 2 * (attempt + 1) + random.random()
+                time.sleep(wait)
+                continue
+            raise
+        except httpx.TimeoutException:
+            if attempt < 3:
+                time.sleep(1 + random.random())
+                continue
+            raise
+    raise RuntimeError("LLM 请求失败")
 
 def call_llm(messages, tools=None):
     body = {
-        "model": "deepseek-v4-flash", "messages": messages,
-        "temperature": 0.3, "thinking": {"type": "disabled"}, "stream": False,
+        "model": LLM_MODEL, "messages": messages,
+        "temperature": 0.3, "stream": False,
     }
     if tools:
         body["tools"] = tools
-    r = llm_client.post("https://api.deepseek.com/chat/completions",
-        json=body, headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}"})
-    r.raise_for_status()
-    return r.json()["choices"][0]["message"]
+    return _llm_post(body)["choices"][0]["message"]
 
 def _deepseek_ask(system: str, user: str) -> str:
     body = {
-        "model": "deepseek-v4-flash",
+        "model": LLM_MODEL,
         "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
-        "temperature": 0.2, "thinking": {"type": "disabled"},
+        "temperature": 0.2,
     }
-    r = llm_client.post("https://api.deepseek.com/chat/completions",
-        json=body, headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}"})
-    return r.json()["choices"][0]["message"]["content"]
+    return _llm_post(body)["choices"][0]["message"]["content"]
 
 # =============================================
 # 工具定义 + 实现
@@ -387,12 +411,12 @@ async def stream_rag(query: str, trace_id: str):
                 msgs.append({"role": "tool", "tool_call_id": tc["id"], "content": str(result)})
             continue
         body = {
-            "model": "deepseek-v4-flash", "messages": msgs,
-            "temperature": 0.3, "thinking": {"type": "disabled"}, "stream": True,
+            "model": LLM_MODEL, "messages": msgs,
+            "temperature": 0.3, "stream": True,
         }
-        async with httpx.AsyncClient(timeout=30) as ac:
-            async with ac.stream("POST", "https://api.deepseek.com/chat/completions",
-                json=body, headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}"}) as resp:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=10.0)) as ac:
+            async with ac.stream("POST", f"{LLM_BASE_URL}/chat/completions",
+                json=body, headers={"Authorization": f"Bearer {LLM_API_KEY}"}) as resp:
                 async for line in resp.aiter_lines():
                     if not line.startswith("data: "):
                         continue
@@ -585,9 +609,9 @@ def agent_write(req: AgentWriteRequest, request: Request):
     trace_id = request.headers.get(TRACE_HEADER, uuid.uuid4().hex)
     _log(trace_id, "agent_write_start", topic=req.topic[:40])
     from rag_multiagent import MultiAgentWorkflow
-    wf = MultiAgentWorkflow(api_key=DEEPSEEK_API_KEY,
-                            base_url="https://api.deepseek.com/v1",
-                            model="deepseek-v4-flash",
+    wf = MultiAgentWorkflow(api_key=LLM_API_KEY,
+                            base_url=LLM_BASE_URL,
+                            model=LLM_MODEL,
                             knowledge_fn=_kb_search)
     result = wf.run(req.topic, max_retries=req.max_retries)
     _log(trace_id, "agent_write_done", passed=str(result["passed"]),
