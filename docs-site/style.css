@@ -1,0 +1,256 @@
+:root {
+  --bg: #0A0C10;
+  --surface: #12151B;
+  --surface-2: #171B23;
+  --border: rgba(255, 255, 255, 0.08);
+  --accent: #3566D6;
+  --accent-ink: #8FABFF;
+  --accent-soft: rgba(53, 102, 214, 0.14);
+  --text: #E8EAED;
+  --text-dim: #9AA3B2;
+  --text-mute: #5C6472;
+  --font-mono: "SF Mono", "Cascadia Code", Consolas, "JetBrains Mono", monospace;
+  --font-body: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --max-w: 960px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+  background-size: 56px 56px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+/* ── 顶部导航 ── */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 28px;
+  background: rgba(10, 12, 16, 0.94);
+  border-bottom: 1px solid var(--border);
+}
+.nav-brand {
+  display: flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  margin-right: auto;
+}
+.nav-brand::before {
+  content: "";
+  width: 7px; height: 7px;
+  margin-right: 10px;
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(53, 102, 214, 0.8);
+}
+.nav-brand b {
+  font-weight: 600;
+  background: linear-gradient(100deg, #E8EAED 30%, #7DA8FF 45%, #C9DBFF 50%, #7DA8FF 55%, #E8EAED 70%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.nav a {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-dim);
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 4px;
+  transition: color 120ms ease, background 120ms ease;
+}
+.nav a:hover { color: var(--text); }
+.nav a.on { color: var(--accent-ink); background: var(--accent-soft); }
+
+.wrap { max-width: var(--max-w); margin: 0 auto; padding: 0 28px; }
+
+/* ── Hero ── */
+.hero { padding: 72px 0 48px; }
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: var(--accent-ink);
+  margin-bottom: 14px;
+}
+.hero h1 {
+  font-size: clamp(30px, 4.5vw, 44px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin-bottom: 16px;
+}
+.hero p { color: var(--text-dim); max-width: 62ch; margin-bottom: 24px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 10px;
+}
+
+/* ── 区块 ── */
+section { padding: 44px 0; }
+section + section { border-top: 1px solid var(--border); }
+h2 {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 8px;
+}
+h2 .idx {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent-ink);
+  margin-right: 8px;
+}
+.sec-desc { color: var(--text-dim); margin-bottom: 22px; max-width: 70ch; }
+h3 { font-size: 15px; font-weight: 600; margin: 22px 0 10px; }
+
+/* ── 表格 ── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  margin-bottom: 18px;
+}
+th {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-ink);
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text-dim);
+  vertical-align: top;
+}
+td:first-child { color: var(--text); font-family: var(--font-mono); font-size: 12.5px; white-space: nowrap; }
+tr:hover td { background: rgba(255, 255, 255, 0.015); }
+
+/* ── 代码块 ── */
+pre {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 16px 18px;
+  overflow-x: auto;
+  margin-bottom: 18px;
+  line-height: 1.6;
+}
+pre code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: #C9D4E4;
+}
+code:not(pre code) {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  border-radius: 3px;
+  padding: 1px 6px;
+}
+
+/* ── 架构链路 ── */
+.pipe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 26px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.pipe .stage {
+  flex: 1 1 120px;
+  padding: 14px 14px;
+  position: relative;
+}
+.pipe .stage + .stage { border-left: 1px dashed rgba(143, 180, 255, 0.3); }
+.pipe .stage .st-idx {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--accent-ink);
+  letter-spacing: 0.1em;
+}
+.pipe .stage .st-name { font-size: 13px; font-weight: 600; margin-top: 4px; }
+.pipe .stage .st-desc { font-size: 11.5px; color: var(--text-mute); margin-top: 2px; }
+.pipe .stage.prime { background: var(--accent-soft); }
+
+/* ── 卡片 ── */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 16px;
+}
+.card .t { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.card .d { font-size: 12.5px; color: var(--text-dim); line-height: 1.6; }
+
+/* ── 提示框 ── */
+.note {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--text-dim);
+  border-radius: 0 4px 4px 0;
+  margin-bottom: 18px;
+}
+.note b { color: var(--text); }
+
+/* ── 结构树 ── */
+.tree pre { margin: 0; }
+.tree pre code { color: var(--text-dim); }
+.tree .cmt { color: var(--text-mute); }
+
+/* ── footer ── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 26px 0;
+  margin-top: 40px;
+}
+footer .wrap {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-mute);
+}
+footer a { color: var(--text-dim); text-decoration: none; }
+footer a:hover { color: var(--accent-ink); }
+
+@media (max-width: 640px) {
+  .nav { gap: 10px; padding: 12px 16px; overflow-x: auto; }
+  .wrap { padding: 0 16px; }
+  .pipe .stage + .stage { border-left: none; border-top: 1px dashed rgba(143, 180, 255, 0.3); }
+}

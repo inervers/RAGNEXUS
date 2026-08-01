@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>设计取舍 · RAGNEXUS</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand">Rag<b>Nexus</b></div>
+  <a href="index.html">概览</a>
+  <a href="quickstart.html">快速开始</a>
+  <a href="api.html">API</a>
+  <a href="design.html" class="on">设计取舍</a>
+</nav>
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="kicker">DESIGN DECISIONS</div>
+    <h1>设计取舍</h1>
+    <p>项目中的关键技术决策和背后思考。面试官问"为什么选这个不选那个"时，答案在这里。</p>
+  </header>
+
+  <section>
+    <h2><span class="idx">01</span>为什么用 DeepSeek，而不是 OpenAI / Claude？</h2>
+    <p class="sec-desc">不是情怀，是现实考量。</p>
+    <div class="cards">
+      <div class="card"><div class="t">成本</div><div class="d">DeepSeek API 价格约为 GPT-4 的 1/20，在大量 Agent 调用场景下差距显著</div></div>
+      <div class="card"><div class="t">中文能力</div><div class="d">中英混合技术文档问答中不逊于 GPT-4</div></div>
+      <div class="card"><div class="t">Function Calling</div><div class="d">原生支持工具调用，无需额外适配</div></div>
+    </div>
+    <p>当前使用官方模型名 <code>deepseek-v4-flash</code>（旧别名 deepseek-chat 已于 2026-07-24 停用）。智谱 GLM 免费版踩过坑（单并发 + 高峰限流 + 空 content 崩溃），故保留为 fallback。</p>
+    <div class="note"><b>一个关键坑：</b>LLM 不总是主动调 <code>search_knowledge</code>，所以 <code>/query</code> 端点做了 <b>强制检索注入</b>——先把 query 查知识库，再把结果塞进 system prompt，确保每轮回答都有知识支撑，不依赖模型自己的"意愿"。</div>
+  </section>
+
+  <section>
+    <h2><span class="idx">02</span>为什么用 ChromaDB，而不是 Milvus / Qdrant？</h2>
+    <p class="sec-desc">按实际规模选型，不盲目上分布式。</p>
+    <ul style="color: var(--text-dim); padding-left: 20px; margin-bottom: 16px; line-height: 2;">
+      <li>嵌入式向量数据库，零依赖，进程内运行</li>
+      <li>当前知识库 700+ chunk，ChromaDB 完全够用，检索延迟 &lt; 50ms</li>
+      <li>100 万级瓶颈顺序：向量检索延迟（换 HNSW 参数）→ 单机内存（换 Milvus/Qdrant）→ 多路召回吞吐（加缓存层）</li>
+    </ul>
+    <div class="note"><b>迁移路径明确：</b>ChromaDB 数据导出到 Milvus 只需改 <code>collection.query()</code> 那几行，检索逻辑本身框架无关。</div>
+  </section>
+
+  <section>
+    <h2><span class="idx">03</span>为什么自己造多路召回的轮子，而不是直接上 LangChain？</h2>
+    <p class="sec-desc">LangChain 是胶水，不是架构。</p>
+    <ul style="color: var(--text-dim); padding-left: 20px; margin-bottom: 16px; line-height: 2;">
+      <li>LangChain 的 <code>ensemble_retriever</code> 的 RRF 实现是硬编码的，调不了 k 值和权重</li>
+      <li>需要 <code>sparse_weight=2.0</code> 平衡中英文——中文场景 BM25 的 term 匹配比向量更可靠（"动态计算图"这种词，英文语义匹配够用，中文必须 BM25 精确命中）</li>
+      <li>自实现调试路径透明：出问题知道去查 <code>retrieve()</code> → <code>rrf_merge()</code> → <code>rerank()</code> 哪一步</li>
+    </ul>
+    <div class="note"><b>与 Reranker 的关系：</b>BM25 会拉入噪声（低语义但高关键词匹配的文档），RRF 融合后 Top-10 反而比单路向量差。Cross-Encoder Reranker 做二次精排把噪声压下去，评测数据说明了这一点。</div>
+  </section>
+
+  <section>
+    <h2><span class="idx">04</span>为什么用滑动窗口限流，而不是令牌桶？</h2>
+    <p class="sec-desc">选择标准是"谁先扛不住"。</p>
+    <ul style="color: var(--text-dim); padding-left: 20px; margin-bottom: 16px; line-height: 2;">
+      <li>令牌桶适合突发流量，但 DeepSeek API 不允许突发调用，被限返回 429</li>
+      <li>滑动窗口严格保证每分钟不超过 N 次，对上游 API 更友好</li>
+      <li>实现用 <code>collections.deque</code> 存时间戳，O(1) 入队出队，无外部依赖</li>
+      <li>未来分布式限流会迁移到 Redis + Lua 脚本</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="idx">05</span>Multi-Agent 为什么是"研究员 → 写作者 → 审核员"三阶段？</h2>
+    <p class="sec-desc">解决单次 LLM 调用的三个结构性缺陷。</p>
+    <div class="pipe">
+      <div class="stage prime"><div class="st-idx">AGENT 01</div><div class="st-name">研究员</div><div class="st-desc">检索知识库 + 提取关键信息，专注精度，不参与生成</div></div>
+      <div class="stage"><div class="st-idx">AGENT 02</div><div class="st-name">写作者</div><div class="st-desc">根据材料组织文章，专注表达</div></div>
+      <div class="stage"><div class="st-idx">AGENT 03</div><div class="st-name">审核员</div><div class="st-desc">检查事实错误和逻辑漏洞，不合格回退重写</div></div>
+    </div>
+    <p style="color: var(--text-dim); margin-bottom: 8px;"><b style="color: var(--text);">为什么不用 Chain-of-Thought：</b>CoT 在单个 prompt 里模拟多步推理，但 LLM 在长上下文中容易"中途掉线"——写到后面忘了前面的约束。Agent 之间的显式状态传递（研究员输出 → 写作者输入）避免了这个问题。</p>
+    <p style="color: var(--text-dim);"><b style="color: var(--text);">状态驱动机：</b>写作者返回后检查状态，已审核通过就不重复跑，防止写作者 ↔ 审核员死循环。</p>
+  </section>
+
+  <section>
+    <h2><span class="idx">06</span>检索评测</h2>
+    <p class="sec-desc">28 篇技术文档知识库，5 道测试题的三种检索方法对比：</p>
+    <table>
+      <thead>
+        <tr><th>方法</th><th>Recall@5 平均</th><th>Recall@10 平均</th><th>说明</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>单路向量</td><td>0.56</td><td>0.56</td><td>仅依赖语义匹配</td></tr>
+        <tr><td>混合 + RRF 融合</td><td>0.60</td><td>0.42</td><td>BM25 引入噪声，RRF 未有效过滤</td></tr>
+        <tr><td>混合 + Reranker</td><td>0.56</td><td>0.58</td><td>Cross-Encoder 压制噪声，Top-10 略有提升</td></tr>
+      </tbody>
+    </table>
+    <p class="sec-desc"><b style="color: var(--text);">结论：</b>小规模高质量知识库中单路向量与混合+Reranker 接近；混合+RRF 的 Top-10 Recall 较低。生产级系统采用多路召回+Reranker 的核心原因，是在大规模、含噪声的语料中同时覆盖语义与关键词的检索盲区。</p>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <span>RAGNEXUS © 2026 · docs-site</span>
+    <span><a href="https://github.com/inervers/RAGNEXUS" target="_blank" rel="noopener">GitHub</a> · <a href="index.html">返回概览</a></span>
+  </div>
+</footer>
+
+</body>
+</html>
