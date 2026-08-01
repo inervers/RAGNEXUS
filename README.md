@@ -16,7 +16,9 @@ RAGNEXUS/
 │   ├── src/App.tsx      ← 问答 / 混合检索 / 知识库 / Agent 写作
 │   ├── vite.config.ts   ← dev 代理（/health|/query|/doc|/kb|/agent → 8000）
 │   ├── nginx.conf       ← 部署转发 + SSE buffering 关闭
-│   └── Dockerfile       ← node:20-alpine 构建 → nginx:alpine 托管
+│   ├── Dockerfile       ← node:20-alpine 构建 → nginx:alpine 托管
+│   └── public/design-showcase.html ← 设计展示页（特效 + 后端实时数据）
+├── docs-site/           ← 静态文档站（4 页，已发布 GitHub Pages）
 ├── rag_app.py           ← 遗留 Streamlit 前端（已弃用，主力前端见 frontend/）
 ├── pdf_parser.py        ← PDF 解析
 ├── ocr_client.py        ← 百度 OCR（扫描件识别）
@@ -90,6 +92,26 @@ Agent 的写作记忆保存在本地 `memory/` 目录，容器重建后记忆不
 | 结构化日志 | 全链路 trace_id 追踪，JSON 格式写入文件 |
 | Docker 部署 | 后端 Python 镜像 + 前端 nginx 镜像，双容器编排 |
 | SSE 流式 | 后端 X-Accel-Buffering: no + nginx proxy_buffering off |
+
+---
+
+## 展示页与文档站
+
+### 设计展示页（`frontend/public/design-showcase.html`）
+
+单文件设计原型，深色数据工作台风格，用于演示产品视觉与交互：
+
+- 特效：PixelTrail 像素拖尾 + 点击爆散、星链交互图（长按中心节点可沿网络自由拖动，节点处拐弯）、BlurText 标题逐字模糊入场、磁吸按钮、3D 倾斜卡片
+- 打开方式：双击文件（file:// 协议自适应）或 `npm run dev` 后访问 `/design-showcase.html`
+- **后端实时数据接入**：页面自动读取正式应用接口（`/health`、`/kb/docs`、`/query/hybrid`），状态卡、指标条、知识库文档列表、检索管线图全部显示真实数据；后端离线时自动降级为"未连接"提示
+
+### 静态文档站（`docs-site/`）
+
+零依赖静态站（概览 / 快速开始 / API / 设计取舍 4 页），与前端同款设计语言，已发布到 GitHub Pages：
+
+<https://inervers.github.io/RAGNEXUS/>
+
+更新方式：`git subtree push --prefix docs-site origin gh-pages`
 
 ---
 
