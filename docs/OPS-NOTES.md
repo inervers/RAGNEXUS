@@ -12,6 +12,10 @@
 | rag-api | 8000 | FastAPI 后端（bind mount 挂载 rag_api.py / rag_multiagent.py，改代码 `restart` 即生效） |
 | rag-frontend | 8080 | nginx 静态站点（前端改代码必须 **重新 build** 镜像，restart 不够） |
 
+**项目命名（2026-08-02 统一）**：本地文件夹/仓库 RAGNEXUS；docker compose 顶层 `name: ragnxus` 固定项目名（默认项目名=文件夹名，镜像/volume 会带前缀）。容器 `ragnxus-api` / `ragnxus-frontend`，镜像 `ragnxus-rag-api` / `ragnxus-rag-frontend`。
+
+**知识库数据挂载（2026-08-02 起）**：`./chroma_db:/data/chroma_db`（**bind mount**），与本地 `python rag_api.py` 共享同一份数据。**别再改回 named volume**——双数据源是"知识库消失"事故的根源（见 11.3 节）。
+
 ```powershell
 cd RAGNEXUS        # 项目根目录（Docker 命令都在这里执行）
 
@@ -234,6 +238,8 @@ curl.exe -N -X POST http://localhost:8000/query/stream -H "Content-Type: applica
 
 **注意**：RAGNEXUS frontend 的 Dockerfile 里 `npm run build` 包含 `tsc -b`，若以后重构引入死代码类型错误导致构建卡住，可参考此策略（改 build 脚本去掉 tsc 或修核心错误放行）。
 
+**已落地（2026-08-02）**：`package.json` 的 `build` 已改为 `vite build`（跳过 tsc），新增 `build:check: tsc -b` 保留类型检查。Dockerfile 构建不再被 tsc 卡住（详见 11.5）。
+
 ### 10.5 凭据轮换记录
 
 已做过一轮完整凭据轮换：ZHIPU / DEEPSEEK / RAG_API_KEY / 百度 OCR 全部换新。
@@ -244,3 +250,51 @@ curl.exe -N -X POST http://localhost:8000/query/stream -H "Content-Type: applica
 ### 10.6 主题系统经验（前端通用）
 
 CSS 变量只能改颜色——**要独特的设计语言（噪点纹理、像素硬阴影、粒子系统），必须在元素级做 DOM 选择器覆盖**，不能指望换 CSS 变量值搞定。paper / retro / nord 三套主题都是这个思路实现的。
+
+---
+
+## 11. 知识库"消失"事件与架构重构（2026-08-02）
+
+> 今晚最大的教训：**"数据没了"多半是"数据换地方躺了"**。RAG 数据可能存在于多个位置（本地目录、docker volume、备份），先枚举再下结论。
+
+### 11.1 718 块数据"清零"真相：存储位置切换
+
+**症状**：知识库从 718 块变 7 块，怀疑数据丢失。
+**真相**：数据没丢。7/27 前用 docker 部署（数据在 named volume `rag-agent-api_chroma_data`，718 块完好）；切到本地 `python rag_api.py` 后，后端读本地 `./chroma_db`（全新空库，只有内置示例）——"清零"其实是**后端数据路径变了**，不是数据被删。
+
+**排查**：`docker volume ls` 确认 volume 存在 → 用本地 python 镜像挂载查内容（避免拉 alpine 被代理卡住）：
+```powershell
+docker run --rm -v rag-agent-api_chroma_data:/data rag-agent-api-rag-api python -c "import sqlite3;print(sqlite3.connect('/data/chroma.sqlite3').execute('select count(*) from embeddings').fetchone())"
+```
+**恢复**（整体拷贝，含 HNSW 索引）：
+```powershell
+docker run --rm -v <volume>:/data -v <项目绝对路径>:/work <镜像> sh -c "cp -a /data/. /work/chroma_db/"
+```
+
+### 11.2 知识库清理（cleanup_chroma.py）
+
+docker volume 里 718 块含大量垃圾：`torch.Tensor` 坏块 266（导入 bug，source 写成 embedding 类型名）+ license 38 + LangChain 英文测试语料 ~120。清理后剩 **222 块**（自己的笔记 + 技术教程 + 项目文档）。
+
+**ChromaDB 两个坑**：
+- `collection.delete(where={"source": ...})` 返回值不可靠（打印出来是 1，实际删对了）——**以 count 前后差值为准**
+- ChromaDB 0.5+ 的 metadata 在独立 `embedding_metadata` 表（不是 embeddings 表的 metadata 列），跨版本查库要先看 `sqlite_master` 的表结构
+
+### 11.3 双数据源根治：bind mount
+
+**根因**：named volume（`chroma_data:/data/chroma_db`）的数据在 docker 自己的存储区，与本地目录是**两套数据**。本地跑和容器跑各读各的 → 必然出现"一个 222 块、一个 7 块"的割裂。
+**修复**：compose 改为 `./chroma_db:/data/chroma_db`（bind mount），本地和容器共享同一份数据，此类事故从机制上消除。
+
+### 11.4 项目改名与 docker 命名
+
+- 本地文件夹 `rag-agent-api` → `RAGNEXUS`（改名前先停后端 + `docker compose down`，Windows 上进程占用会拒绝改名）
+- compose 顶层加 `name: ragnxus` 固定项目名（默认项目名=文件夹名，改名后镜像/volume 前缀会变）
+- 改名重建遇到**容器名冲突**：旧容器（container_name 显式指定）停止状态仍占名，`docker ps -a` 看不到运行中的但容器在 → `docker rm <旧容器>` 后重建
+
+### 11.5 前端构建 tsc 坑（已落地）
+
+fxbits 组件缺 props 类型标注，`tsc -b && vite build` 在 docker 构建里卡死（几十个 TS 错误）。修复：`package.json` 的 `build` 改为 `vite build`（vite/esbuild 转译不查类型），`build:check` 保留。**本地 vite build 能过 ≠ docker 能过**——Dockerfile 的 `npm run build` 会真的跑 tsc。
+
+### 11.6 docker 清理记录（2026-08-02）
+
+已清：旧镜像 `rag-agent-api-*`、旧 volume（`rag-agent-api_chroma_data`、`ragnxus_chroma_data`）、rag_api 残留容器（hungry_satoshi / agitated_jepsen）、旧 HF 缓存 `rag-agent-api_hf_cache`。
+**保留勿删**：`ragnxus_hf_cache`（模型缓存，删了要重新下载几 GB）、`spider-nexus_*`（其他项目数据）、匿名卷 41877a58（spider-nexus 的 Mongo 数据）。
