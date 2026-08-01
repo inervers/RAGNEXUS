@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API · RAGNEXUS</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand">Rag<b>Nexus</b></div>
+  <a href="index.html">概览</a>
+  <a href="quickstart.html">快速开始</a>
+  <a href="api.html" class="on">API</a>
+  <a href="design.html">设计取舍</a>
+</nav>
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="kicker">API REFERENCE</div>
+    <h1>HTTP API</h1>
+    <p>除健康检查外所有接口均需 <code>X-API-Key</code> 请求头鉴权（默认 <code>rag-secret-key-2024</code>），无 Key 返回 401，超限返回 429。</p>
+  </header>
+
+  <section>
+    <h2><span class="idx">01</span>接口一览</h2>
+    <table>
+      <thead>
+        <tr><th>接口</th><th>鉴权</th><th>说明</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>GET /health</td><td>免鉴权</td><td>健康检查</td></tr>
+        <tr><td>POST /query</td><td>X-API-Key</td><td>标准 RAG 问答</td></tr>
+        <tr><td>POST /query/stream</td><td>X-API-Key</td><td>流式问答（SSE：tool / token / done 事件）</td></tr>
+        <tr><td>POST /query/hybrid</td><td>X-API-Key</td><td>混合检索，可选 Reranker</td></tr>
+        <tr><td>POST /doc</td><td>X-API-Key</td><td>添加知识（title + content，无字符数限制）</td></tr>
+        <tr><td>GET /kb/docs</td><td>X-API-Key</td><td>获取知识库全部文档（records：id / source / document）</td></tr>
+        <tr><td>POST /kb/docs/delete</td><td>X-API-Key</td><td>按 id 批量删除文档</td></tr>
+        <tr><td>POST /doc/preview</td><td>X-API-Key</td><td>文档预览（filename + base64 → 文本前 5000 字符）</td></tr>
+        <tr><td>POST /agent/write</td><td>X-API-Key</td><td>Multi-Agent 写作流水线</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2><span class="idx">02</span>示例</h2>
+
+    <h3>流式问答</h3>
+    <pre><code>curl.exe -N -X POST http://localhost:8000/query/stream ^
+  -H "Content-Type: application/json" ^
+  -H "X-API-Key: rag-secret-key-2024" ^
+  -d '{"question":"什么是RAG"}'</code></pre>
+    <p>SSE 事件流：<code>tool</code>（工具调用结果）→ <code>token</code>（增量 token）→ <code>done</code>（结束）。</p>
+
+    <h3>混合检索</h3>
+    <pre><code>curl.exe -X POST http://localhost:8000/query/hybrid ^
+  -H "Content-Type: application/json" ^
+  -H "X-API-Key: rag-secret-key-2024" ^
+  -d '{"question":"What is PyTorch?","use_reranker":true}'</code></pre>
+
+    <h3>Multi-Agent 写作</h3>
+    <pre><code>curl.exe -X POST http://localhost:8000/agent/write ^
+  -H "Content-Type: application/json" ^
+  -H "X-API-Key: rag-secret-key-2024" ^
+  -d '{"topic":"PyTorch 动态计算图","max_retries":2}'</code></pre>
+
+    <h3>添加文档</h3>
+    <pre><code>curl.exe -X POST http://localhost:8000/doc ^
+  -H "Content-Type: application/json" ^
+  -H "X-API-Key: rag-secret-key-2024" ^
+  -d '{"title":"RAG 入门","content":"检索增强生成（RAG）..."}'</code></pre>
+
+    <h3>删除文档（按 id 批量）</h3>
+    <pre><code>curl.exe -X POST http://localhost:8000/kb/docs/delete ^
+  -H "Content-Type: application/json" ^
+  -H "X-API-Key: rag-secret-key-2024" ^
+  -d '{"ids":["chunk-id-1","chunk-id-2"]}'</code></pre>
+    <p>返回 <code>{"deleted": [...], "missing": [...], "remaining": N}</code>。</p>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <span>RAGNEXUS © 2026 · docs-site</span>
+    <span><a href="https://github.com/inervers/RAGNEXUS" target="_blank" rel="noopener">GitHub</a> · <a href="design.html">设计取舍</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

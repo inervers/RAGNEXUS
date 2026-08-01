@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>快速开始 · RAGNEXUS</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand">Rag<b>Nexus</b></div>
+  <a href="index.html">概览</a>
+  <a href="quickstart.html" class="on">快速开始</a>
+  <a href="api.html">API</a>
+  <a href="design.html">设计取舍</a>
+</nav>
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="kicker">QUICKSTART</div>
+    <h1>5 分钟跑起来</h1>
+    <p>本地开发（两个终端）或 Docker 一键部署，任选一条路径。</p>
+  </header>
+
+  <section>
+    <h2><span class="idx">01</span>前置要求</h2>
+    <div class="cards">
+      <div class="card"><div class="t">Python 3.11+</div><div class="d">后端 FastAPI 服务</div></div>
+      <div class="card"><div class="t">Node.js 20+</div><div class="d">前端 Vite dev / 构建</div></div>
+      <div class="card"><div class="t">Docker（可选）</div><div class="d">仅容器部署需要</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="idx">02</span>环境变量</h2>
+    <p class="sec-desc">在项目根目录创建 <code>.env</code>：</p>
+    <table>
+      <thead>
+        <tr><th>变量</th><th>说明</th><th>默认值</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>DEEPSEEK_API_KEY</td><td>DeepSeek API Key</td><td>必填</td></tr>
+        <tr><td>ZHIPU_API_KEY</td><td>智谱 API Key（fallback）</td><td>可选</td></tr>
+        <tr><td>LLM_BASE_URL</td><td>覆盖 LLM 端点</td><td>按 key 自动选</td></tr>
+        <tr><td>LLM_MODEL</td><td>覆盖模型名</td><td>deepseek-v4-flash</td></tr>
+        <tr><td>RAG_API_KEY</td><td>API 鉴权密钥</td><td>rag-secret-key-2024</td></tr>
+        <tr><td>RAG_RATE_LIMIT</td><td>每分钟最大请求数</td><td>30</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2><span class="idx">03</span>本地运行</h2>
+    <h3>终端一：启动 API 服务（默认 8000 端口）</h3>
+    <pre><code>python rag_api.py</code></pre>
+    <h3>终端二：启动前端 dev server（默认 5173 端口）</h3>
+    <pre><code>cd frontend
+npm install
+npm run dev</code></pre>
+    <p>浏览器打开 <code>http://localhost:5173</code>（vite dev 已配置代理转发到 8000）。</p>
+  </section>
+
+  <section>
+    <h2><span class="idx">04</span>Docker 部署</h2>
+    <div class="note"><b>国内网络：</b>先手动拉基础镜像（BuildKit 的 FROM 不继承 pull 代理）。</div>
+    <pre><code>docker pull node:20-alpine
+docker pull nginx:alpine
+docker compose up -d --build</code></pre>
+    <table>
+      <thead><tr><th>服务</th><th>地址</th></tr></thead>
+      <tbody>
+        <tr><td>前端</td><td>http://localhost:8080（nginx 托管，同源请求转发到 API）</td></tr>
+        <tr><td>API</td><td>http://localhost:8000</td></tr>
+      </tbody>
+    </table>
+    <p>前端 API 走同源（<code>API_BASE=""</code>），由 nginx 正则转发 <code>/health|/query|/doc|/kb|/agent</code>，无需跨域配置。</p>
+    <p>Agent 的写作记忆保存在本地 <code>memory/</code> 目录，容器重建后记忆不丢失。</p>
+  </section>
+
+  <section>
+    <h2><span class="idx">05</span>验证</h2>
+    <h3>流式问答（PowerShell 用单引号包 JSON）</h3>
+    <pre><code>curl.exe -N -X POST http://localhost:8000/query/stream ^
+  -H "Content-Type: application/json" ^
+  -H "X-API-Key: rag-secret-key-2024" ^
+  -d '{"question":"什么是RAG"}'</code></pre>
+    <h3>混合检索（稠密 + BM25 + Reranker）</h3>
+    <pre><code>curl.exe -X POST http://localhost:8000/query/hybrid ^
+  -H "Content-Type: application/json" ^
+  -H "X-API-Key: rag-secret-key-2024" ^
+  -d '{"question":"What is PyTorch?","use_reranker":true}'</code></pre>
+  </section>
+
+  <section>
+    <h2><span class="idx">06</span>排障</h2>
+    <p>镜像构建崩溃、npm 安装失败、后端连接异常等全套踩坑经验见仓库内 <code>docs/OPS-NOTES.md</code>（运维笔记）。</p>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <span>RAGNEXUS © 2026 · docs-site</span>
+    <span><a href="https://github.com/inervers/RAGNEXUS" target="_blank" rel="noopener">GitHub</a> · <a href="api.html">API 文档</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

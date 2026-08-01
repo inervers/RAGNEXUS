@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAGNEXUS · 文档</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand">Rag<b>Nexus</b></div>
+  <a href="index.html" class="on">概览</a>
+  <a href="quickstart.html">快速开始</a>
+  <a href="api.html">API</a>
+  <a href="design.html">设计取舍</a>
+</nav>
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="kicker">RAGNEXUS · PRODUCTION RAG SERVICE</div>
+    <h1>生产级 RAG 服务，<br>混合检索 × Multi-Agent 编排</h1>
+    <p>集成 Hybrid Search（稠密向量 + BM25 + RRF 融合）、Cross-Encoder Reranker 精排、Multi-Agent 写作流水线。终端风格 React 前端（4-tab），Docker 一键部署。</p>
+    <div class="chips">
+      <span class="chip">Python 3.11</span>
+      <span class="chip">FastAPI</span>
+      <span class="chip">ChromaDB</span>
+      <span class="chip">Sentence-Transformers</span>
+      <span class="chip">BM25</span>
+      <span class="chip">Cross-Encoder</span>
+      <span class="chip">React</span>
+      <span class="chip">TypeScript</span>
+      <span class="chip">Vite</span>
+      <span class="chip">nginx</span>
+      <span class="chip">Docker</span>
+    </div>
+  </header>
+
+  <section>
+    <h2><span class="idx">01</span>核心链路</h2>
+    <p class="sec-desc">从原始文档到流式回答，一条完整的检索增强生成管线。</p>
+    <div class="pipe">
+      <div class="stage">
+        <div class="st-idx">STAGE 01</div>
+        <div class="st-name">Ingest 入库</div>
+        <div class="st-desc">txt / PDF / OCR 解析，去重、分块</div>
+      </div>
+      <div class="stage">
+        <div class="st-idx">STAGE 02</div>
+        <div class="st-name">Embedding</div>
+        <div class="st-desc">all-MiniLM-L6-v2 向量化</div>
+      </div>
+      <div class="stage">
+        <div class="st-idx">STAGE 03</div>
+        <div class="st-name">ChromaDB</div>
+        <div class="st-desc">嵌入式向量库，检索 &lt; 50ms</div>
+      </div>
+      <div class="stage prime">
+        <div class="st-idx">STAGE 04</div>
+        <div class="st-name">混合检索</div>
+        <div class="st-desc">稠密 + BM25 + RRF 融合</div>
+      </div>
+      <div class="stage prime">
+        <div class="st-idx">STAGE 05</div>
+        <div class="st-name">Reranker</div>
+        <div class="st-desc">Cross-Encoder 二次精排</div>
+      </div>
+      <div class="stage">
+        <div class="st-idx">STAGE 06</div>
+        <div class="st-name">LLM 回答</div>
+        <div class="st-desc">强制检索注入 + SSE 流式输出</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="idx">02</span>功能模块</h2>
+    <table>
+      <thead>
+        <tr><th>功能</th><th>说明</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>标准 RAG 问答</td>
+          <td>Function Calling 驱动，自动检索知识库 + LLM 回答，SSE 流式 + 打字动画 + 取消</td>
+        </tr>
+        <tr>
+          <td>混合检索</td>
+          <td>稠密向量 + BM25 稀疏检索 + RRF 融合，同时覆盖语义相关与精确术语匹配</td>
+        </tr>
+        <tr>
+          <td>Reranker 精排</td>
+          <td>Cross-Encoder 对粗筛结果重排序，修正 Bi-Encoder 的排序偏差</td>
+        </tr>
+        <tr>
+          <td>Multi-Agent 写作</td>
+          <td>研究员 → 写作者 → 审核员协作流水线，带持久化记忆与评分 / 重试循环</td>
+        </tr>
+        <tr>
+          <td>知识库管理</td>
+          <td>txt / PDF 拖拽上传，PDF 实时预览，按文档分组浏览与删除</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2><span class="idx">03</span>生产工程化</h2>
+    <table>
+      <thead>
+        <tr><th>能力</th><th>实现</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>API 鉴权</td><td>X-API-Key 请求头校验，无 Key 返回 401</td></tr>
+        <tr><td>速率限制</td><td>滑动窗口限流（30 次 / 分钟），超限返回 429</td></tr>
+        <tr><td>结构化日志</td><td>全链路 trace_id 追踪，JSON 格式写入文件</td></tr>
+        <tr><td>Docker 部署</td><td>后端 Python 镜像 + 前端 nginx 镜像，双容器编排</td></tr>
+        <tr><td>SSE 流式</td><td>后端 X-Accel-Buffering: no + nginx proxy_buffering off</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="tree">
+    <h2><span class="idx">04</span>项目结构</h2>
+    <pre><code>RAGNEXUS/
+├── rag_api.py           <span class="cmt">← FastAPI 服务（鉴权/限流/日志/RAG/SSE 流式）</span>
+├── rag_advanced.py      <span class="cmt">← 混合检索 + Reranker</span>
+├── rag_multiagent.py    <span class="cmt">← Multi-Agent 工作流（研究员→写作者→审核员）</span>
+├── frontend/            <span class="cmt">← React 前端（4-tab 终端风格）</span>
+├── rag_app.py           <span class="cmt">← 遗留 Streamlit 前端（已弃用）</span>
+├── pdf_parser.py        <span class="cmt">← PDF 解析</span>
+├── ocr_client.py        <span class="cmt">← 百度 OCR（扫描件识别）</span>
+├── docs/OPS-NOTES.md    <span class="cmt">← 运维笔记（踩坑手册）</span>
+├── docker-compose.yml   <span class="cmt">← 一键部署</span>
+└── requirements.txt     <span class="cmt">← 依赖清单</span></code></pre>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <span>RAGNEXUS © 2026 · docs-site</span>
+    <span><a href="https://github.com/inervers/RAGNEXUS" target="_blank" rel="noopener">GitHub</a> · <a href="design.html">设计取舍</a></span>
+  </div>
+</footer>
+
+</body>
+</html>
