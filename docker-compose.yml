@@ -1,3 +1,5 @@
+name: ragnxus
+
 services:
   rag-api:
     build: .

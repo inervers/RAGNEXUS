@@ -13,7 +13,7 @@
 | rag-frontend | 8080 | nginx 静态站点（前端改代码必须 **重新 build** 镜像，restart 不够） |
 
 ```powershell
-cd rag-agent-api        # 项目根目录（Docker 命令都在这里执行）
+cd RAGNEXUS        # 项目根目录（Docker 命令都在这里执行）
 
 docker compose ps                          # 容器状态（Up 才是活着）
 docker compose up -d rag-frontend          # 创建并启动（注意：build ≠ up，只 build 不会起容器！）

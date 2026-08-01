@@ -1,6 +1,13 @@
 import { useState, useRef, useEffect, useMemo } from "react"
 import "./App.css"
 
+import DotField from "./fxbits/DotField/DotField"
+import ShinyText from "./fxbits/ShinyText/ShinyText"
+import CountUp from "./fxbits/CountUp/CountUp"
+import AnimatedContent from "./fxbits/AnimatedContent/AnimatedContent"
+import SpecularButton from "./fxbits/SpecularButton/SpecularButton"
+import SpotlightCard from "./fxbits/SpotlightCard/SpotlightCard"
+
 const API_BASE = ""
 const API_KEY = "rag-secret-key-2024"
 
@@ -27,6 +34,25 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "agent", label: "Agent 写作" },
 ]
 
+/* fxbits 按钮统一配置（深色科技风） */
+const FX_BUTTON = {
+  size: "md" as const,
+  radius: 4,
+  tint: "#3566D6",
+  tintOpacity: 1,
+  textColor: "#F4F7FF",
+  lineColor: "#8FB4FF",
+  baseColor: "#3566D6",
+  intensity: 1,
+  shineSize: 10,
+  shineFade: 40,
+  thickness: 1,
+  speed: 0.35,
+  followMouse: true,
+  proximity: 250,
+  autoAnimate: true,
+}
+
 /* ============================================================
    主应用
    ============================================================ */
@@ -35,6 +61,16 @@ function App() {
 
   return (
     <div className="app">
+      <DotField
+        dotRadius={1.6}
+        dotSpacing={14}
+        cursorRadius={320}
+        bulgeStrength={70}
+        gradientFrom="rgba(53, 102, 214, 0.6)"
+        gradientTo="rgba(143, 180, 255, 0.28)"
+        glowColor="rgba(53, 102, 214, 0.15)"
+        className="bg-field"
+      />
       <Sidebar tab={tab} onTabChange={setTab} />
       <main className="main-area">
         <div className="tab-content">
@@ -68,8 +104,8 @@ function Sidebar({ tab, onTabChange }: { tab: TabKey; onTabChange: (t: TabKey) =
     <aside className="sidebar">
       <div className="sidebar-header">
         <span className="logo">R</span>
-        <span className="logo-text">RAGNEXUS</span>
-        <span className="badge">v1.3</span>
+        <ShinyText text="RAGNEXUS" speed={2.5} color="#C6CCD6" shineColor="#9DBDFF" spread={160} className="logo-text" />
+        <span className="badge">v0.7</span>
       </div>
 
       <div className="status-card">
@@ -77,7 +113,11 @@ function Sidebar({ tab, onTabChange }: { tab: TabKey; onTabChange: (t: TabKey) =
           <span className={`dot ${online === true ? "green" : online === false ? "red" : "gray"}`} />
           <span>{online === true ? "服务在线" : online === false ? "连接失败" : "检查中..."}</span>
         </div>
-        {online && <div className="kb-meta">{kbCount} 个知识块</div>}
+        {online && (
+          <div className="kb-meta">
+            <CountUp from={0} to={kbCount} duration={1} /> 个知识块
+          </div>
+        )}
       </div>
 
       <nav className="sidebar-nav">
@@ -93,6 +133,7 @@ function Sidebar({ tab, onTabChange }: { tab: TabKey; onTabChange: (t: TabKey) =
       </nav>
 
       <div className="sidebar-footer">
+        <a href="/design-showcase.html" target="_blank" rel="noopener">设计展示</a>
         <a href="https://github.com/inervers/RAGNEXUS" target="_blank" rel="noopener">GitHub</a>
       </div>
     </aside>
@@ -283,11 +324,18 @@ function QATab() {
 
   return (
     <div className="qa-layout">
-      <div className="messages">
+      <div className="messages" id="qa-scroll">
         {messages.length === 0 && (
-          <div className="welcome">
-            <p>知识库就绪。输入问题开始对话。</p>
-          </div>
+          <AnimatedContent distance={20} duration={0.6} threshold={0.05} container="#qa-scroll" className="welcome-wrap">
+            <div className="welcome">
+              <div className="welcome-kicker">RAGNEXUS // ready</div>
+              <div className="welcome-title">
+                <span className="welcome-dot" />
+                知识库就绪
+              </div>
+              <p className="welcome-sub">输入问题开始对话</p>
+            </div>
+          </AnimatedContent>
         )}
         {messages.length > 0 && (
           <div className="chat-toolbar">
@@ -342,9 +390,9 @@ function QATab() {
             取消
           </button>
         ) : (
-          <button className="btn-primary" onClick={handleSend} disabled={!input.trim()}>
+          <SpecularButton {...FX_BUTTON} onClick={handleSend} disabled={!input.trim()}>
             发送
-          </button>
+          </SpecularButton>
         )}
       </div>
     </div>
@@ -364,7 +412,7 @@ function HybridTab() {
     hybrid_top: SearchResult[]
     reranked?: SearchResult[]
   } | null>(null)
-  const [expanded, setExpanded] = useState<{ group: string; idx: number } | null>(null)
+  const [expanded, setExpanded] = useState<{ group: string; doc: SearchResult } | null>(null)
 
   async function handleSearch() {
     if (!query.trim() || loading) return
@@ -382,7 +430,7 @@ function HybridTab() {
   }
 
   return (
-    <div className="hybrid-layout">
+    <div className="hybrid-layout" id="hybrid-scroll">
       <div className="search-panel">
         <input
           value={query}
@@ -399,9 +447,9 @@ function HybridTab() {
               onChange={(e) => setUseReranker(e.target.checked)} />
             Reranker
           </label>
-          <button className="btn-primary" onClick={handleSearch} disabled={loading || !query.trim()}>
+          <SpecularButton {...FX_BUTTON} onClick={handleSearch} disabled={loading || !query.trim()}>
             {loading ? "检索中" : "检索"}
-          </button>
+          </SpecularButton>
         </div>
       </div>
 
@@ -416,38 +464,46 @@ function HybridTab() {
               ...(result.reranked ? [{ title: "Reranker 重排序", items: result.reranked, key: "ce_score" as const }] : []),
             ] as const
           ).map((g) => (
-            <section className="result-group" key={g.title}>
-              <h3>{g.title}</h3>
-              <div className="result-list">
-                {g.items.map((doc, i) => {
-                  const isExpanded = expanded?.group === g.title && expanded.idx === i
-                  return (
-                    <div key={i}>
-                      <div className={`result-item${isExpanded ? " result-item-active" : ""}`}
-                        onClick={() => setExpanded(isExpanded ? null : { group: g.title, idx: i })}>
-                        <div className="result-meta">
-                          <span className="result-num">#{i + 1}</span>
-                          <code className="result-id">{doc.id}</code>
-                          <span className="result-score">{doc[g.key]?.toFixed(4)}</span>
-                        </div>
-                        <Pct v={doc[g.key] ?? 0} />
-                        <p className="result-text">{doc.text.slice(0, 160)}</p>
-                      </div>
-                      {isExpanded && (
-                        <div className="search-preview">
-                          <div className="search-preview-header">
-                            <span>原文 — {doc.id}</span>
-                            <button className="btn-close" onClick={() => setExpanded(null)}>关闭</button>
+            <AnimatedContent key={g.title} distance={16} duration={0.5} threshold={0.05} container="#hybrid-scroll">
+              <section className="result-group">
+                <h3>{g.title}</h3>
+                <div className="result-list">
+                  {g.items.map((doc, i) => {
+                    const isExpanded = expanded?.group === g.title && expanded?.doc.id === doc.id
+                    return (
+                      <div key={i}>
+                        <SpotlightCard
+                          spotlightColor="rgba(143, 180, 255, 0.08)"
+                          className={`result-item${isExpanded ? " result-item-active" : ""}`}
+                          onClick={() => setExpanded(isExpanded ? null : { group: g.title, doc })}
+                        >
+                          <div className="result-meta">
+                            <span className="result-num">#{i + 1}</span>
+                            <code className="result-id">{doc.id}</code>
+                            <span className="result-score">{doc[g.key]?.toFixed(4)}</span>
                           </div>
-                          <p className="search-preview-text">{doc.text}</p>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </section>
+                          <Pct v={doc[g.key] ?? 0} />
+                          <p className="result-text">{doc.text.slice(0, 160)}</p>
+                        </SpotlightCard>
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
+            </AnimatedContent>
           ))}
+        </div>
+      )}
+
+      {expanded && (
+        <div className="preview-modal" onClick={() => setExpanded(null)}>
+          <div className="preview-modal-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="preview-modal-header">
+              <span className="preview-modal-title">{expanded.group} — {expanded.doc.id}</span>
+              <button className="btn-close" onClick={() => setExpanded(null)}>关闭</button>
+            </div>
+            <pre className="preview-modal-body">{expanded.doc.text}</pre>
+          </div>
         </div>
       )}
     </div>
@@ -464,8 +520,20 @@ function Pct({ v }: { v: number }) {
    ============================================================ */
 const PAGE_SIZE = 30
 
+interface KbRecord {
+  id: string
+  source: string
+  document: string
+}
+
+interface KbGroup {
+  source: string
+  ids: string[]
+  chunks: string[]
+}
+
 function KBTab() {
-  const [docs, setDocs] = useState<string[]>([])
+  const [records, setRecords] = useState<KbRecord[]>([])
   const [loading, setLoading] = useState(false)
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
@@ -474,11 +542,30 @@ function KBTab() {
   const [statusMsg, setStatusMsg] = useState("")
   const [uploadProgress, setUploadProgress] = useState(0)
   const [kbSearch, setKbSearch] = useState("")
-  const filteredDocs = useMemo(() => {
-    if (!kbSearch.trim()) return docs
+  const [deleting, setDeleting] = useState<string | null>(null)
+
+  const groups = useMemo<KbGroup[]>(() => {
+    const map = new Map<string, KbGroup>()
+    for (const r of records) {
+      const key = r.source || "未命名"
+      const g = map.get(key)
+      if (g) {
+        g.ids.push(r.id)
+        g.chunks.push(r.document)
+      } else {
+        map.set(key, { source: key, ids: [r.id], chunks: [r.document] })
+      }
+    }
+    return [...map.values()]
+  }, [records])
+
+  const filteredGroups = useMemo(() => {
+    if (!kbSearch.trim()) return groups
     const q = kbSearch.toLowerCase()
-    return docs.filter((d) => d.toLowerCase().includes(q))
-  }, [docs, kbSearch])
+    return groups.filter((g) =>
+      g.source.toLowerCase().includes(q) || g.chunks.some((c) => c.toLowerCase().includes(q))
+    )
+  }, [groups, kbSearch])
 
   useEffect(() => { fetchDocs() }, [])
 
@@ -488,7 +575,7 @@ function KBTab() {
         headers: { "X-API-Key": API_KEY },
       })
       const data = await resp.json()
-      setDocs(data.documents ?? [])
+      setRecords(data.records ?? [])
     } catch { /* ignore */ }
   }
 
@@ -512,6 +599,26 @@ function KBTab() {
       setStatusMsg(e instanceof Error ? `添加失败：${e.message}` : "添加失败，请重试")
     }
     setLoading(false)
+  }
+
+  async function handleDelete(g: KbGroup) {
+    if (deleting) return
+    if (!window.confirm(`删除文档「${g.source}」？（共 ${g.ids.length} 个分块）`)) return
+    setDeleting(g.source)
+    try {
+      const resp = await fetch(`${API_BASE}/kb/docs/delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
+        body: JSON.stringify({ ids: g.ids }),
+      })
+      const data = await resp.json()
+      setStatusMsg(`已删除 ${data.deleted} 个块，剩余 ${data.remaining}`)
+      setPreviewIdx(null)
+      await fetchDocs()
+    } catch {
+      setStatusMsg("删除失败，请重试")
+    }
+    setDeleting(null)
   }
 
   async function fillFromFile(f: File) {
@@ -583,10 +690,10 @@ function KBTab() {
           placeholder="标题" />
         <textarea value={content} onChange={(e) => setContent(e.target.value)}
           placeholder="内容" rows={8} />
-        <button className="btn-primary" onClick={handleAdd}
+        <SpecularButton {...FX_BUTTON} onClick={handleAdd}
           disabled={loading || !title.trim() || !content.trim()}>
           {loading ? "添加中..." : "添加"}
-        </button>
+        </SpecularButton>
 
         <h3 style={{ marginTop: 24 }}>导入文件</h3>
         <div className="upload-zone"
@@ -614,12 +721,12 @@ function KBTab() {
       </div>
 
       <div className="kb-list">
-        <h3>全部文档（{docs.length}）</h3>
+        <h3>全部文档（{groups.length} 篇 / {records.length} 块）</h3>
         <input className="kb-search" value={kbSearch} onChange={(e) => { setKbSearch(e.target.value); setDocPage(0); setPreviewIdx(null) }}
           placeholder="搜索文档内容..." />
         <div className="kb-page-controls">
           {(() => {
-            const totalPages = Math.ceil(filteredDocs.length / PAGE_SIZE) || 1
+            const totalPages = Math.ceil(filteredGroups.length / PAGE_SIZE) || 1
             return <>
               <button className="btn-page" disabled={docPage === 0} onClick={() => { setDocPage(p => p - 1); setPreviewIdx(null) }}>上一页</button>
               <span className="kb-page-info">
@@ -634,31 +741,42 @@ function KBTab() {
                   }} />
                 <span>/ {totalPages}</span>
               </span>
-              <button className="btn-page" disabled={(docPage + 1) * PAGE_SIZE >= filteredDocs.length} onClick={() => { setDocPage(p => p + 1); setPreviewIdx(null) }}>下一页</button>
+              <button className="btn-page" disabled={(docPage + 1) * PAGE_SIZE >= filteredGroups.length} onClick={() => { setDocPage(p => p + 1); setPreviewIdx(null) }}>下一页</button>
             </>
           })()}
         </div>
         <div className="kb-items">
-          {filteredDocs.slice(docPage * PAGE_SIZE, (docPage + 1) * PAGE_SIZE).map((_, i) => {
-            const realIdx = docs.indexOf(filteredDocs[docPage * PAGE_SIZE + i])
+          {filteredGroups.slice(docPage * PAGE_SIZE, (docPage + 1) * PAGE_SIZE).map((g, i) => {
+            const gi = docPage * PAGE_SIZE + i
+            const isActive = previewIdx === gi
             return (
-              <div key={realIdx}
-                className={`kb-item ${previewIdx === realIdx ? "active" : ""}`}
-                onClick={() => setPreviewIdx(previewIdx === realIdx ? null : realIdx)}>
-                <span className="kb-item-title">文档 #{realIdx + 1}</span>
-                <span className="kb-item-arrow">{previewIdx === realIdx ? "﹀" : "▶"}</span>
+              <div key={g.source}
+                className={`kb-item ${isActive ? "active" : ""}`}
+                onClick={() => setPreviewIdx(isActive ? null : gi)}>
+                <span className="kb-item-title">{g.source}</span>
+                <span className="kb-item-count">{g.ids.length} 块</span>
+                <button className="kb-item-del" onClick={(e) => { e.stopPropagation(); handleDelete(g) }}>
+                  {deleting === g.source ? "删除中" : "删除"}
+                </button>
+                <span className="kb-item-arrow">{isActive ? "﹀" : "▶"}</span>
+                <p className="kb-item-desc">{g.chunks[0].slice(0, 90)}</p>
               </div>
             )
           })}
-          {filteredDocs.length === 0 && <p className="empty-text">{kbSearch ? "无匹配文档" : "知识库为空"}</p>}
+          {filteredGroups.length === 0 && <p className="empty-text">{kbSearch ? "无匹配文档" : "知识库为空"}</p>}
         </div>
-        {previewIdx !== null && (
+        {previewIdx !== null && filteredGroups[previewIdx] && (
           <div className="kb-preview">
             <div className="kb-preview-header">
-              <span>文档 #{previewIdx + 1}</span>
+              <span>文档「{filteredGroups[previewIdx].source}」（{filteredGroups[previewIdx].ids.length} 块）</span>
               <button className="btn-close" onClick={() => setPreviewIdx(null)}>关闭</button>
             </div>
-            <p className="kb-preview-text">{docs[previewIdx]}</p>
+            {filteredGroups[previewIdx].chunks.map((c, j) => (
+              <div key={j} className="kb-preview-chunk">
+                <div className="kb-preview-chunk-idx">块 #{j + 1}</div>
+                <p className="kb-preview-text">{c}</p>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -692,7 +810,7 @@ function AgentTab() {
   }
 
   return (
-    <div className="agent-layout">
+    <div className="agent-layout" id="agent-scroll">
       <div className="agent-form">
         <h3>写作流水线</h3>
         <p className="agent-desc">研究员 → 写作者 → 审核员，三阶段 Agent 协作生成文章。</p>
@@ -701,65 +819,67 @@ function AgentTab() {
         <div className="agent-options">
           <label>最大重试 <input type="number" min={1} max={5} value={maxRetries}
             onChange={(e) => setMaxRetries(+e.target.value)} /></label>
-          <button className="btn-primary" onClick={handleStart}
+          <SpecularButton {...FX_BUTTON} onClick={handleStart}
             disabled={loading || !topic.trim()}>
             {loading ? "写作中..." : "开始写作"}
-          </button>
+          </SpecularButton>
         </div>
       </div>
 
       {loading && <p className="loading-text">Agent 正在协作写作...</p>}
 
       {result && (
-        <div className="agent-output">
-          <div className="agent-metrics">
-            <div className={`metric-badge ${result.passed ? "pass" : "fail"}`}>
-              {result.passed ? "通过" : "未通过"}
+        <AnimatedContent distance={16} duration={0.5} threshold={0.05} container="#agent-scroll">
+          <div className="agent-output">
+            <div className="agent-metrics">
+              <div className={`metric-badge ${result.passed ? "pass" : "fail"}`}>
+                {result.passed ? "通过" : "未通过"}
+              </div>
+              <div className="metric"><span className="metric-val">{result.rating}/5</span>评分</div>
+              <div className="metric"><span className="metric-val">{result.attempts}</span>尝试</div>
+              <div className="metric"><span className="metric-val">{result.duration_s}s</span>耗时</div>
             </div>
-            <div className="metric"><span className="metric-val">{result.rating}/5</span>评分</div>
-            <div className="metric"><span className="metric-val">{result.attempts}</span>尝试</div>
-            <div className="metric"><span className="metric-val">{result.duration_s}s</span>耗时</div>
+
+            {result.article ? (
+              <div className="agent-article">
+                <h4>生成文章</h4>
+                <div className="article-body">
+                  {(() => {
+                    try {
+                      const art = JSON.parse(result.article)
+                      return <div>
+                        <h5>{art.title}</h5>
+                        <p>{(art.content ?? "").slice(0, 2000)}</p>
+                      </div>
+                    } catch {
+                      return <p>{result.article.slice(0, 2000)}</p>
+                    }
+                  })()}
+                </div>
+              </div>
+            ) : (
+              <p className="empty-text">本次未生成文章内容，请重试。</p>
+            )}
+
+            {result.monitor?.agent_metrics && (
+              <div className="agent-monitor">
+                <h4>Agent 监控</h4>
+                <div className="monitor-grid">
+                  {Object.entries(result.monitor.agent_metrics).map(([name, m]: any) => (
+                    <div key={name} className="monitor-card">
+                      <strong>{name}</strong>
+                      <div className="monitor-stats">
+                        <span>{m.calls} 次调用</span>
+                        <span>平均 {m.avg_duration_s}s</span>
+                        <span>成功率 {m.success}/{m.calls}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-
-          {result.article ? (
-            <div className="agent-article">
-              <h4>生成文章</h4>
-              <div className="article-body">
-                {(() => {
-                  try {
-                    const art = JSON.parse(result.article)
-                    return <div>
-                      <h5>{art.title}</h5>
-                      <p>{(art.content ?? "").slice(0, 2000)}</p>
-                    </div>
-                  } catch {
-                    return <p>{result.article.slice(0, 2000)}</p>
-                  }
-                })()}
-              </div>
-            </div>
-          ) : (
-            <p className="empty-text">本次未生成文章内容，请重试。</p>
-          )}
-
-          {result.monitor?.agent_metrics && (
-            <div className="agent-monitor">
-              <h4>Agent 监控</h4>
-              <div className="monitor-grid">
-                {Object.entries(result.monitor.agent_metrics).map(([name, m]: any) => (
-                  <div key={name} className="monitor-card">
-                    <strong>{name}</strong>
-                    <div className="monitor-stats">
-                      <span>{m.calls} 次调用</span>
-                      <span>平均 {m.avg_duration_s}s</span>
-                      <span>成功率 {m.success}/{m.calls}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        </AnimatedContent>
       )}
     </div>
   )

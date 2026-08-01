@@ -1,5 +1,8 @@
 # React + TypeScript + Vite
 
+> 已接入 fxbits 特效组件库（src/fxbits/）：DotField 点阵背景、ShinyText 光泽标题、CountUp 数字滚动、AnimatedContent 滚动渐入、SpecularButton 高光按钮、SpotlightCard 聚光卡片。主题由青色终端风改为黑灰蓝深色数据工作台（accent #3566D6）。
+> 接入前完整备份：`_skill_backup/rag-agent-api-frontend-20260802/`
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

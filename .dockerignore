@@ -1,8 +1,13 @@
 __pycache__/
 *.pyc
-chroma_db/
+chroma_db*/
 *.log
 stream_out*
 .env
 .git/
 .gitignore
+kb_backups/
+logs/
+memory/
+.streamlit/
+docs-site/

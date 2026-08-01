@@ -434,7 +434,7 @@ async def stream_rag(query: str, trace_id: str):
 # FastAPI 应用
 # =============================================
 
-app = FastAPI(title="RAG Agent API (Production)", version="1.3.0")
+app = FastAPI(title="RAG Agent API (Production)", version="0.7.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -457,6 +457,9 @@ class DocRequest(BaseModel):
 class UploadDocRequest(BaseModel):
     filename: str
     content: str
+
+class DeleteDocsRequest(BaseModel):
+    ids: list[str]
 
 class HybridQueryRequest(BaseModel):
     question: str
@@ -502,7 +505,7 @@ def health(request: Request):
         "tools": list(TOOL_IMPLS.keys()),
         "auth_required": True,
         "rate_limit": f"{RATE_LIMIT}/min",
-        "version": "1.3.0",
+        "version": "0.7.0",
     }
 
 @app.post("/query")
@@ -587,8 +590,39 @@ def list_kb_docs(request: Request):
     trace_id = request.headers.get(TRACE_HEADER, uuid.uuid4().hex)
     all_docs = collection.get()
     docs = all_docs.get("documents", [])
+    ids = all_docs.get("ids", [])
+    metas = all_docs.get("metadatas", [])
+    records = [
+        {
+            "id": ids[i],
+            "document": docs[i],
+            "source": metas[i].get("source", "") if isinstance(metas[i], dict) else "",
+        }
+        for i in range(len(docs))
+    ]
     _log(trace_id, "kb_list", count=len(docs))
-    return {"count": len(docs), "documents": docs, "trace_id": trace_id}
+    return {"count": len(docs), "documents": docs, "records": records, "trace_id": trace_id}
+
+@app.post("/kb/docs/delete")
+def delete_kb_docs(req: DeleteDocsRequest, request: Request):
+    if not req.ids:
+        raise HTTPException(400, "ids 不能为空")
+    trace_id = request.headers.get(TRACE_HEADER, uuid.uuid4().hex)
+    all_docs = collection.get()
+    existing = set(all_docs.get("ids", []))
+    to_delete = [i for i in req.ids if i in existing]
+    missing = [i for i in req.ids if i not in existing]
+    if to_delete:
+        collection.delete(ids=to_delete)
+    global _corpus_version
+    _corpus_version = -1
+    _log(trace_id, "kb_delete", deleted=len(to_delete), missing=len(missing))
+    return {
+        "deleted": len(to_delete),
+        "missing": missing,
+        "remaining": _doc_count(),
+        "trace_id": trace_id,
+    }
 
 @app.post("/query/hybrid")
 def hybrid_query(req: HybridQueryRequest, request: Request):
@@ -652,7 +686,7 @@ def agent_write(req: AgentWriteRequest, request: Request):
 if __name__ == "__main__":
     import uvicorn
     logger.info("=" * 50)
-    logger.info("RAG Agent API (Production v1.3.0)")
+    logger.info("RAG Agent API (Production v0.7.0)")
     logger.info(f"API Key 鉴权：启用")
     logger.info(f"速率限制：{RATE_LIMIT} 次/分钟")
     logger.info(f"知识库：{_doc_count()} 个块")
