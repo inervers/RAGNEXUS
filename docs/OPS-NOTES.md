@@ -324,6 +324,8 @@ fxbits 组件缺 props 类型标注，`tsc -b && vite build` 在 docker 构建�
 - **解法**：容器需要 LLM 功能时开代理（TUN 模式即可，compose 无需任何代理配置）；本地 `python rag_api.py` 完全不受影响（直连正常）
 - compose 已回退干净（不加 dns/extra_hosts/代理变量，TUN 透明接管最省事；extra_hosts 锁死 CDN 节点反而可能引入黑洞）
 
+> **2026-08-02 补：此问题为校园网环境特性**。同一 compose（零配置）在家庭宽带上容器直连 `api.deepseek.com` 直接 200（DNS 解析到 43.242.198.77 香港节点直连通），本地与容器均无需代理。**换网络环境后先重测再排查，校园网结论不要外推到其他网络。**
+
 ### 12.4 本地跑的两个坑（同日发现）
 
 1. **环境变量代理污染**：httpx `trust_env=True` 默认读 `HTTP(S)_PROXY` 环境变量，残留代理变量会让本地 httpx 走死代理 → 同样的 SSL EOF。修复：rag_api.py 两处 httpx client 加 `trust_env=False`（同步 + 异步各一处）
