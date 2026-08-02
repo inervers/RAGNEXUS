@@ -12,6 +12,11 @@ test_*.py
 .git-backup/
 kb_backups/
 replacements.txt
+# ChromaDB 迁移产物（0.5.17 → 1.5.9 的导出 JSON）
+kb_export*.json
+
+# 离线安装 wheel 缓存（阿里云源下载，build 后本地可删）
+.wheels/
 
 # React 前端
 frontend/node_modules/

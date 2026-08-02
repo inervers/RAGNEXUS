@@ -339,3 +339,64 @@ docker exec ragnxus-api python -c "import httpx; r=httpx.get('https://api.deepse
 # 本地验证（不依赖代理）：
 python -c "import httpx; r=httpx.get('https://api.deepseek.com/models', headers={'Authorization':'Bearer <key>'}, timeout=15, proxy=None); print(r.status_code)"
 ```
+
+## 13. ChromaDB 0.5.17 → 1.5.9 升级（2026-08-02 完成）
+
+### 13.1 背景与代码改动
+
+容器固定 chromadb 0.5.17，本地 Python 3.13 是 1.5.9，双环境版本割裂（12.4 节）。决策：**容器升级到 1.5.9 统一**（本地降级 0.5.17 在 py3.13 上有兼容问题）。
+
+代码改动：
+- `requirements-base.txt`：chromadb 0.5.17 → 1.5.9
+- `rag_api.py` MiniLMEmbedding 适配 1.x：新增 `__init__`、`name()` 返回 `"MiniLM-L6-v2-mean-pooling"`、`__call__(input)` 兼容 query 输入带 `.text` 的 Document 对象
+- `migrate_chroma.py`：export/import 双模式，embedding 与 rag_api.py 完全一致（重算而非搬旧向量，避免 schema 转换风险），import 前先清空新库（init 块 id `doc_1..` 冲突）
+- 兼容面：rag_advanced.py 只用 `collection.query/get`（1.x 兼容）；rag_multiagent.py 不碰 chromadb
+
+### 13.2 构建网络地狱（pip 下载全灭矩阵）
+
+家宽下为 build 下载 wheel 时，所有路径都试过一遍：
+
+| 路径 | 结果 |
+|---|---|
+| pypi.org 直连（容器） | 10.6 kB/s 限速，ReadTimeout |
+| 清华源 | **403 风控**（家宽出口 IP 26.x CGNAT 被拉黑，本地 pip 也中招） |
+| 阿里云（容器） | 超时 |
+| 腾讯云（容器 urllib） | 200，但 pip 大包下载 ReadTimeout |
+| pypi.org + 代理（容器/本地） | `SSL: UNEXPECTED_EOF`（Clash 规则把 pypi 配了直连，直连出口对 pypi TLS 全灭，与 12 节同源） |
+| **本地直连阿里云** | **可用**（chromadb 23.5MB 下完，35kB/s 慢但成） |
+| 代理 + 官方源（本地） | 可用但节点不稳（IncompleteRead 断流，重跑续传） |
+
+**踩坑补充**：
+1. **清华源 403 是出口 IP 风控**，不是临时故障；pip config 里 `global.index-url` 指清华源的机器，本地装包要显式 `-i` 阿里云/腾讯云或走代理
+2. **pip download 默认只为当前 Python 下载 wheel**：本地 py3.13 解析 `torch==2.5.1` 报 `versions: none`，因为 torch 2.5.1 没有 cp313 wheel（2.6.0 才支持 py3.13）。**不是源没有这个版本**，curl JSON API 查询 200 但 pip 就是找不到
+3. **交叉下载指定目标平台**：`pip download <pkg> --only-binary=:all: --python-version 311 --implementation cp --abi cp311 --platform manylinux2014_x86_64 --platform manylinux_2_17_x86_64 --platform manylinux1_x86_64 -i <源> [--proxy http://127.0.0.1:7897]`
+
+### 13.3 增量镜像构建（关键方案）
+
+**不要重装 torch**（900MB wheel + 2.5GB nvidia CUDA 依赖）。旧镜像 `ragnxus-rag-api`（0.5.17 时代）里 torch 2.5.1 全套已装好，直接拿它做基础镜像：
+
+```dockerfile
+FROM ragnxus-rag-api:0.5.17-backup   # 先 docker tag 旧镜像备份
+COPY .wheels /wheels                 # 本地交叉下载的 chromadb 依赖树 wheel（~200MB）
+RUN pip install --no-index --find-links=/wheels chromadb==1.5.9 && rm -rf /wheels
+COPY rag_api.py rag_advanced.py rag_multiagent.py pdf_parser.py ocr_client.py .
+```
+
+- build 5 秒完成（旧镜像缓存全命中），绕开全部网络问题
+- **build 前必须 `docker tag ragnxus-rag-api:latest ragnxus-rag-api:0.5.17-backup`**，否则新 build 覆盖旧镜像后无法回滚
+- pip 离线装时已满足的依赖（torch/pydantic 等）不会被碰，只升级 chromadb 及新依赖
+
+### 13.4 数据迁移（已执行）
+
+1. 导出：`docker cp migrate_chroma.py ragnxus-api:/tmp/` → `docker exec ragnxus-api python /tmp/migrate_chroma.py export /data/chroma_db /tmp/kb_export.json` → `docker cp` 回宿主
+2. `docker compose stop rag-api` + `Rename-Item chroma_db chroma_db_old_0.5.17`（备份）
+3. build 新镜像 → `docker compose up -d --force-recreate rag-api`（自动建空库，1.5.9 初始化 7 个 init 块）
+4. 导入：`docker cp kb_export.json` + `docker exec ... import /data/chroma_db /tmp/kb_export.json`（输出 CLEARED 7 → IMPORTED 190）
+5. `docker compose restart rag-api` + 验证 health/query/stream
+
+**数据完整性核对**：旧库 count 222 vs 导入 190 的差异是用户删过数据（count 口径），导出=导入=190 即完整。验证方法：`docker exec ragnxus-api python -c "import json; d=json.load(open('/tmp/kb_export.json')); print(len(d['documents']))"` 对比导入数。
+
+### 13.5 遗留
+
+- 旧镜像 `ragnxus-rag-api:0.5.17-backup`、`chroma_db_old_0.5.17`、`.wheels/` 暂留（回滚保险 + build 弹药），确认稳定后可删
+- torch 仍是 pypi 标准版（带 2.5GB CUDA 依赖），以后可换 `+cpu` 变体把镜像砍到 1/4（需 download.pytorch.org 可达，当前网络下未做）

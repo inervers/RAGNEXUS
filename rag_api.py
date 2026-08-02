@@ -203,8 +203,21 @@ def embed_texts(texts):
     return (pooled / torch.norm(pooled, dim=1, keepdim=True)).numpy()
 
 class MiniLMEmbedding(EmbeddingFunction):
-    def __call__(self, texts):
-        return embed_texts(texts).tolist()
+    """适配 ChromaDB 1.x：需实现 __init__ 与 name()，query 输入可能是 Document 对象。"""
+
+    def __init__(self):
+        pass
+
+    def __call__(self, input):
+        # 1.x 的 query 输入可能是 Document 对象列表（带 .text），统一提取
+        if isinstance(input, (list, tuple)):
+            texts = [d.text if hasattr(d, "text") else d for d in input]
+        else:
+            texts = [input]
+        return [e.tolist() for e in embed_texts(texts)]
+
+    def name(self) -> str:
+        return "MiniLM-L6-v2-mean-pooling"
 
 # =============================================
 # Chroma 持久化

@@ -1,4 +1,4 @@
-chromadb==0.5.17
+chromadb==1.5.9
 sentence-transformers==2.7.0
 torch==2.5.1
 httpx==0.28.1
