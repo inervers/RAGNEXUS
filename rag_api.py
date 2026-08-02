@@ -241,7 +241,7 @@ else:
 
 # =============================================
 # LLM 客户端：120s 读超时（智谱免费版单并发+高峰期间响应慢）
-llm_client = httpx.Client(timeout=httpx.Timeout(120.0, connect=10.0))
+llm_client = httpx.Client(timeout=httpx.Timeout(120.0, connect=10.0), trust_env=False)
 
 
 def _llm_post(body: dict) -> dict:
@@ -414,7 +414,7 @@ async def stream_rag(query: str, trace_id: str):
             "model": LLM_MODEL, "messages": msgs,
             "temperature": 0.3, "stream": True,
         }
-        async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=10.0)) as ac:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=10.0), trust_env=False) as ac:
             async with ac.stream("POST", f"{LLM_BASE_URL}/chat/completions",
                 json=body, headers={"Authorization": f"Bearer {LLM_API_KEY}"}) as resp:
                 async for line in resp.aiter_lines():

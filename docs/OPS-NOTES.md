@@ -298,3 +298,42 @@ fxbits 组件缺 props 类型标注，`tsc -b && vite build` 在 docker 构建�
 
 已清：旧镜像 `rag-agent-api-*`、旧 volume（`rag-agent-api_chroma_data`、`ragnxus_chroma_data`）、rag_api 残留容器（hungry_satoshi / agitated_jepsen）、旧 HF 缓存 `rag-agent-api_hf_cache`。
 **保留勿删**：`ragnxus_hf_cache`（模型缓存，删了要重新下载几 GB）、`spider-nexus_*`（其他项目数据）、匿名卷 41877a58（spider-nexus 的 Mongo 数据）。
+
+## 12. 容器 LLM 调用 SSL EOF 排障（2026-08-02）
+
+### 12.1 症状
+
+- 浏览器问答：assistant 消息一直为空（打字动画空转），按钮恢复"发送"
+- `/query/stream` 返回 200 但响应体 0 字节（流式生成器在第一个 yield 前抛异常，头已发出）
+- `/query` 非流式返回 500 + trace_id
+- 日志关键错误：`[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol`（0.6s 内失败，**连接层被掐**，不是超时也不是 429）
+
+### 12.2 排查路径（结论：容器出口 TLS 全灭，本地正常）
+
+1. 直连 8000 `/query/stream` → 200 空体 → 问题在后端 LLM 调用，不是前端解析
+2. 日志定位 SSL EOF → 连接层问题（排除 key 无效、限流、模型名错误）
+3. 宿主机 `curl api.deepseek.com/models` → **200**（key 有效，宿主网络可达）
+4. 容器内 httpx → SSL EOF；容器 DNS 把 `api.deepseek.com` 解析到**日本 SoftBank 段** 171.105.220.186（海外节点）
+5. compose 加 `dns: 223.5.5.5` → 解析恢复国内节点 43.242.198.77/14.29.51.120，但 TLS 仍被掐（14.29 立即 EOF，43.242 握手超时黑洞）
+6. **结论**：WSL2 虚拟网卡出口到 DeepSeek 所有 CDN 节点的 TLS 全部被拦截，Windows 本机流量正常（DIRECT 200）
+7. 开 Verge **TUN 模式** → 容器直连（proxy=None）**200**！TUN 透明接管 WSL2 出网，容器流量自动走代理
+
+### 12.3 根因与解法
+
+- **根因**：TUN 虚拟网卡路由接管了 WSL2 出网流量（Verge/v2rayN 类工具常见）；不开代理时容器直连 DeepSeek 的 TLS 被系统性拦截（EOF/超时），Windows 本机流量不受影响
+- **解法**：容器需要 LLM 功能时开代理（TUN 模式即可，compose 无需任何代理配置）；本地 `python rag_api.py` 完全不受影响（直连正常）
+- compose 已回退干净（不加 dns/extra_hosts/代理变量，TUN 透明接管最省事；extra_hosts 锁死 CDN 节点反而可能引入黑洞）
+
+### 12.4 本地跑的两个坑（同日发现）
+
+1. **环境变量代理污染**：httpx `trust_env=True` 默认读 `HTTP(S)_PROXY` 环境变量，残留代理变量会让本地 httpx 走死代理 → 同样的 SSL EOF。修复：rag_api.py 两处 httpx client 加 `trust_env=False`（同步 + 异步各一处）
+2. **ChromaDB 版本不兼容**：本地 pip 装的是 chromadb **1.5.9**，容器固定 **0.5.17**（requirements-base.txt），1.5.9 读 0.5.17 写的库报 `Error in compaction: mismatched types; Rust type u64 (as SQL type INTEGER) is not compatible with SQL type BLOB`（metadata 独立表 schema 不兼容，数据没坏）。本地跑要么 venv 装 0.5.17 对齐，要么 `RAG_CHROMA_DIR` 指向独立目录；**同库串行使用、版本必须一致**
+
+### 12.5 快速验证清单
+
+```powershell
+# 容器内验证（需 Verge TUN 开启）：
+docker exec ragnxus-api python -c "import httpx; r=httpx.get('https://api.deepseek.com/models', headers={'Authorization':'Bearer <key>'}, timeout=15, proxy=None); print(r.status_code)"
+# 本地验证（不依赖代理）：
+python -c "import httpx; r=httpx.get('https://api.deepseek.com/models', headers={'Authorization':'Bearer <key>'}, timeout=15, proxy=None); print(r.status_code)"
+```
