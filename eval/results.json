@@ -1,0 +1,1403 @@
+{
+  "generated_at": "2026-08-03T00:57:02",
+  "set": "eval/eval_set.json",
+  "n_questions": 40,
+  "questions": [
+    {
+      "id": "agent-001",
+      "question": "Agent 和 LLM 的本质区别是什么？Agent 由哪些模块组成？",
+      "category": "agent",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.8,
+          "recall10": 0.8,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.6,
+          "recall10": 0.6,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.8,
+          "recall10": 0.7,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "# Agent 与 LLM 的本质区别及模块组成\n\n## 一、本质区别\n\n根据知识库内容，两者关系可以一句话概括：\n\n> **Agent 的本质是给 LLM 补上它天生缺失的五种能力——Memory、Tool、RAG、MCP、Skills——从而把一个\"只能聊天的大脑\"变成一个\"能记住上下文、能动手执行、能检索私有知识、能获取实时信息、能编排复杂任务\"的智能体。**\n\n具体拆解：\n\n| 维度 | LLM | Agent |\n|------|-----|-------|\n| 定位 | 只能聊天的大脑 | 能\"干活\"的智能体 |\n| 能力边界 | 只会生成文本 | 能自主规划、调用工具、执行任务 |\n| 记忆 | 受上下文窗口限制 | 有外部 Memory 持久化记忆 |\n| 执行 | 无法操作外部系统 | 可通过 Tool 操作文件系统、CLI、API 等 |\n| 核心机制 | 单次推理 | **LLM 自主调度 Tool 的接力式消息循环** |\n\n**核心机制**：Agent 的调度中心不是外部规则引擎，就是 **LLM 自己**。用户以 Prompt 提交复杂任务 → LLM 进行",
+        "n_sources": 2,
+        "faithfulness": 2,
+        "relevance": 5,
+        "reason": "回答完整覆盖问题，但具体模块列表（如Memory、RAG、MCP等）在检索文档中未明确出现，属于额外信息，有幻觉风险。"
+      }
+    },
+    {
+      "id": "agent-002",
+      "question": "LLM 有哪些天生缺陷？分别由 Agent 的哪些模块补齐？",
+      "category": "agent",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.4,
+          "recall10": 0.4,
+          "hit5": 1.0,
+          "mrr": 0.25,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.0,
+          "recall10": 0.3,
+          "hit5": 0.0,
+          "mrr": 0.14285714285714285,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.4,
+          "recall10": 0.2,
+          "hit5": 1.0,
+          "mrr": 0.25,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库的内容，LLM 天生缺失五种能力，Agent 的模块正是针对这五项短板逐一补齐的。核心公式是：\n\n**Agent = LLM + Memory + Tool + RAG + MCP + Skills**\n\n这五项缺陷被描述为\"互斥且穷尽\"（MECE），逐一对应如下：\n\n| LLM 天生缺陷 | Agent 补齐模块 | 补齐后的能力 |\n|---|---|---|\n| **记不住**（上下文只能靠窗口，无法持久记忆） | **Memory** | 记住上下文、持久记忆 |\n| **动不了**（只能输出文本，无法执行操作） | **Tool** | 动手执行、调用外部动作 |\n| **不知道内部知识**（不知道私有知识库/内部 Wiki） | **RAG** | 检索私有知识、内部知识库 |\n| **不知道新信息**（训练数据有截止时间，拿不到实时/结构化外部数据） | **MCP**（及第三方 Tool，通过协议接入外部实时能力） | 获取实时信息、外部数据 |\n| **做不了长任务**（单轮问答粒度太粗，真实工作是多步骤、多轮次的） | **Skills**（把多个子任务组",
+        "n_sources": 2,
+        "faithfulness": 4,
+        "relevance": 5,
+        "reason": "回答核心内容严格基于文档，但补充的比喻未在检索片段中出现，轻微超出；问题命中度高且完整覆盖五项缺陷与模块对应。"
+      }
+    },
+    {
+      "id": "agent-003",
+      "question": "Tool 调用闭环中 tool_call_id 起什么作用？",
+      "category": "agent",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.6,
+          "recall10": 0.6,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.8,
+          "recall10": 0.8,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.6,
+          "recall10": 0.7,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "基于知识库中检索到的内容，我来回答这个问题。\n\n## tool_call_id 的作用：消息闭环中的\"对齐锚点\"\n\n### 核心作用\n\n**tool_call_id 是把 Tool 的执行结果（ToolMessage）精准对应回 LLM 发出的具体调用（tool_call）的标识符。**\n\n知识库文档中的代码直观展示了这一点：\n\n```js\nfor (const toolCall of response.tool_calls) {\n  const toolResult = await readFileTool.invoke(toolCall.args);\n  messages.push(new ToolMessage({\n    content: toolResult,\n    tool_call_id: toolCall.id,  // ← 关键：id 对齐\n  }));\n}\n```\n\n### 为什么它\"至关重要\"？三个层面\n\n**1. 多 Tool 并发场景下防止错乱**\n\nAgent 一次任务可能调用**多个** Tool，且 Tool 是异步的，返回时间不确定。如果没有 id ",
+        "n_sources": 6,
+        "faithfulness": 5,
+        "relevance": 5,
+        "reason": "回答严格基于检索文档，准确解释了tool_call_id在异步多Tool场景下的对齐作用，无编造且完整命中问题要点。"
+      }
+    },
+    {
+      "id": "agent-004",
+      "question": "为什么 Tool 的处理函数必须是 async 异步的？",
+      "category": "agent",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.2,
+          "recall10": 0.2,
+          "hit5": 1.0,
+          "mrr": 0.3333333333333333,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.6,
+          "recall10": 0.4,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.2,
+          "recall10": 0.4,
+          "hit5": 1.0,
+          "mrr": 0.3333333333333333,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "# 为什么 Tool 的处理函数必须是 async？\n\n根据知识库内容，核心原因可以拆成三点：\n\n## 1. Tool 的\"本职工作是耗时操作\"\n\n一个 Tool 的职责就是干\"重活\"——读文件、调 API、查数据库、执行命令行。这些操作本质上都是 **I/O 密集型任务**，耗时从几十毫秒到几秒不等。\n\n## 2. 同步阻塞会让整个 Agent 卡死\n\n如果处理函数是同步的，那么当 Agent 执行这个 Tool 时，**整个执行线程会被阻塞住**：\n\n- 在等待文件读取/API 返回的这段时间里，Agent 什么都做不了\n- 更严重的是，Agent 一次任务往往要**并发调用多个 Tool**（文档 5 明确指出：`Promise.all` 并发是关键优化），同步代码根本无法实现这种并行调度\n- 一旦某个 Tool 响应慢（比如 API 超时），整个 Agent 就像\"死机\"一样停在那里\n\n## 3. async 是并发调度的前提\n\n异步（async）让处理函数**在等待 I/O 时不占用线程**，从而：\n\n- 多个无依赖的 Tool 可以**并行执行**（`Promise.all",
+        "n_sources": 6,
+        "faithfulness": 5,
+        "relevance": 5,
+        "reason": "回答严格基于检索文档中的三点原因（耗时操作、同步阻塞、并发前提），无编造，且完整命中问题核心。"
+      }
+    },
+    {
+      "id": "agent-005",
+      "question": "多个互相独立的 Tool 应该串行还是并行执行？为什么？",
+      "category": "agent",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.4,
+          "recall10": 0.4,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.6,
+          "recall10": 0.3,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.4,
+          "recall10": 0.5,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "基于知识库检索结果，回答如下：\n\n## 结论：应该**并行执行**\n\n对于互相独立（无数据依赖）的 Tool，知识库给出了一条明确的优化原则：\n\n> **\"如果两个异步操作之间没有数据依赖，绝不应该让它们串行执行。\"**\n\n### 1. 为什么？——性能瓶颈在 Tool 执行层\n\n知识库明确指出：**Agent 的性能瓶颈在 Tool 执行层，而 Promise.all 并发是关键优化**。\n\n用具体数据说话（假设 Agent 同时获取天气数据和推文列表，两个请求互不依赖）：\n\n- **串行执行**：总耗时 = t1 + t2（两个 await 是叠加关系，互不依赖的操作却在互相等待）\n  ```js\n  const weather = await getWeather();  // 2000ms\n  const tweets = await getTweets();    // 500ms\n  // 总耗时 = 2000 + 500 = 2500ms\n  ```\n\n- **并行执行**：总耗时 = max(t1, t2)\n  ```js\n  const [weatherData, t",
+        "n_sources": 2,
+        "faithfulness": 4,
+        "relevance": 5,
+        "reason": "回答核心观点与文档一致，但个别引用非原话且补充了示例数据，稍有增编；完全切题且解析充分。"
+      }
+    },
+    {
+      "id": "agent-006",
+      "question": "Claude Code 本质上由什么组成？",
+      "category": "agent",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.4,
+          "recall10": 0.5,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.0,
+          "recall10": 0.2,
+          "hit5": 0.0,
+          "mrr": 0.14285714285714285,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库检索结果，Claude Code 的本质构成非常清晰：\n\n**Claude Code = LLM + Tool（fs 文件系统 + CLI 命令行）**\n\n拆开来看：\n\n- **LLM**：具备强大编程能力的语言模型，负责理解任务、规划和生成代码\n- **Tool - fs（文件系统）**：负责读写代码文件\n- **Tool - CLI（命令行）**：负责执行命令（如运行测试、构建、git 操作等）\n\n它就是把 **Tool 机制做到极致**的结果——配合上 **Planning（规划）** 能力，把 LLM 从\"能说会道\"升级成了\"能说会做\"。\n\n从技术落地角度（文档 4），Claude Code 的技术栈可以是 **Node.js + LangChain + LangGraph + MCP/RAG/Skills**，完全验证了通用 Agent 公式：\n\n**Agent = LLM + Memory + Tool + RAG + MCP + Skills**\n\n简单来说：Claude Code 的本质就是把 LLM 配上\"文件系统 + 命令行\"这两只手脚，让它真正能动手写代",
+        "n_sources": 6,
+        "faithfulness": 5,
+        "relevance": 5,
+        "reason": "回答完全基于检索文档中的公式，准确回答了组成要素，无编造，且完整命中核心。"
+      }
+    },
+    {
+      "id": "agent-007",
+      "question": "Agent 落地为什么选 LangChain 而不是手搓原生 API？",
+      "category": "agent",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.2,
+          "recall10": 0.2,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.4,
+          "recall10": 0.4,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.2,
+          "recall10": 0.3,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "基于知识库中的技术笔记，这个问题有非常明确的答案。核心逻辑是：**手搓原生 API 不是不行，但\"不划算\"**——因为 Agent 落地要处理的远不止\"调一次模型接口\"。\n\n---\n\n## 一、手搓原生 API 要自己写什么？\n\n知识库原文指出，手搓的话需要把以下逻辑**全部自己实现**：\n\n- **Tool 调用逻辑**：模型返回 tool_call 后，你要自己解析参数、执行工具、再把结果按 `tool_call_id` 对齐回消息历史，循环直到模型不再调用工具\n- **Message 管理**：system / user / assistant / tool 各角色消息的组装、历史截断、上下文维护\n- **Schema 校验**：工具参数用 JSON Schema 定义和校验（zod 之类）\n\n这些都是**每个 Agent 项目都要重复踩的坑**，属于\"有标准答案但很容易写错\"的代码。\n\n---\n\n## 二、LangChain 的定位：标准化抽象层\n\n知识库中的关键论断：\n\n> LangChain 的定位就是一个\"LLM 开发框架\"，它在 OpenAI 原生接口之前就诞生了，相当",
+        "n_sources": 4,
+        "faithfulness": 4,
+        "relevance": 5,
+        "reason": "回答核心论点忠实于文档，但第四部分补充的限流、日志、部署等细节未在文档片段中明确出现，有轻微扩展。"
+      }
+    },
+    {
+      "id": "agent-008",
+      "question": "Tool 的 description 和 schema 对调用准确率有什么影响？",
+      "category": "agent",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.8,
+          "recall10": 0.8,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 1.0,
+          "recall10": 0.9,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.8,
+          "recall10": 0.9,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "基于知识库内容，Tool 的 **description** 和 **schema** 对调用准确率的影响可以从\"决策层\"和\"执行层\"两个维度理解：\n\n## 1. description：决定\"要不要调\"（决策层）\n\n- **LLM 靠自然语言做决策**。它通过读 description 来判断当前任务是否匹配该工具，因此 description 写得充不充分，**直接决定了 LLM 能不能在正确时机调用正确的模块**——信息越模糊，判断越随机。\n- **功能 + 适用场景双要素**：description 应同时写清\"工具能干什么\"和\"什么场景该用它\"。场景覆盖越全，误判越少；场景描述缺失，LLM 就可能在错误的时机调用（或该调时不调）。\n- 例：`read_file` 的 description 写的是\"当用户要求读取文件、查看代码、分析文件内容时，调用此工具\"——这种明确的适用场景描述能显著降低误判率。\n\n## 2. schema：决定\"调了能不能成功\"（执行层）\n\n- **schema 是调用契约（合同）**：LLM 必须按 schema 约定的参数格式传参，再由 zod 做运",
+        "n_sources": 6,
+        "faithfulness": 5,
+        "relevance": 5,
+        "reason": "回答严格基于文档，准确提炼了description和schema的作用，无编造，且完整回应问题。"
+      }
+    },
+    {
+      "id": "crawler-001",
+      "question": "BOSS 直聘爬虫用的什么框架？核心技巧是什么？",
+      "category": "crawler",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.6,
+          "recall10": 0.3,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.0,
+          "recall10": 0.3,
+          "hit5": 0.0,
+          "mrr": 0.16666666666666666,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库检索结果，回答如下：\n\n## 框架\nBOSS 直聘爬虫使用的是 **DrissionPage** 框架，核心依赖如下：\n\n- **`ChromiumPage()`**：实例化浏览器对象，自动启动本地 Chrome 浏览器\n- **`dp.listen.start('joblist')`**：开启接口监听，通过关键词 `joblist` 匹配岗位列表接口\n\n## 核心技巧\n\n1. **接口监听获取 JSON 数据**：无需分析复杂的页面元素，直接监听接口数据包，获取结构化 JSON 数据，从而简化爬取流程，这是本次实战的关键思路。\n\n2. **翻页靠下滑触发懒加载**：使用 `dp.scroll.to_bottom()` 将页面下滑到底部，触发 BOSS 直聘的懒加载机制自动加载下一页岗位数据，**无需手动点击分页按钮**，适配 BOSS 直聘的页面机制。\n\n3. **数据写入 CSV**：采用 `csv.DictWriter` 写入字典数据，配合 `get()` 方法安全取值，提高代码的健壮性和可维护性，输出格式规整、无中文乱码。\n\n4. **其他注意点**：\n   - 反爬",
+        "n_sources": 6,
+        "faithfulness": 5,
+        "relevance": 5,
+        "reason": "回答完全基于检索文档，准确总结框架和核心技巧，无编造内容，且完整命中问题要点。"
+      }
+    },
+    {
+      "id": "crawler-002",
+      "question": "从 BOSS 直聘接口返回的 JSON 中，岗位列表在哪个数据节点？",
+      "category": "crawler",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.2,
+          "recall10": 0.2,
+          "hit5": 1.0,
+          "mrr": 0.3333333333333333,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.2,
+          "recall10": 0.2,
+          "hit5": 1.0,
+          "mrr": 0.2,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.2,
+          "recall10": 0.2,
+          "hit5": 1.0,
+          "mrr": 0.3333333333333333,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库检索结果，BOSS 直聘接口返回的 JSON 中，岗位列表位于以下数据节点：\n\n**`json_data['zpData']['jobList']`**\n\n具体说明：\n\n1. **`json_data`**：通过 `resp.response.body` 直接获取的接口返回 JSON 数据（DrissionPage 已自动解析 JSON 字符串）。\n2. **`zpData`**：接口返回数据的核心外层节点。\n3. **`jobList`**：存放岗位列表的数组节点，其中的每个元素即一条岗位数据。\n\n提取代码如下：\n\n```python\njson_data = resp.response.body\njob_list = json_data['zpData']['jobList']  # 核心数据节点\n\nfor job in job_list:\n    job_info = {\n        '岗位名称': job.get('jobName', ''),\n        # ... 其他字段\n    }\n```\n\n**补充提示：**\n- 该节点可通过浏览器 F12 开发者工具",
+        "n_sources": 1,
+        "faithfulness": 5,
+        "relevance": 5,
+        "reason": "回答完全基于检索文档，准确指出岗位列表节点为json_data['zpData']['jobList']，无编造内容，且直接命中问题核心。"
+      }
+    },
+    {
+      "id": "crawler-003",
+      "question": "爬虫如何实现自动翻页？",
+      "category": "crawler",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.2,
+          "recall10": 0.2,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.2,
+          "recall10": 0.1,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.2,
+          "recall10": 0.2,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "# 爬虫实现自动翻页的几种常见方式\n\n结合知识库中的实战案例（BOSS 直聘批量爬取），爬虫自动翻页主要有以下几种思路：\n\n## 1. 循环遍历 URL 页码参数（最基础）\n\n很多网站的翻页本质就是 URL 中 `page` 参数的变化，直接循环拼接 URL 即可：\n\n```python\ntotal_pages = 20\nfor page in range(1, total_pages + 1):\n    url = f\"https://example.com/jobs?page={page}\"\n    # 请求并解析该页数据\n```\n\n知识库案例中就是这种模式：`for page in range(1, total_pages + 1)` 循环采集每一页，并配合 `try/except` 保证单页失败不影响整体流程。\n\n## 2. 滚动触发懒加载（知识库核心技巧）\n\n知识库文档明确提到，BOSS 直聘的翻页**无需点击分页按钮**，而是通过懒加载机制实现。核心代码：\n\n```python\ndp.scroll.to_bottom()  # 将页面下滑到底部，触发懒加载，加载下一页数据\n",
+        "n_sources": 2,
+        "faithfulness": 3,
+        "relevance": 5,
+        "reason": "回答核心内容基于文档，但添加了文档中不存在的滚动触发懒加载等细节，存在轻度幻觉；回答全面覆盖自动翻页方法，与问题高度相关。"
+      }
+    },
+    {
+      "id": "crawler-004",
+      "question": "爬取数据写入 CSV 用什么方式？为什么用 get 方法取值？",
+      "category": "crawler",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.6,
+          "recall10": 0.6,
+          "hit5": 1.0,
+          "mrr": 0.3333333333333333,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.6,
+          "recall10": 0.7,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.6,
+          "recall10": 0.6,
+          "hit5": 1.0,
+          "mrr": 0.3333333333333333,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库检索结果，回答如下：\n\n## 一、爬取数据写入 CSV 的方式\n\n**使用 `csv.DictWriter` + `open()`**，具体步骤如下：\n\n```python\nimport csv\n\n# 1. 初始化 CSV 文件\nwith open('boss.csv', mode='w', encoding='utf-8', newline='') as f:\n    # 定义表头字段\n    fieldnames = ['岗位名称', '公司', '规模', '学历要求', '经验要求', '薪资', '经度', '纬度']\n    # 创建 DictWriter 对象\n    csv_writer = csv.DictWriter(f, fieldnames=fieldnames)\n    \n    # 2. 写入表头\n    csv_writer.writeheader()\n    \n    # 3. 写入单条岗位数据\n    csv_writer.writerow(job_info)\n```\n\n**关键参数说明**：\n- `mode='w'`：写入模式\n- `enc",
+        "n_sources": 6,
+        "faithfulness": 5,
+        "relevance": 5,
+        "reason": "回答严格基于检索文档，准确概括了CSV写入方式和get方法取值的健壮性优点，完整覆盖问题要点。"
+      }
+    },
+    {
+      "id": "crawler-005",
+      "question": "爬取 BOSS 直聘时如何规避反爬机制？",
+      "category": "crawler",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.2,
+          "recall10": 0.2,
+          "hit5": 1.0,
+          "mrr": 0.25,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.0,
+          "recall10": 0.2,
+          "hit5": 0.0,
+          "mrr": 0.16666666666666666,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.2,
+          "recall10": 0.1,
+          "hit5": 1.0,
+          "mrr": 0.25,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库中的资料，爬取 BOSS 直聘时规避反爬机制主要有以下几个关键措施：\n\n## 一、控制请求频率（最关键）\n\nBOSS 直聘有较强的反爬限制，**请勿频繁运行代码**。核心做法是在代码中加入延时：\n\n```python\nimport time\n\n# 在翻页下滑后添加延时\ndp.scroll.to_bottom()\ntime.sleep(2)  # 或 time.sleep(3)，避免请求过快触发反爬\n```\n\n建议将爬取间隔适当延长（`time.sleep(2)` 起步，稳妥起见可用 3 秒），避免被封禁 IP。\n\n## 二、使用浏览器模拟而非纯 HTTP 请求\n\n本项目采用 **DrissionPage 框架**（集 Selenium 和 Requests 优势于一体），它会自动适配本地 Chrome 浏览器并启动真实浏览器实例。相比直接用 requests 裸请求，真实浏览器带有完整的 TLS 指纹、Cookie 和浏览器环境特征，**被识别为爬虫的概率大幅降低**。\n\n## 三、通过接口监听获取数据，减少页面操作痕迹\n\n- 使用 `dp.listen.start('job",
+        "n_sources": 2,
+        "faithfulness": 4,
+        "relevance": 5,
+        "reason": "回答基本基于文档内容，但个别解释性描述（如TLS指纹）超出原文，忠实度略扣；回答全面覆盖规避反爬的关键措施，相关性高。"
+      }
+    },
+    {
+      "id": "cursor-001",
+      "question": "Cursor 让智能体重造 SQLite 的实验输入是什么？",
+      "category": "cursor",
+      "retrieval": {
+        "dense": {
+          "recall5": 1.0,
+          "recall10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 1.0,
+          "recall10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 1.0,
+          "recall10": 1.0,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "## Cursor 智能体重造 SQLite 实验的输入\n\n根据知识库中的信息，这次实验的输入条件非常\"克制\"：\n\n### 📄 唯一输入：一份 835 页的 SQLite 手册\n- 智能体集群**仅凭**这份 SQLite 官方文档，用 **Rust 从零实现**了一个数据库引擎。\n- 这是实验唯一的资料输入，且文档结构完整（不过作者也指出，这算是一个相对理想的输入条件，真实代码库往往充满模糊和未记录的行为）。\n\n### 🚫 明确排除的输入\n为了让实验更纯粹，研究团队刻意**不给**智能体以下东西：\n- ❌ **源代码**（SQLite 的源码）\n- ❌ **测试套件 / 测试用例**\n- ❌ **二进制文件**（可运行的程序）\n- ❌ **互联网访问**（无法上网查资料）\n\n### 🔍 补充：评估用的\"隐藏输入\"\n- 验证阶段使用的是 **sqllogictest**（SQLite 项目自带的测试工具，包含数百万条 SQL 查询），但采用的是**预留测试集（held-out test set）**——智能体集群事先并不知道这套测试集的存在，研究团队也会人工检查代码，防止智能体\"走捷径",
+        "n_sources": 1,
+        "faithfulness": 4,
+        "relevance": 5,
+        "reason": "回答准确基于文档描述实验输入，但补充了文档未提及的sqllogictest等细节，略有超纲。"
+      }
+    },
+    {
+      "id": "cursor-002",
+      "question": "智能体蜂群中规划器和执行者的成本分布有什么特点？",
+      "category": "cursor",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.8,
+          "recall10": 0.8,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.8,
+          "recall10": 0.5,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.8,
+          "recall10": 0.8,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 15
+        }
+      },
+      "generation": {
+        "error": "The read operation timed out"
+      }
+    },
+    {
+      "id": "cursor-003",
+      "question": "旧蜂群踩了哪些坑？新蜂群如何解决合并冲突？",
+      "category": "cursor",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.4,
+          "recall10": 0.4,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.4,
+          "recall10": 0.3,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.4,
+          "recall10": 0.4,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库中的文档，可以整理出旧蜂群踩过的坑以及新蜂群的解决方案：\n\n## 旧蜂群踩过的坑\n\n1. **规划器重复实现、互相冲突**：两个规划器在不同区域各自实现同一功能，彼此毫不知情，最后产生冲突；更棘手的是，即使两个规划器知道对方存在，仍然会围绕同一批文件来回博弈。\n\n2. **巨型文件膨胀**：所有智能体都不断向少数几个文件中塞入代码，却没有智能体负责主动精简，导致文件越滚越大。\n\n3. **核心代码逐渐僵化**（文档 3 有提及，原文此处被截断）。\n\n4. **执行者角色过载**：持续运行的执行者承担了过多工作——既要规划、研究、修改代码，又要处理合并、审查和任务完成判断（文档 5 提到的实验教训，最终促使系统重新采用根规划者架构）。\n\n5. **单一智能体上下文拥挤**：单个智能体独自承担完整任务时，需要自行走完整棵任务树，随着运行时间拉长，容易出现上下文拥挤和注意力失衡——要么过度专注眼前工作丢失全局目标，要么维持全局视角却无法处理局部细节。\n\n## 新蜂群如何解决合并冲突\n\n针对合并冲突，新蜂群的核心思路是**从源头避免 + 中立裁决**：\n\n1. **让规划器自己承担设",
+        "n_sources": 6,
+        "faithfulness": 5,
+        "relevance": 5,
+        "reason": "回答严格基于检索文档，准确总结旧蜂群问题和冲突解决机制，无编造内容。"
+      }
+    },
+    {
+      "id": "cursor-004",
+      "question": "Cursor SQLite 实验最有价值的结论是什么？",
+      "category": "cursor",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.8,
+          "recall10": 0.8,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 1.0,
+          "recall10": 0.7,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.8,
+          "recall10": 0.9,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库检索结果，Cursor SQLite 实验最有价值的结论是：\n\n**智能体如何编排，可能比你选用哪一个具体模型更重要。**\n\n具体来说，这场实验通过成本对比清晰地说明了这一点：\n\n- 方案一：全部使用前沿模型（强大但昂贵），花费 **10,565 美元**；\n- 方案二：采用**规划者与执行者分工**的编排方式——由前沿模型负责规划、较便宜的模型负责执行，在实现相近质量的情况下只花了 **1,339 美元**，成本相差接近 **8 倍**。\n\n因此，实验最有价值的启发与其说是\"一个 Rust 版的 SQLite 克隆已经可以直接拿来用了\"，不如理解为一个更普适的结论：**在智能体时代，编排策略（如何分工、如何组织智能体）对成本与效果的影响，可能比单纯比拼模型本身的强弱更关键。**",
+        "n_sources": 6,
+        "faithfulness": 5,
+        "relevance": 5,
+        "reason": "回答严格基于检索文档中的核心结论和成本对比，无编造，且准确命中问题要点。"
+      }
+    },
+    {
+      "id": "cursor-005",
+      "question": "为什么规划器不参与实现能提升智能体集群的可扩展性？",
+      "category": "cursor",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.6,
+          "recall10": 0.6,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.6,
+          "recall10": 0.4,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.6,
+          "recall10": 0.6,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "# 规划器不参与实现为何能提升智能体集群的可扩展性\n\n结合知识库中的相关内容（Cursor 的 swarm 实验、根规划者架构等），核心原因可以归结为以下几点：\n\n## 1. 上下文是稀缺资源，职责分离实现\"上下文隔离\"\n\n单个智能体独自承担完整任务时，它必须自行走完整棵任务树，一路下探到每个叶节点，并在整个过程中始终在上下文中维持**祖先节点、当前位置以及更宏观的目标**。随着运行时间拉长，就会出现两种典型的注意力失衡：\n\n- **过度专注眼前工作**，逐渐丢失全局目标；\n- **努力维持全局视角**，却无法充分处理局部细节。\n\n这就是\"上下文拥挤\"问题。而当规划器与执行分离后：\n\n- **规划器从不负责实现** → 它的上下文不会被底层代码细节塞满，可以长期稳定地持有全局目标和任务分解结构；\n- **执行者（worker）从不负责规划** → 它可以把全部上下文都投入到一小块范围狭窄的具体工作中，不受祖先节点和宏观目标的干扰。\n\n每个智能体的上下文窗口都只服务一个明确的角色，互不侵占，这正是可扩展性的关键。\n\n## 2. 可扩展性主要来自\"上下文效率\"，而非并行性\n\n知识库中提到，",
+        "n_sources": 2,
+        "faithfulness": 4,
+        "relevance": 5,
+        "reason": "回答基本基于文档内容，但部分细节如“根规划者架构”为合理延伸，未直接出现在片段中，故 faithfulness 扣一分；回答完整命中问题核心，相关性满分。"
+      }
+    },
+    {
+      "id": "rag-001",
+      "question": "RAG 的基本流程是什么？解决了 LLM 的什么问题？",
+      "category": "rag",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.2,
+          "recall10": 0.2,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.6,
+          "recall10": 0.5,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.2,
+          "recall10": 0.4,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库中的文档，回答如下：\n\n## RAG 的基本流程\n\nRAG（检索增强生成）的基本流程是：\n\n1. **用户提问** → \n2. **从知识库检索相关文档** → \n3. **将文档作为上下文拼入 prompt** → \n4. **LLM 基于上下文生成答案**\n\n## RAG 解决了 LLM 的两个根本问题\n\n1. **知识截止日期问题**：模型训练完成后无法获取新知识，而 RAG 可以通过检索实时/私有知识来解决。\n\n2. **幻觉问题**：模型可能编造不存在的细节。通过检索真实文档作为依据，RAG 大大降低了幻觉率。\n\n---\n\n补充一点：在 Agent 的架构中（Agent = LLM + Memory + Tool + RAG + MCP + Skills），RAG 也是核心能力之一——当 LLM 自己判断\"需要走 RAG 吗\"（即检索内部知识 → 拼进 Prompt Template）时，它会把检索到的私有知识作为生成答案的依据。",
+        "n_sources": 6,
+        "faithfulness": 5,
+        "relevance": 5,
+        "reason": "回答严格依据检索文档，准确完整地说明了RAG流程和解决的知识截止与幻觉问题，无编造。"
+      }
+    },
+    {
+      "id": "rag-002",
+      "question": "混合检索为什么比单路检索更好？",
+      "category": "rag",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "基于知识库中的检索资料，我来回答\"混合检索为什么比单路检索更好\"。\n\n## 核心答案\n\n混合检索（Hybrid Search）比单路检索更好的根本原因在于：**单路检索只能覆盖一种\"匹配模式\"的盲区，而混合检索把两种互补的匹配能力叠加起来，同时覆盖\"语义理解\"和\"精确术语匹配\"两个维度。**\n\n### 1. 两种单路检索各有致命短板\n\n| 检索方式 | 擅长 | 短板 |\n|---------|------|------|\n| **稠密向量检索**（如 all-MiniLM-L6-v2） | 语义理解，能处理同义改写、模糊表述、语义相关 | 对专有名词、长尾术语、精确代码标识符不敏感；同义词可能检索不到精确词条 |\n| **稀疏检索 BM25** | 精确关键词匹配，对长尾术语和专有名词特别有效（如搜索 \"Cross-Encoder 代码实现\" 能精确命中） | 无法理解语义，用户换一种说法就检索不到 |\n\n知识库中的资料明确说明：**单路向量检索\"仅依赖语义匹配\"**，而 BM25 \"对长尾术语和专有名词特别有效\"。\n\n### 2. 混合检索如何互补\n\n混合检索的典型做法是：**稠密",
+        "n_sources": 4,
+        "faithfulness": 2,
+        "relevance": 5,
+        "reason": "回答核心论据来自文档，但编造了混合+Reranker的召回率数据，属于幻觉，故忠实度低；内容命中问题要点，完整度高，相关性高。"
+      }
+    },
+    {
+      "id": "rag-003",
+      "question": "RRF 融合的公式是什么？",
+      "category": "rag",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.4,
+          "recall10": 0.4,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.0,
+          "recall10": 0.2,
+          "hit5": 0.0,
+          "mrr": 0.14285714285714285,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库中的文档，**RRF（Reciprocal Rank Fusion，倒数排名融合）** 的公式如下：\n\n$$\\text{score}(d) = \\frac{1}{k + \\text{rank}_{\\text{dense}}} + \\frac{1}{k + \\text{rank}_{\\text{sparse}}}$$\n\n其中：\n\n- **score(d)**：文档 d 的最终融合得分，得分最高的文档排在前面；\n- **rank_dense**：文档在稠密向量检索（如 all-MiniLM-L6-v2）结果中的排名；\n- **rank_sparse**：文档在稀疏检索（如 BM25）结果中的排名；\n- **k**：常数，用于平滑排名差异，通常取 **60**。\n\n**核心思想**：对每个文档在两路检索结果中的排名分别取倒数求和，排名越靠前，贡献越大，从而综合两路结果的排序信息。\n\n补充两点知识库中的相关结论：\n\n1. 混合检索（稠密向量 + BM25 + RRF）在**模糊查询**（需语义理解）和**精确查询**（需术语匹配）上都能保持较高召回率。\n2. 但 RRF 本身不做过滤",
+        "n_sources": 1,
+        "faithfulness": 5,
+        "relevance": 5,
+        "reason": "回答严格依据文档中的公式和常数，未编造内容，且完整命中问题核心。"
+      }
+    },
+    {
+      "id": "rag-004",
+      "question": "Bi-Encoder 和 Cross-Encoder 有什么区别？",
+      "category": "rag",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.8,
+          "recall10": 0.8,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 1.0,
+          "recall10": 0.8,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.8,
+          "recall10": 0.9,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库中的资料，Bi-Encoder 和 Cross-Encoder 的主要区别如下：\n\n## 核心差异\n\n| 维度 | Bi-Encoder | Cross-Encoder |\n|------|-----------|---------------|\n| **编码方式** | 将 query 和 document **分别编码**为独立向量 | 将 query 和 document **拼接后**一起送入 Transformer |\n| **交互机制** | 用余弦相似度计算分数，**没有交叉注意力** | 通过自注意力层让两者**充分交互** |\n| **打分精度** | 精度有限，可能漏掉需要深入理解才能判断的匹配关系 | 精度远高于 Bi-Encoder |\n| **速度** | 快，支持百万级文档批量检索 | 慢，每次需要对每个 query-document 对单独计算 |\n| **预计算** | 支持向量预计算 | 无法预计算向量 |\n\n## 典型应用场景（两阶段流水线）\n\n两者通常是配合使用的，而不是二选一：\n\n1. **第一阶段（粗筛）**：用 Bi-Encoder",
+        "n_sources": 6,
+        "faithfulness": 5,
+        "relevance": 5,
+        "reason": "回答严格基于检索文档，准确全面对比了两者区别"
+      }
+    },
+    {
+      "id": "rag-005",
+      "question": "典型的两阶段检索流水线是什么？",
+      "category": "rag",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库检索结果，典型的**两阶段检索流水线**如下：\n\n## 两阶段检索流水线\n\n```\n用户查询\n   │\n   ▼\n【第一阶段：召回 / 粗排】          ← 追求速度，召回尽量多的候选\n   ├─ Bi-Encoder 向量检索（稠密检索，如 all-MiniLM-L6-v2）\n   ├─ BM25 稀疏检索（精确术语匹配）\n   └─ 混合检索 + RRF 融合 → 得到 Top-N 候选集\n   │\n   ▼\n【第二阶段：精排 / Rerank】        ← 追求精度，对候选精细排序\n   └─ Cross-Encoder（Reranker）\n       对 query 和每篇文档做\"全注意力交互\"计算，修正排序偏差\n   │\n   ▼\n最终 Top-K 结果 → 送入 LLM 生成答案\n```\n\n## 两个阶段的分工\n\n| 阶段 | 模型 | 特点 |\n|------|------|------|\n| **第一阶段（粗筛）** | Bi-Encoder（稠密向量）+ BM25（稀疏检索） | 速度快、可预计算向量索引，适合海量文档，但精度有限 |\n| *",
+        "n_sources": 2,
+        "faithfulness": 4,
+        "relevance": 5,
+        "reason": "回答基本忠实于检索文档，但对BM25引入不相关文档及恢复召回率等细节有超出文档的推断；回答完整命中问题核心，清晰阐述了两阶段检索流水线。"
+      }
+    },
+    {
+      "id": "multiagent-001",
+      "question": "Multi-Agent 系统相比单一 Agent 有什么优势？",
+      "category": "multiagent",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.4,
+          "recall10": 0.4,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.8,
+          "recall10": 0.7,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.4,
+          "recall10": 0.6,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库中的资料，**Multi-Agent 系统相比单一 Agent 主要有以下优势**：\n\n## 1. 专业化分工，各司其职\n> 单一 Agent 需要处理所有任务，而 Multi-Agent 将复杂任务拆解给多个**专业化 Agent** 协作完成，每个 Agent 只负责自己擅长的领域。（文档 1）\n\n例如典型的写作工作流是 **研究员 → 写作者 → 审核员** 的分工模式（文档 5），每个角色专注于自己的环节，整体质量更高。\n\n## 2. 支持复杂流程控制：重试、回退、分支\n> 状态机是 Multi-Agent 流程控制的有效模式，将工作流定义为有限状态集（如 INIT → RESEARCH → WRITE → REVIEW → FINALIZE），通过守卫机制控制状态转移。（文档 3）\n\n状态机相比**线性流水线**的优势在于：\n- ✅ 支持**重试**（如写作用例中 `\"max_retries\":2`，文档 4）\n- ✅ 支持**回退**（审核不通过可回退到写作者）\n- ✅ 支持**分支**（不同情况走不同路径）\n\n## 3. 持久化记忆，避免重复犯错\n> 带记忆的 ",
+        "n_sources": 6,
+        "faithfulness": 5,
+        "relevance": 5,
+        "reason": "回答严格基于检索文档，准确总结了专业化分工、流程控制、记忆和监控等优势，无编造，且完整切题。"
+      }
+    },
+    {
+      "id": "multiagent-002",
+      "question": "Agent 间通信为什么用结构化协议比纯文本更可靠？",
+      "category": "multiagent",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库中的相关资料，Agent 间通信采用结构化协议（如 JSON Schema）而非纯文本，其可靠性优势主要体现在以下几个方面：\n\n## 1. 明确的接口契约，减少解析错误\n知识库明确指出：**\"结构化通信（使用 JSON Schema 定义接口）比非结构化通信（纯文本传递）更可靠，因为明确的接口契约减少了解析错误，允许接收方精确提取需要的信息。\"**\n\n纯文本没有固定格式，接收方需要靠\"猜\"来理解语义，容易出现歧义、错位和解析失败；而结构化协议定义了字段名、类型和必填项，接收方可以直接按契约取值。\n\n## 2. schema 即\"调用契约\"，限制输出空间\n知识库中关于 Tool 设计的论述同样适用于 Agent 间通信：**\"schema 是调用契约：LLM 必须按 schema 约定的参数格式传参，zod 做校验，契约不清晰则调用必失败。\"**\n\nLLM 生成自由文本时天然带有随机性和幻觉风险，可能输出含糊、冗余甚至错误的内容。结构化协议把 LLM 的输出空间限定在固定的字段结构内，配合校验层（如 zod）在运行时拦截格式错误的消息，从源头杜绝\"契约不清晰导致调用失败\"的问题",
+        "n_sources": 3,
+        "faithfulness": 2,
+        "relevance": 4,
+        "reason": "回答虽引用文档核心观点，但多次声称文档包含Tool设计、zod校验、trace_id追踪等未出现在检索片段中的内容，存在幻觉；相关性上则完整回答了问题。"
+      }
+    },
+    {
+      "id": "multiagent-003",
+      "question": "状态机在 Multi-Agent 流程控制中有什么优势？",
+      "category": "multiagent",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.0,
+          "recall10": 0.1,
+          "hit5": 0.0,
+          "mrr": 0.14285714285714285,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.08333333333333333,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库检索结果，状态机在 Multi-Agent 流程控制中的优势主要体现在以下几个方面：\n\n## 核心优势：支持重试、回退和分支\n\n相比线性流水线（只能按固定顺序单向执行），状态机具备更强的流程控制能力：\n\n**1. 重试（Retry）**\n- 当某个 Agent（如写作者）执行失败时，可以通过状态转移回到之前的节点重新尝试，例如结合 `max_retries` 参数控制重试次数。\n- 文档 4 中的 API 示例就体现了这一点：`{\"topic\":\"PyTorch 动态计算图\",\"max_retries\":2}`。\n\n**2. 回退（Rollback）**\n- 当审核员（REVIEW）发现输出不合格时，状态可回退到 RESEARCH 或 WRITE 阶段重新处理，而不是被迫继续走完整个流程。\n\n**3. 分支（Branching）**\n- 根据不同的条件（守卫机制判断结果），流程可以走不同的路径，实现更灵活的决策逻辑。\n\n## 其他关键特性\n\n- **有限状态集定义清晰**：将整个工作流建模为明确的有限状态集合（如 `INIT → RESEARCH → WRITE → REVI",
+        "n_sources": 6,
+        "faithfulness": 5,
+        "relevance": 5,
+        "reason": "回答完全基于检索到的文档，准确解释了状态机在重试、回退和分支上的优势，未添加文档外信息；且内容完整覆盖核心要点，相关性强。"
+      }
+    },
+    {
+      "id": "multiagent-004",
+      "question": "持久化记忆对 Agent 有什么帮助？",
+      "category": "multiagent",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.2,
+          "recall10": 0.2,
+          "hit5": 1.0,
+          "mrr": 0.2,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.0,
+          "recall10": 0.2,
+          "hit5": 0.0,
+          "mrr": 0.16666666666666666,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.2,
+          "recall10": 0.1,
+          "hit5": 1.0,
+          "mrr": 0.2,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库中的相关文档，**持久化记忆**对 Agent 的帮助主要体现在以下几个方面：\n\n## 1. 记住历史交互\n持久化记忆让 Agent 能够记住与用户或环境的历史交互内容，而不是每次对话都\"从零开始\"。这使得 Agent 在多轮对话中保持上下文的连贯性，避免丢失关键信息。\n\n## 2. 避免重复犯错\nAgent 可以将过往的错误和教训存入记忆库，在后续行动中检索并参考，从而**避免重复犯同样的错误**。这是一种\"经验积累\"机制，让 Agent 越用越聪明。\n\n## 3. 记忆的读写机制\n文档中描述了一个清晰的记忆工作流：\n- **行动前**：Agent 检索相关记忆，作为决策参考\n- **行动后**：将结果存入记忆库，持续积累经验\n\n## 4. 多轮迭代任务中表现显著更优\n研究表明，**带记忆的 Agent 在需要多轮迭代的任务中，表现显著优于无记忆版本**。这类任务往往依赖前后步骤的相互参照和持续改进，记忆能力是完成它们的关键支撑。\n\n---\n\n**总结**：持久化记忆本质上弥补了 LLM 天生的\"无状态\"缺陷，让 Agent 从\"只会聊天的大脑\"进化为\"能记住上下文、持续积",
+        "n_sources": 6,
+        "faithfulness": 4,
+        "relevance": 5,
+        "reason": "回答基本忠实于文档，并合理概括，且完整命中问题要点。"
+      }
+    },
+    {
+      "id": "docker-001",
+      "question": "Dockerfile 层缓存优化的关键原则是什么？",
+      "category": "docker",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.2,
+          "recall10": 0.2,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.4,
+          "recall10": 0.2,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.2,
+          "recall10": 0.3,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库检索结果，Dockerfile 层缓存优化的**关键原则**是：\n\n> **将变化频率低的层放在前面，变化频率高的层放在后面。**\n\n这样做的原因是 Docker 构建时会按层缓存，只有当某一层发生变化时，该层及其之后的层才会被重新构建。把稳定的层放在前面，可以最大限度地复用缓存，减少不必要的重复构建，从而显著提升构建效率。\n\n**典型的分层策略（从前往后）：**\n\n| 层级 | 内容 | 特点 |\n|------|------|------|\n| 第 1 层 | 基础镜像（如 Python 3.11-slim） | 几乎不变 |\n| 第 2 层 | 重量级依赖（PyTorch、ChromaDB） | 很少变化 |\n| 第 3 层 | 应用依赖（FastAPI、Streamlit） | 偶尔变化 |\n| 第 4 层 | 应用代码 | 频繁变化 |\n\n**实践建议：**\n- 依赖安装命令（如 `pip install`）应放在应用代码**复制之前**，这样修改代码时不会触发依赖层的重新安装；\n- 重量级依赖单独分层，避免每次改代码都重装 PyTorch 这类大包；\n- 应用代码",
+        "n_sources": 6,
+        "faithfulness": 4,
+        "relevance": 5,
+        "reason": "回答忠实于检索到的关键原则，但补充的实践建议并非文档原文，属于合理延伸。"
+      }
+    },
+    {
+      "id": "docker-002",
+      "question": "Docker Compose 中 bind mount 和 named volume 有什么区别？",
+      "category": "docker",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.2,
+          "recall10": 0.2,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.6,
+          "recall10": 0.4,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.2,
+          "recall10": 0.4,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "# Docker Compose 中 Bind Mount 与 Named Volume 的区别\n\n根据知识库中关于该项目的部署说明，两种挂载方式的使用场景如下：\n\n## 1. 定义与用法\n\n| 对比项 | **Bind Mount** | **Named Volume** |\n|--------|---------------|------------------|\n| **映射方式** | 将**主机的任意路径**直接映射到容器内 | 由 Docker 管理的一个命名卷，存储在 Docker 数据目录中 |\n| **配置写法** | `./cache:/app/cache`（需指定主机路径） | `db-data:/var/lib/postgresql/data`（只需卷名） |\n| **主机位置** | 由你指定，如项目目录下的 `models/`、`logs/` | Docker 自动管理（Linux 下通常位于 `/var/lib/docker/volumes/`） |\n\n## 2. 核心区别\n\n**🔹 Bind Mount（绑定挂载）**\n- **直接引用主机目录**，例如",
+        "n_sources": 1,
+        "faithfulness": 3,
+        "relevance": 4,
+        "reason": "回答基本基于文档中关于bind mount和named volume用途的说明，但额外添加了文档未提及的memory/目录等细节，存在轻微幻觉；回答完整区分了两者，相关性强。"
+      }
+    },
+    {
+      "id": "docker-003",
+      "question": "如何缩小 PyTorch 应用的 Docker 镜像体积？",
+      "category": "docker",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.2,
+          "recall10": 0.1,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.0,
+          "recall10": 0.1,
+          "hit5": 0.0,
+          "mrr": 0.14285714285714285,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库中的相关资料，缩小 PyTorch 应用 Docker 镜像体积的核心方法如下：\n\n## 核心方案：使用 CPU-only 版 PyTorch\n\n**问题背景**：\n- PyTorch CUDA 版镜像约 **3.5GB**\n- ChromaDB 内置 ONNX Runtime 约 **1.5GB**\n- 整个应用镜像体积可达 **9GB**\n\n**解决方案**：\n改用 **CPU-only PyTorch** 可将镜像从 **9GB 压缩到约 3-4GB**，体积缩小超过一半。\n\n## 具体做法建议\n\n在 Dockerfile 中安装 PyTorch 时，指定 CPU 版本（而非默认的 CUDA 版本），例如使用对应的 CPU 索引源安装，避免把庞大的 CUDA 运行库打包进镜像。\n\n## 适用场景提醒\n\n- 如果你的应用**不需要 GPU 推理/训练**（例如纯文本处理、Embedding 生成、检索等场景），CPU-only 版本是首选，体积收益非常明显。\n- 如果确实需要 CUDA 加速，则无法用此方法，需要考虑其他手段（如多阶段构建、精简依赖、使用更小的基础镜像等，",
+        "n_sources": 6,
+        "faithfulness": 5,
+        "relevance": 5,
+        "reason": "回答严格基于检索文档中的CPU-only PyTorch压缩镜像和挂载机制，无编造；且直接命中问题核心，完整给出方案。"
+      }
+    },
+    {
+      "id": "langchain-001",
+      "question": "LangChain 是什么？",
+      "category": "langchain",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.4,
+          "recall10": 0.5,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.0,
+          "recall10": 0.2,
+          "hit5": 0.0,
+          "mrr": 0.14285714285714285,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库检索结果，我可以为您解答 LangChain 是什么：\n\n## LangChain 是什么？\n\n**LangChain 是一个用于构建智能体（Agent）和大模型（LLM）应用的框架**，常被定位为 \"The agent engineering platform\"（智能体工程平台）。\n\n### 核心功能与特点\n\n1. **链式组合**：帮助开发者将**可互操作的组件**和**第三方集成**串联在一起，构建完整的 LLM 应用流水线。\n\n2. **AI 层抽象**：在技术架构中，LangChain 主要负责 AI 层的抽象工作，例如：\n   - `@langchain/openai` 可以兼容各家模型（OpenAI、Anthropic 等），实现模型的无缝切换\n   - `@langchain/core/tools` + `zod` 用于工具定义与参数校验\n   - 支持函数调用、结构化输出等能力\n\n3. **使用示例**（来自知识库文档）：\n   ```python\n   from langchain.chat_models import init_chat_model\n  ",
+        "n_sources": 6,
+        "faithfulness": 4,
+        "relevance": 5,
+        "reason": "回答基于文档片段，但部分细节如“Anthropic”等属于合理延伸，略有超出文档范围，故给4分；回答全面切题，故relevance给5分。"
+      }
+    },
+    {
+      "id": "langchain-002",
+      "question": "LangChain 生态包含哪些产品？",
+      "category": "langchain",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.4,
+          "recall10": 0.2,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.0,
+          "recall10": 0.2,
+          "hit5": 0.0,
+          "mrr": 0.14285714285714285,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库检索结果，LangChain 生态主要包含以下产品与组件：\n\n## 核心框架\n\n1. **LangChain（框架本体）**\n   - 官方定位为\"Agent 工程平台\"（The agent engineering platform）\n   - 用于构建 Agent 和 LLM 驱动的应用，将可互操作的组件与第三方集成\"链\"在一起\n   - 提供从高层链（quick starts）到低层组件的多级抽象，随应用复杂度增长\n\n2. **LangGraph**\n   - 构建**可控 Agent 工作流**的框架\n   - 核心场景：**多智能体编排**——当单个 Agent 不够用时使用\n   - 与 LangChain 无缝集成，文档中常以\"LangChain + LangGraph + Deep Agents 如何协同\"来介绍生态全貌\n\n3. **LangChain.js**\n   - JS/TS 版本的同功能库（与 Python 版 LangChain 对应）\n\n## 开发、调试与部署工具\n\n4. **LangSmith**\n   - 专门用于开发、调试、部署 AI Age",
+        "n_sources": 2,
+        "faithfulness": 2,
+        "relevance": 2,
+        "reason": "回答列举的LangGraph、LangChain.js、MCP等大量内容在检索文档中未出现，存在幻觉；虽围绕生态主题，但信息真实性不足。"
+      }
+    },
+    {
+      "id": "langchain-003",
+      "question": "为什么选择用 LangChain 开发 LLM 应用？",
+      "category": "langchain",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.0,
+          "recall10": 0.1,
+          "hit5": 0.0,
+          "mrr": 0.1,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.06666666666666667,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库中的资料，选择 LangChain 开发 LLM 应用的核心原因可以归纳为以下几点：\n\n## 1. 提供标准化的抽象层，避免重复造轮子\n\nLangChain 的定位就是\"LLM 开发框架\"，它**在 OpenAI 原生接口之前就诞生了**，相当于给 LLM 应用开发提供了一套标准化的抽象层。如果手搓原生 API，你需要自己写：\n\n- Tool 调用逻辑\n- Message 管理\n- Schema 校验\n\n——\"但这显然不划算\"。LangChain 把这些高频、易错的部分全部封装好了，让你专注于业务本身。\n\n## 2. 模块化抽象，覆盖全链路\n\nLangChain 是开源框架，为 LLM 应用开发提供**模型（models）、提示词（prompts）、链（chains）、记忆（memory）、智能体（agents）、检索（retrieval）**的模块化抽象，并且能把可互操作的组件和第三方集成串联起来。\n\n## 3. Tool 抽象是\"合同式\"设计\n\n知识库中提到的 Tool 三层结构非常清晰：\n\n```\nTool = 处理函数（async 异步，干活的）\n     + 描述对",
+        "n_sources": 2,
+        "faithfulness": 2,
+        "relevance": 4,
+        "reason": "回答在文档基础上扩展了模块化、生态等未提及的内容，不严格忠实；但整体紧扣问题，给出了系统性理由，相关性较高。"
+      }
+    },
+    {
+      "id": "ragnxus-001",
+      "question": "RAGNEXUS 的架构包含哪些组件？",
+      "category": "ragnxus",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.2,
+          "recall10": 0.1,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.0,
+          "recall10": 0.1,
+          "hit5": 0.0,
+          "mrr": 0.14285714285714285,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库中的文档，RAGNEXUS 是一个生产级 RAG 服务，其架构包含以下核心组件：\n\n## 项目结构（代码模块）\n\n| 模块 | 职责 |\n|------|------|\n| `rag_api.py` | FastAPI 服务：鉴权（X-API-Key）、限流、日志、RAG 问答 |\n| `rag_advanced.py` | 混合检索 + Reranker（稠密 + BM25 + RRF 融合） |\n| `rag_multiagent.py` | Multi-Agent 工作流（研究员 → 写作者 → 审核员） |\n| `rag_app.py` | Streamlit 可视化前端 |\n| `style.css` | 前端样式 |\n| `DESIGN.md` | 设计系统文档 |\n| `.streamlit/` | Streamlit 主题配置 |\n| `Dockerfile` | 容器构建（一键部署） |\n\n## 核心功能组件\n\n1. **问答引擎**：Function Calling 驱动，自动检索知识库 + LLM 回答，支持 SSE 流式输出。\n\n2. **混合检索（H",
+        "n_sources": 2,
+        "faithfulness": 2,
+        "relevance": 5,
+        "reason": "回答对核心组件有概述，但大量技术细节和文件列表未在检索文档中出现，存在幻觉；回答完整覆盖问题要点，相关性高。"
+      }
+    },
+    {
+      "id": "ragnxus-002",
+      "question": "RAGNEXUS 提供哪些 API 接口？",
+      "category": "ragnxus",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.2,
+          "recall10": 0.2,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.0,
+          "recall10": 0.1,
+          "hit5": 0.0,
+          "mrr": 0.14285714285714285,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库检索结果，RAGNEXUS 提供的 API 接口如下：\n\n| 接口 | 鉴权 | 说明 |\n|------|------|------|\n| `GET /health` | 免鉴权 | 健康检查 |\n| `POST /query` | X-API-Key | 标准 RAG 问答 |\n| `POST /query/stream` | X-API-Key | 流式问答（SSE） |\n| `POST /query/hybrid` | X-API-Key | 混合检索，可选 Reranker |\n| `POST /doc` | X-API-Key | 添加知识 |\n| `GET /kb/docs` | X-API-Key | 获取知识库全部文档 |\n| `POST /agent/write` | X-API-Key | Multi-Agent 写作流水线 |\n\n**补充说明：**\n- 除 `GET /health` 外，其余接口均需通过 `X-API-Key` 请求头进行鉴权（默认密钥为 `rag-secret-key-2024`，可在 `.env` 的 `RAG_API_KEY` ",
+        "n_sources": 6,
+        "faithfulness": 5,
+        "relevance": 5,
+        "reason": "回答完全基于文档片段，准确列举了所有API接口及鉴权信息，内容完整相关。"
+      }
+    },
+    {
+      "id": "ragnxus-003",
+      "question": "RAGNEXUS 的检索评测结论是什么？",
+      "category": "ragnxus",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.2,
+          "recall10": 0.1,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.0,
+          "recall10": 0.1,
+          "hit5": 0.0,
+          "mrr": 0.14285714285714285,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库中检索到的 RAGNEXUS 检索评测信息，其评测结论如下：\n\n**评测方式**：运行 `eval_retrieval.py` 脚本（需确保 Docker 容器已启动）进行检索效果评估。\n\n**核心结论**：\n\n1. **小规模、高质量知识库中，单路向量检索与\"混合检索 + Reranker\"表现接近**——在数据量小且质量高的情况下，仅用向量检索就能取得不错的效果，精排带来的增益不明显。\n\n2. **混合检索 + RRF（Reciprocal Rank Fusion）在 Top-10 上的 Recall 较低**——原因是 BM25 稀疏检索会拉入一些不相关文档，稀释了整体召回质量。\n\n3. **Reranker 通过 Cross-Encoder 二次排序恢复了召回率**——第一阶段（Bi-Encoder 粗筛）速度快但精度有限，第二阶段用 Cross-Encoder 对 query 与 document 做全注意力交互精排，有效弥补了 BM25 引入噪声的问题，把真正相关的文档重新排到前面。\n\n4. **生产级系统应采用\"多路召回 + Reranker\"的方案**——即混",
+        "n_sources": 2,
+        "faithfulness": 1,
+        "relevance": 1,
+        "reason": "检索文档未包含任何评测结论，回答凭空捏造细节，既不忠实也不相关。"
+      }
+    },
+    {
+      "id": "basics-001",
+      "question": "Transformer 架构是哪年由谁提出的？",
+      "category": "basics",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.0,
+          "recall10": 0.1,
+          "hit5": 0.0,
+          "mrr": 0.16666666666666666,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.09090909090909091,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库中的信息：\n\n**Transformer 架构由 Google 在 2017 年提出**，出自论文 **《Attention Is All You Need》**（\"注意力就是你所需要的一切\"）。\n\n该架构是 BERT、GPT、T5、ViT 等众多现代模型的基础。",
+        "n_sources": 6,
+        "faithfulness": 5,
+        "relevance": 5,
+        "reason": "回答严格基于检索到的英文文档，准确给出了年份和提出者，没有编造信息，且完整命中问题核心。"
+      }
+    },
+    {
+      "id": "basics-002",
+      "question": "PyTorch 的动态计算图有什么特点？",
+      "category": "basics",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.2,
+          "recall10": 0.2,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.2,
+          "recall10": 0.2,
+          "hit5": 1.0,
+          "mrr": 0.5,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.2,
+          "recall10": 0.2,
+          "hit5": 1.0,
+          "mrr": 1.0,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "根据知识库中的相关资料，PyTorch 动态计算图的特点如下：\n\n## 核心特点：Define-by-Run（运行定义）\n\nPyTorch 采用**动态计算图**，即每次前向传播时动态构建计算图，这与 TensorFlow 早期采用的静态图（Define-and-Run）有本质区别。\n\n### 具体特点\n\n1. **运行时动态构建**\n   - 计算图是在每次前向传播时实时构建的，而非预先定义好整个网络结构。\n\n2. **网络结构可动态改变**\n   - 允许在运行时改变网络结构（例如根据条件分支、循环次数变化等），灵活度非常高。\n\n3. **调试更方便**\n   - 由于计算图是逐步构建的，可以像普通 Python 代码一样逐行调试，定位问题更直观。\n\n4. **与自动求导机制结合**\n   - PyTorch 的 autograd 包通过记录对张量的所有操作来构建计算图，调用 `backward()` 即可自动计算梯度。\n   - `requires_grad` 属性控制张量是否需要计算梯度，进一步增强了灵活性。\n\n### 与静态图（如 TensorFlow）的对比\n\n| 特性 |",
+        "n_sources": 6,
+        "faithfulness": 5,
+        "relevance": 5,
+        "reason": "回答严格基于检索文档，准确概括动态计算图特点，并对比静态图，内容完整。"
+      }
+    },
+    {
+      "id": "semantic-001",
+      "question": "如何让 LLM 记住用户的长期偏好？",
+      "category": "semantic",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.2,
+          "recall10": 0.2,
+          "hit5": 1.0,
+          "mrr": 0.2,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.0,
+          "recall10": 0.2,
+          "hit5": 0.0,
+          "mrr": 0.1111111111111111,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.2,
+          "recall10": 0.1,
+          "hit5": 1.0,
+          "mrr": 0.2,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "# 如何让 LLM 记住用户的长期偏好\n\n根据知识库的内容，答案是：**给 LLM 装上 Memory（记忆）模块**。这正是 Agent 架构解决的核心问题之一。\n\n## 1. 问题根源：LLM 天生没有\"长期记忆\"\n\nLLM 本身是一个\"只会聊天的大脑\"——它的上下文窗口用完即弃，每次对话结束后，之前的一切（包括用户偏好）都会被清空。所以想让 LLM 记住用户的长期偏好，**不能靠 LLM 自身，必须靠外部模块**。\n\n## 2. 解决方案：Agent = LLM + Memory + Tool + RAG + MCP + Skills\n\n其中 **Memory 模块**就是专门负责\"记住上下文\"和\"用户偏好\"的补丁：\n\n- **短期记忆**：会话内的历史上下文（当前对话里说过的话）\n- **长期记忆**：跨会话的用户画像（用户偏好、历史偏好、常用设置）\n\n比如知识库中的落地实现：Agent 的写作记忆保存在本地 `memory/` 目录，**即使容器重建，记忆也不会丢失**——这就是长期偏好的持久化方案。\n\n## 3. 核心机制：LLM 自主决定是否加载记忆\n\n关键设计在于，记忆",
+        "n_sources": 2,
+        "faithfulness": 2,
+        "relevance": 4,
+        "reason": "回答基于文档中Memory模块的概念进行合理扩展，但添加了文档不存在的具体实现细节（如本地memory目录、LLM自主判断加载等），存在幻觉；但回答直接针对问题给出了可行方案，相关性较高。"
+      }
+    },
+    {
+      "id": "negative-001",
+      "question": "markdown-body 的 CSS 样式规则有哪些？",
+      "category": "negative",
+      "retrieval": {
+        "dense": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 5
+        },
+        "hybrid": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 10
+        },
+        "reranked": {
+          "recall5": 0.0,
+          "recall10": 0.0,
+          "hit5": 0.0,
+          "mrr": 0.0,
+          "n": 15
+        }
+      },
+      "generation": {
+        "answer": "我已在知识库中检索了相关内容，但**知识库中没有收录 markdown-body 的具体 CSS 样式规则文档**。检索到的文档主要涉及 RAG 系统、Multi-Agent 工作流、PyTorch、爬虫等内容（虽然提到了 `style.css ← 前端样式`，但没有具体的样式规则内容）。\n\n下面基于通用前端知识，补充说明 `markdown-body` 这一经典 CSS 类（源自 GitHub 的 `github-markdown-css` 方案）常见的样式规则，供你参考：\n\n**1. 基础排版**\n```css\n.markdown-body {\n  font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Helvetica, Arial, sans-serif;\n  font-size: 16px;\n  line-height: 1.6;\n  word-wrap: break-word;\n  color: #24292f;          /* 正文颜色 */\n}\n```\n\n**2. 标题样式**\n```css\n.m",
+        "n_sources": 2,
+        "faithfulness": 2,
+        "relevance": 5,
+        "reason": "回答的CSS规则来自通用知识而非检索文档，但回答完整切题。"
+      }
+    }
+  ]
+}

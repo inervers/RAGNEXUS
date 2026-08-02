@@ -1,0 +1,250 @@
+{
+  "meta": {
+    "name": "RAGNEXUS eval set v1",
+    "created": "2026-08-02",
+    "based_on": "kb_export_20260802.json (190 chunks)",
+    "note": "expected_keywords 取自答案所在知识块中的独特词，用于检索层判分。category=negative 为脏数据探测题（CSS 垃圾块）。"
+  },
+  "questions": [
+    {
+      "id": "agent-001",
+      "category": "agent",
+      "question": "Agent 和 LLM 的本质区别是什么？Agent 由哪些模块组成？",
+      "expected_keywords": ["Memory", "Tool", "RAG", "MCP", "Skills"]
+    },
+    {
+      "id": "agent-002",
+      "category": "agent",
+      "question": "LLM 有哪些天生缺陷？分别由 Agent 的哪些模块补齐？",
+      "expected_keywords": ["无状态", "Stateless", "RAG"]
+    },
+    {
+      "id": "agent-003",
+      "category": "agent",
+      "question": "Tool 调用闭环中 tool_call_id 起什么作用？",
+      "expected_keywords": ["tool_call_id", "ToolMessage", "对齐"]
+    },
+    {
+      "id": "agent-004",
+      "category": "agent",
+      "question": "为什么 Tool 的处理函数必须是 async 异步的？",
+      "expected_keywords": ["async", "同步阻塞", "卡死"]
+    },
+    {
+      "id": "agent-005",
+      "category": "agent",
+      "question": "多个互相独立的 Tool 应该串行还是并行执行？为什么？",
+      "expected_keywords": ["Promise.all", "并行", "依赖"]
+    },
+    {
+      "id": "agent-006",
+      "category": "agent",
+      "question": "Claude Code 本质上由什么组成？",
+      "expected_keywords": ["Claude Code", "fs", "CLI"]
+    },
+    {
+      "id": "agent-007",
+      "category": "agent",
+      "question": "Agent 落地为什么选 LangChain 而不是手搓原生 API？",
+      "expected_keywords": ["LangChain", "抽象层", "标准化"]
+    },
+    {
+      "id": "agent-008",
+      "category": "agent",
+      "question": "Tool 的 description 和 schema 对调用准确率有什么影响？",
+      "expected_keywords": ["description", "schema", "zod"]
+    },
+    {
+      "id": "crawler-001",
+      "category": "crawler",
+      "question": "BOSS 直聘爬虫用的什么框架？核心技巧是什么？",
+      "expected_keywords": ["DrissionPage", "接口监听", "joblist"]
+    },
+    {
+      "id": "crawler-002",
+      "category": "crawler",
+      "question": "从 BOSS 直聘接口返回的 JSON 中，岗位列表在哪个数据节点？",
+      "expected_keywords": ["zpData", "jobList"]
+    },
+    {
+      "id": "crawler-003",
+      "category": "crawler",
+      "question": "爬虫如何实现自动翻页？",
+      "expected_keywords": ["scroll.to_bottom", "懒加载"]
+    },
+    {
+      "id": "crawler-004",
+      "category": "crawler",
+      "question": "爬取数据写入 CSV 用什么方式？为什么用 get 方法取值？",
+      "expected_keywords": ["csv.DictWriter", "job.get", "健壮性"]
+    },
+    {
+      "id": "crawler-005",
+      "category": "crawler",
+      "question": "爬取 BOSS 直聘时如何规避反爬机制？",
+      "expected_keywords": ["time.sleep", "反爬", "封禁"]
+    },
+    {
+      "id": "cursor-001",
+      "category": "cursor",
+      "question": "Cursor 让智能体重造 SQLite 的实验输入是什么？",
+      "expected_keywords": ["835 页", "SQLite", "手册"]
+    },
+    {
+      "id": "cursor-002",
+      "category": "cursor",
+      "question": "智能体蜂群中规划器和执行者的成本分布有什么特点？",
+      "expected_keywords": ["规划器", "执行者", "token"]
+    },
+    {
+      "id": "cursor-003",
+      "category": "cursor",
+      "question": "旧蜂群踩了哪些坑？新蜂群如何解决合并冲突？",
+      "expected_keywords": ["脑裂", "冲突", "第三方智能体"]
+    },
+    {
+      "id": "cursor-004",
+      "category": "cursor",
+      "question": "Cursor SQLite 实验最有价值的结论是什么？",
+      "expected_keywords": ["编排", "模型", "重要"]
+    },
+    {
+      "id": "cursor-005",
+      "category": "cursor",
+      "question": "为什么规划器不参与实现能提升智能体集群的可扩展性？",
+      "expected_keywords": ["上下文", "规划器", "worker"]
+    },
+    {
+      "id": "rag-001",
+      "category": "rag",
+      "question": "RAG 的基本流程是什么？解决了 LLM 的什么问题？",
+      "expected_keywords": ["检索", "幻觉", "知识截止"]
+    },
+    {
+      "id": "rag-002",
+      "category": "rag",
+      "question": "混合检索为什么比单路检索更好？",
+      "expected_keywords": ["稠密", "稀疏", "BM25"]
+    },
+    {
+      "id": "rag-003",
+      "category": "rag",
+      "question": "RRF 融合的公式是什么？",
+      "expected_keywords": ["RRF", "Reciprocal Rank Fusion", "排名"]
+    },
+    {
+      "id": "rag-004",
+      "category": "rag",
+      "question": "Bi-Encoder 和 Cross-Encoder 有什么区别？",
+      "expected_keywords": ["Bi-Encoder", "Cross-Encoder", "交叉注意力"]
+    },
+    {
+      "id": "rag-005",
+      "category": "rag",
+      "question": "典型的两阶段检索流水线是什么？",
+      "expected_keywords": ["粗筛", "精排", "Top-100"]
+    },
+    {
+      "id": "multiagent-001",
+      "category": "multiagent",
+      "question": "Multi-Agent 系统相比单一 Agent 有什么优势？",
+      "expected_keywords": ["Multi-Agent", "分工", "专业化"]
+    },
+    {
+      "id": "multiagent-002",
+      "category": "multiagent",
+      "question": "Agent 间通信为什么用结构化协议比纯文本更可靠？",
+      "expected_keywords": ["JSON Schema", "结构化通信", "契约"]
+    },
+    {
+      "id": "multiagent-003",
+      "category": "multiagent",
+      "question": "状态机在 Multi-Agent 流程控制中有什么优势？",
+      "expected_keywords": ["状态机", "守卫", "重试"]
+    },
+    {
+      "id": "multiagent-004",
+      "category": "multiagent",
+      "question": "持久化记忆对 Agent 有什么帮助？",
+      "expected_keywords": ["持久化记忆", "记忆库", "多轮迭代"]
+    },
+    {
+      "id": "docker-001",
+      "category": "docker",
+      "question": "Dockerfile 层缓存优化的关键原则是什么？",
+      "expected_keywords": ["层缓存", "变化频率", "基础镜像"]
+    },
+    {
+      "id": "docker-002",
+      "category": "docker",
+      "question": "Docker Compose 中 bind mount 和 named volume 有什么区别？",
+      "expected_keywords": ["bind mount", "named volume", "持久化"]
+    },
+    {
+      "id": "docker-003",
+      "category": "docker",
+      "question": "如何缩小 PyTorch 应用的 Docker 镜像体积？",
+      "expected_keywords": ["镜像体积", "CPU-only", "9GB"]
+    },
+    {
+      "id": "langchain-001",
+      "category": "langchain",
+      "question": "LangChain 是什么？",
+      "expected_keywords": ["LangChain", "framework", "agents"]
+    },
+    {
+      "id": "langchain-002",
+      "category": "langchain",
+      "question": "LangChain 生态包含哪些产品？",
+      "expected_keywords": ["LangGraph", "LangSmith", "Deep Agents"]
+    },
+    {
+      "id": "langchain-003",
+      "category": "langchain",
+      "question": "为什么选择用 LangChain 开发 LLM 应用？",
+      "expected_keywords": ["interoperability", "modular", "rapid prototyping"]
+    },
+    {
+      "id": "ragnxus-001",
+      "category": "ragnxus",
+      "question": "RAGNEXUS 的架构包含哪些组件？",
+      "expected_keywords": ["rag_api.py", "rag_advanced.py", "rag_multiagent.py"]
+    },
+    {
+      "id": "ragnxus-002",
+      "category": "ragnxus",
+      "question": "RAGNEXUS 提供哪些 API 接口？",
+      "expected_keywords": ["/query", "/agent/write", "/kb/docs"]
+    },
+    {
+      "id": "ragnxus-003",
+      "category": "ragnxus",
+      "question": "RAGNEXUS 的检索评测结论是什么？",
+      "expected_keywords": ["Recall", "Reranker", "混合"]
+    },
+    {
+      "id": "basics-001",
+      "category": "basics",
+      "question": "Transformer 架构是哪年由谁提出的？",
+      "expected_keywords": ["Attention Is All You Need", "Google", "2017"]
+    },
+    {
+      "id": "basics-002",
+      "category": "basics",
+      "question": "PyTorch 的动态计算图有什么特点？",
+      "expected_keywords": ["动态计算图", "Define-by-Run"]
+    },
+    {
+      "id": "semantic-001",
+      "category": "semantic",
+      "question": "如何让 LLM 记住用户的长期偏好？",
+      "expected_keywords": ["无状态", "Memory", "记忆"]
+    },
+    {
+      "id": "negative-001",
+      "category": "negative",
+      "question": "markdown-body 的 CSS 样式规则有哪些？",
+      "expected_keywords": ["markdown-body", "hljs"]
+    }
+  ]
+}
