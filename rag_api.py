@@ -324,11 +324,19 @@ TOOLS = [
 
 SEARCH_N_RESULTS = 3
 
+# 混合检索权重（生产与评测统一口径 = sparse 偏关键词）。
+# 2026-08-07 全量评测（40 题 × 4 路，零 token）：
+#   hybrid 1.0/1.0: R@5 0.39 MRR 0.58 Hit@5 0.72
+#   hybrid 1.0/2.0: R@5 0.47 MRR 0.68 Hit@5 0.88  ← 胜出，定为此口径
+# 注意：原生产 sparse=2.0 与评测 1.0/1.0 不一致，曾导致评测数字低估真实能力。
+HYBRID_DENSE_WEIGHT = 1.0
+HYBRID_SPARSE_WEIGHT = 2.0
+
 
 def _tool_search(query: str) -> str:
     hs = _get_hybrid_search()
     result = hs.search(query, top_k=SEARCH_N_RESULTS * 2,
-                       dense_weight=1.0, sparse_weight=2.0)
+                       dense_weight=HYBRID_DENSE_WEIGHT, sparse_weight=HYBRID_SPARSE_WEIGHT)
     hybrid = result.get("hybrid_top", [])
     if hybrid:
         return "\n".join(item["text"] for item in hybrid)
@@ -341,7 +349,7 @@ def _tool_search(query: str) -> str:
 def _tool_search_chunks(query: str) -> list:
     hs = _get_hybrid_search()
     result = hs.search(query, top_k=SEARCH_N_RESULTS * 2,
-                       dense_weight=1.0, sparse_weight=2.0)
+                       dense_weight=HYBRID_DENSE_WEIGHT, sparse_weight=HYBRID_SPARSE_WEIGHT)
     hybrid = result.get("hybrid_top", [])
     if hybrid:
         return [item["text"] for item in hybrid]
@@ -518,7 +526,7 @@ def health(request: Request):
         "tools": list(TOOL_IMPLS.keys()),
         "auth_required": True,
         "rate_limit": f"{RATE_LIMIT}/min",
-        "version": "0.7.0",
+        "version": "0.7.1",
     }
 
 @app.post("/query")

@@ -400,3 +400,24 @@ COPY rag_api.py rag_advanced.py rag_multiagent.py pdf_parser.py ocr_client.py .
 
 - 旧镜像 `ragnxus-rag-api:0.5.17-backup`、`chroma_db_old_0.5.17`、`.wheels/` 暂留（回滚保险 + build 弹药），确认稳定后可删
 - torch 仍是 pypi 标准版（带 2.5GB CUDA 依赖），以后可换 `+cpu` 变体把镜像砍到 1/4（需 download.pytorch.org 可达，当前网络下未做）
+
+---
+
+## 14. 两套检索口径统一 + 权重定档（2026-08-07）
+
+**问题**：生产路径 `/query`（`_tool_search_chunks`）用 sparse=2.0 偏关键词权重，评测路径 `/query/hybrid` 默认 1.0/1.0 → 评测数字不代表生产，8/3 基线（hybrid 0.39）低估了系统真实能力。
+
+**处理（评测驱动，不拍脑袋）**：
+1. `eval_rag.py` 加临时对比路 `hybrid_w2`（sparse=2.0），40 题 × 4 路全量对比（零 token）
+2. 结果（R@5 / MRR / Hit@5）：hybrid 1.0/2.0 = **0.47 / 0.68 / 0.88** 全面胜出 1.0/1.0 = 0.39 / 0.58 / 0.72 → 统一到 sparse=2.0
+3. `rag_api.py`：`HYBRID_DENSE_WEIGHT=1.0` / `HYBRID_SPARSE_WEIGHT=2.0` 常量化，`_tool_search` / `_tool_search_chunks` / 评测三处同口径；版本 0.7.0 → 0.7.1
+4. 顺带验证：8/3 基线（dense 0.27 / hybrid 0.39 / reranked 0.27）**完全可复现**（评测确定性）；Reranker 无增益结论二次确认
+
+**坑：评测触发限流**：4 策略 × 40 题 = 160 次请求 >> 默认限流 30/min → 大量 429，汇总表只剩前 8 题小样本噪音（当时 hybrid 0.55 之类的假数字）。修复：
+- `eval_rag.py` `api_post` 加 429 指数退避重试（2s/4s/6s/8s/10s，6 次）
+- 评测时临时 `$env:RAG_RATE_LIMIT="1000"` 重启后端
+
+**面试素材**：
+- "评测驱动架构决策"实证：不拍脑袋改权重，先跑对比评测拿数据再定
+- 限流与评测的冲突处理：评测脚本要尊重生产限流（重试）或临时放宽，不能绕过
+- 旧 README 评测表（eval_retrieval.py 5 题小样本）已标注历史存档，新口径在 README 检索评测节

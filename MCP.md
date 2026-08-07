@@ -91,7 +91,9 @@ Settings → MCP → Add new MCP server：
 
 ### Codex（API 模式）
 
-Codex CLI 的配置里按 stdio MCP server 注册，命令同上。
+已在 `~/.codex/config.toml` 注册（`[mcp_servers.ragnexus]`，command=python + PYTHONIOENCODING=utf-8），**实测通过**：Codex 新会话可见 retrieve_knowledge/kb_status 工具，能直接检索知识库。Key 不写入配置（server 自动从 .env 读）。
+
+前提：RAGNEXUS 后端 8000 在跑。
 
 ## 工具清单
 

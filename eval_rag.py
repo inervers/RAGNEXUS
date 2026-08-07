@@ -19,6 +19,7 @@ import os
 import re
 import sys
 import time
+import urllib.error
 import urllib.request
 from datetime import datetime
 
@@ -32,9 +33,11 @@ LLM_MODEL = os.getenv("LLM_MODEL", "deepseek-v4-flash")
 HDR = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 
 # 检索策略 -> (/query/hybrid 参数, 结果字段)
+# 口径说明：hybrid = dense 1.0 + sparse 2.0（2026-08-07 全量评测胜出，生产/评测统一）；
+# reranked 保留为反面证据（连续两轮评测：中文小语料下 Reranker 无增益）。
 STRATEGIES = [
     ("dense",    {"use_reranker": False}, "dense_top"),
-    ("hybrid",   {"use_reranker": False}, "hybrid_top"),
+    ("hybrid",   {"use_reranker": False, "sparse_weight": 2.0}, "hybrid_top"),
     ("reranked", {"use_reranker": True},  "reranked"),
 ]
 
@@ -61,15 +64,27 @@ API_KEY = os.getenv("RAG_API_KEY", API_KEY)
 
 # ---------------------------------------------------------------- HTTP
 
-def api_post(path, body, timeout=90):
-    req = urllib.request.Request(
-        f"{API}{path}",
-        data=json.dumps(body).encode("utf-8"),
-        headers=HDR,
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+def api_post(path, body, timeout=90, retries=6):
+    """POST JSON。429 限流时指数退避重试（后端默认限流 30 次/分钟，评测多策略并发必触发）。"""
+    for attempt in range(retries):
+        req = urllib.request.Request(
+            f"{API}{path}",
+            data=json.dumps(body).encode("utf-8"),
+            headers=HDR,
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            if e.code == 429 and attempt < retries - 1:
+                wait = 2 * (attempt + 1)  # 2s, 4s, 6s, 8s, 10s
+                print(f" [429 限流，{wait}s 后重试]", end="", flush=True)
+                time.sleep(wait)
+                continue
+            raise
+    raise RuntimeError("api_post 重试耗尽")
+
 
 
 def llm_chat(messages, temperature=0):
