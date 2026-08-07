@@ -219,6 +219,24 @@ curl.exe -X POST http://localhost:8000/agent/write -H "Content-Type: application
 
 > **结论：** 混合检索显著优于单路向量（R@5 +0.22，Hit@5 +0.30）；偏关键词权重（sparse=2.0）+ jieba 中文分词（MRR +0.09）；Reranker 在中文小语料无增益，连续两轮评测验证，默认关闭。
 
+---
+
+## 性能压测（2026-08-07）
+
+`eval/benchmark.py` 并发打 `/query/hybrid`（检索层，与生产同口径 sparse=2.0，零 LLM 成本），问题池取评测集前 10 题：
+
+| 场景 | QPS | P50 | P95 | 说明 |
+|------|:---:|:---:|:---:|------|
+| 单并发基线 | 38 | 22ms | 42ms | 真实单请求延迟 |
+| 20 并发（单进程） | 63 | 321ms | 397ms | GIL 瓶颈：jieba/BM25/RRF 纯 Python 串行 |
+| 20 并发（4 worker） | **109** | **170ms** | **246ms** | 多进程后 QPS +72%，P50 -47% |
+
+```powershell
+python eval/benchmark.py --concurrency 20 --duration 30
+```
+
+> 注：压测前把后端限流调高（`$env:RAG_RATE_LIMIT="10000"`），否则全是 429；多 worker 后限流为 per-process 语义（见 docs/OPS-NOTES.md 第 16 节）。
+
 运行方法（检索层零 token）：
 
 ```powershell

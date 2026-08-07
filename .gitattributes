@@ -1,0 +1,12 @@
+# 统一行尾：commit 存 LF，checkout 按平台转换（Windows 默认 CRLF）
+# 解决 pre-commit mixed-line-ending 反复拦截的问题
+* text=auto
+
+# 二进制文件不转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary

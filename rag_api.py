@@ -707,11 +707,14 @@ def agent_write(req: AgentWriteRequest, request: Request):
 if __name__ == "__main__":
     import uvicorn
     logger.info("=" * 50)
-    logger.info("RAG Agent API (Production v0.7.0)")
+    logger.info("RAG Agent API (Production v0.7.2)")
     logger.info(f"API Key 鉴权：启用")
     logger.info(f"速率限制：{RATE_LIMIT} 次/分钟")
     logger.info(f"知识库：{_doc_count()} 个块")
     logger.info(f"结构化日志：启用")
     logger.info(f"用法：X-API-Key header + X-Trace-Id header(可选)")
     logger.info("=" * 50)
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # v0.7.1：统一生产/评测检索口径（sparse=2.0）；v0.7.2：压测优化，多 worker 提升并发吞吐
+    # 注意：uvicorn 传 app 对象时不能带 workers，必须传字符串 "rag_api:app"
+    # 限流为进程内实现，多 worker 后变为 per-process 语义（4 进程 × RAG_RATE_LIMIT）
+    uvicorn.run("rag_api:app", host="0.0.0.0", port=8000, workers=4)

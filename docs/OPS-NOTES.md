@@ -448,3 +448,30 @@ COPY rag_api.py rag_advanced.py rag_multiagent.py pdf_parser.py ocr_client.py .
 - 分词一致性：索引和查询必须同一分词器，否则词表 mismatch
 - 中文分词双刃剑：切词可能引入噪声，必须评测验证（本次无噪声回退）
 - 依赖降级设计：jieba 缺失自动回退正则，环境没装也不崩
+
+---
+
+## 16. 检索层压测 + 多 worker 优化（2026-08-07）
+
+**动机**：harness 复盘 P2 短板——无压测证据。
+
+**工具**：`eval/benchmark.py`（纯标准库 threading + urllib）：并发打 `/query/hybrid`（sparse_weight=2.0 与生产同口径，top_k=10，零 LLM 成本）；问题池取评测集前 10 题（真实分布）；区分 200/429/错误。**坑**：后端鉴权是 `X-API-Key` header，不是 `Authorization: Bearer`（首轮全 401）。
+
+**基线（单进程）**：
+
+| 场景 | QPS | P50 | P95 |
+|---|---|---|---|
+| 单并发 | 38 | 22ms | 42ms | 真实延迟健康，max 759ms 是冷启动 |
+| 20 并发 | 63 | 321ms | 397ms | 延迟 ×14，QPS 仅 ×1.6 = 半串行特征 |
+
+**根因**：jieba 分词 / BM25 打分 / RRF 融合是纯 Python CPU 密集，20 线程同时跑被 GIL 串行化；torch embedding 能释放 GIL 但占请求耗时比例小。`/query/hybrid` 虽是同步 def（FastAPI 丢线程池），仍受 GIL 限制。
+
+**修复**：uvicorn 多 worker。`rag_api.py` 启动改 `uvicorn.run("rag_api:app", ..., workers=4)`；`docker-compose.yml` rag-api 加 `command` 覆盖。**坑**：uvicorn.run 传 app 对象时不能带 workers 参数（会报错），必须传字符串 `"rag_api:app"`。
+
+**复测（4 worker，20 并发）**：QPS 63→109（+72%），P50 321→170ms（-47%），P95 397→246ms，成功率 100%。P99 略劣化（503ms）——CPU 核数成新天花板（4 worker × torch 多线程争抢），非瓶颈转移。
+
+**trade-off（面试诚实讲）**：
+- 限流器为进程内存实现 → 多 worker 后 per-process 语义（4 × RAG_RATE_LIMIT）。要严格全局限额需 Redis，当前规模过度设计
+- 内存 ×4：每个 worker 加载 MiniLM（~90MB/进程）
+
+**面试素材**：数据发现 GIL 瓶颈（延迟 ×14 vs QPS ×1.6 的半串行特征）→ 多进程方案 → 复测验证闭环；uvicorn workers 必须传字符串 app path 的坑。
