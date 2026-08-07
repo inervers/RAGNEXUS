@@ -14,6 +14,19 @@ try:
 except ImportError:
     BM25Okapi = None
 
+# 中文分词：jieba 优先（pip install jieba），缺包回退正则。
+# 原实现 re.findall(r"\w+") 对中文整串匹配（"混合检索"是一个 token），
+# 查询"检索"无法命中；jieba 切成"混合/检索"后关键词匹配能力显著增强。
+# 注意：索引与查询必须用同一 _tokenize，否则词表 mismatch。
+try:
+    import jieba
+
+    def _tokenize(text: str) -> list[str]:
+        # 小写 + jieba 切词 + 过滤空白/纯标点 token
+        return [t for t in jieba.lcut(text.lower()) if t.strip() and not re.fullmatch(r"[\W_]+\Z", t)]
+except ImportError:
+    _tokenize = lambda text: re.findall(r"\w+", text.lower())
+
 # sentence-transformers：用于 Cross-Encoder
 try:
     from sentence_transformers import CrossEncoder
@@ -33,14 +46,14 @@ class HybridSearch:
         self.bm25 = None
         self.corpus_docs = corpus_docs or []
         if BM25Okapi is not None and self.corpus_docs:
-            tokenized = [re.findall(r"\w+", d.lower()) for d in self.corpus_docs]
+            tokenized = [_tokenize(d) for d in self.corpus_docs]
             self.bm25 = BM25Okapi(tokenized)
 
     def set_corpus(self, docs: list[str]):
         """设置/更新 BM25 语料库"""
         self.corpus_docs = docs
         if BM25Okapi is not None:
-            tokenized = [re.findall(r"\w+", d.lower()) for d in docs]
+            tokenized = [_tokenize(d) for d in docs]
             self.bm25 = BM25Okapi(tokenized)
 
     def dense_search(self, query: str, top_k: int = 10) -> list[dict]:
@@ -63,7 +76,7 @@ class HybridSearch:
         """BM25 稀疏检索"""
         if self.bm25 is None:
             return []
-        tokens = re.findall(r"\w+", query.lower())
+        tokens = _tokenize(query)
         scores = self.bm25.get_scores(tokens)
         ranked = sorted(
             enumerate(scores), key=lambda x: x[1], reverse=True
