@@ -110,31 +110,70 @@ def llm_chat(messages, temperature=0):
 
 # ---------------------------------------------------------------- 指标
 
-def recall_at_k(docs, keywords, k):
-    """top-k 中命中任一关键词的文档占比（允许一个文档命中多次，归一化按 min(k, len)）"""
-    top = docs[:k]
-    if not top:
-        return 0.0
-    hits = 0
-    for d in top:
-        text = (d.get("text") or d.get("document") or "").lower()
-        if any(kw.lower() in text for kw in keywords):
-            hits += 1
-    return hits / min(k, len(top))
+def _relevant_id_set(relevant_ids):
+    if not relevant_ids:
+        raise ValueError("relevant_ids 必须包含至少一个 chunk ID")
+    normalized = set()
+    for index, relevant_id in enumerate(relevant_ids):
+        if not isinstance(relevant_id, str) or not relevant_id.strip():
+            raise ValueError(f"relevant_ids[{index}] 必须是非空字符串")
+        normalized.add(relevant_id)
+    return normalized
 
 
-def hit_at_k(docs, keywords, k):
-    """top-k 中是否存在至少一个相关文档（0/1）"""
-    return 1.0 if recall_at_k(docs, keywords, k) > 0 else 0.0
+def _top_doc_ids(docs, k):
+    if k <= 0:
+        raise ValueError("k 必须大于 0")
+    ids = []
+    for index, doc in enumerate(docs[:k]):
+        doc_id = doc.get("id")
+        if not isinstance(doc_id, str) or not doc_id.strip():
+            raise ValueError(f"docs[{index}].id 必须是非空字符串")
+        ids.append(doc_id)
+    return ids
 
 
-def mrr(docs, keywords):
-    """第一个相关文档的倒数排名，无则 0"""
-    for i, d in enumerate(docs, 1):
-        text = (d.get("text") or d.get("document") or "").lower()
-        if any(kw.lower() in text for kw in keywords):
-            return 1.0 / i
+def recall_at_k(docs, relevant_ids, k):
+    """Top-K 命中的 canonical chunk ID 占全部 relevant chunk IDs 的比例。"""
+    relevant = _relevant_id_set(relevant_ids)
+    retrieved = set(_top_doc_ids(docs, k))
+    return len(retrieved & relevant) / len(relevant)
+
+
+def hit_at_k(docs, relevant_ids, k):
+    """Top-K 是否至少命中一个 relevant chunk（0/1）。"""
+    relevant = _relevant_id_set(relevant_ids)
+    retrieved = set(_top_doc_ids(docs, k))
+    return 1.0 if retrieved & relevant else 0.0
+
+
+def mrr_at_k(docs, relevant_ids, k=10):
+    """前 K 位中第一个 relevant chunk 的倒数排名，无命中则为 0。"""
+    relevant = _relevant_id_set(relevant_ids)
+    for rank, doc_id in enumerate(_top_doc_ids(docs, k), 1):
+        if doc_id in relevant:
+            return 1.0 / rank
     return 0.0
+
+
+def score_retrieval_result(docs, relevant_ids):
+    """对成功的检索响应评分；缺 ground truth 时明确标记为不可评分。"""
+    if not relevant_ids:
+        return {
+            "status": "unscored",
+            "reason": "missing_relevant_chunk_ids",
+        }
+    metrics = {
+        "recall_at_5": recall_at_k(docs, relevant_ids, 5),
+        "recall_at_10": recall_at_k(docs, relevant_ids, 10),
+        "mrr_at_10": mrr_at_k(docs, relevant_ids, 10),
+        "hit_rate_at_5": hit_at_k(docs, relevant_ids, 5),
+    }
+    return {
+        "status": "empty" if not docs else "ok",
+        "n": len(docs),
+        "metrics": metrics,
+    }
 
 
 # ---------------------------------------------------------------- 生成层 judge
@@ -176,25 +215,51 @@ def judge_one(question, docs, answer):
 
 # ---------------------------------------------------------------- 主流程
 
-def run_retrieval(item):
-    """单题检索层：三策略各跑一遍，返回指标"""
-    out = {}
-    for name, params, field in STRATEGIES:
-        try:
-            data = api_post("/query/hybrid",
-                            {"question": item["question"], "top_k": 10, **params})
-            docs = data.get("result", {}).get(field, []) or []
-            kws = item.get("expected_keywords", [])
-            out[name] = {
-                "recall5": recall_at_k(docs, kws, 5),
-                "recall10": recall_at_k(docs, kws, 10),
-                "hit5": hit_at_k(docs, kws, 5),
-                "mrr": mrr(docs, kws),
-                "n": len(docs),
-            }
-        except Exception as e:
-            out[name] = {"error": str(e)[:100]}
-    return out
+def evaluate_strategy(item, strategy, post=api_post):
+    """评测单个检索策略，并把质量失败与执行失败分开。"""
+    _, params, field = strategy
+    relevant_ids = item.get("relevant_chunk_ids")
+    if not relevant_ids:
+        return {
+            "status": "unscored",
+            "reason": "missing_relevant_chunk_ids",
+        }
+    try:
+        data = post(
+            "/query/hybrid",
+            {"question": item["question"], "top_k": 10, **params},
+        )
+        result = data.get("result") if isinstance(data, dict) else None
+        if not isinstance(result, dict) or field not in result:
+            raise ValueError(f"API 响应缺少 result.{field}")
+        docs = result[field]
+        if not isinstance(docs, list):
+            raise ValueError(f"API 响应 result.{field} 必须是列表")
+        if params.get("use_reranker"):
+            reranker_status = result.get("reranker_status")
+            if not isinstance(reranker_status, dict):
+                raise ValueError("API 响应缺少 result.reranker_status")
+            mode = reranker_status.get("mode")
+            if mode == "fallback":
+                return {
+                    "status": "fallback",
+                    "reason": reranker_status.get("reason") or "unknown",
+                    "n": len(docs),
+                }
+            if mode != "cross_encoder":
+                raise ValueError(f"未知 reranker_status.mode: {mode!r}")
+        return score_retrieval_result(docs, relevant_ids)
+    except Exception as e:
+        return {"status": "error", "reason": str(e)[:100]}
+
+
+def run_retrieval(item, post=api_post):
+    """单题检索层：三策略各跑一遍，返回带状态的指标。"""
+    return {
+        name: evaluate_strategy(item, strategy, post=post)
+        for strategy in STRATEGIES
+        for name in [strategy[0]]
+    }
 
 
 def run_generation(item):
@@ -219,6 +284,66 @@ def run_generation(item):
 def avg(vals):
     vals = [v for v in vals if isinstance(v, (int, float))]
     return round(sum(vals) / len(vals), 2) if vals else None
+
+
+METRIC_NAMES = (
+    "recall_at_5",
+    "recall_at_10",
+    "mrr_at_10",
+    "hit_rate_at_5",
+)
+
+
+def aggregate_retrieval_results(question_results):
+    """仅汇总真实评分项，并保留每种执行状态的计数。"""
+    summary = {}
+    for name, _, _ in STRATEGIES:
+        counts = {
+            "total": 0,
+            "scored": 0,
+            "ok": 0,
+            "empty": 0,
+            "error": 0,
+            "unscored": 0,
+            "fallback": 0,
+        }
+        values = {metric: [] for metric in METRIC_NAMES}
+        for entry in question_results:
+            outcome = entry.get("retrieval", {}).get(name)
+            if not isinstance(outcome, dict):
+                continue
+            counts["total"] += 1
+            status = outcome.get("status", "error")
+            if status in counts:
+                counts[status] += 1
+            if status not in {"ok", "empty"}:
+                continue
+            counts["scored"] += 1
+            metrics = outcome.get("metrics", {})
+            for metric in METRIC_NAMES:
+                value = metrics.get(metric)
+                if isinstance(value, (int, float)):
+                    values[metric].append(value)
+        summary[name] = {
+            "counts": counts,
+            "metrics": {metric: avg(values[metric]) for metric in METRIC_NAMES},
+        }
+    return summary
+
+
+def format_progress_status(inner_errors, fatal_error=None, notices=None):
+    """生成可在 Windows GBK 等窄字符控制台安全输出的进度文本。"""
+    if fatal_error:
+        return f"ERROR {fatal_error[:40]}"
+    if inner_errors:
+        return "WARN " + "; ".join(inner_errors)
+    if notices:
+        return "; ".join(dict.fromkeys(notices))
+    return "OK"
+
+
+def result_output_message(path):
+    return f"评测结果已写入 {path}"
 
 
 def main():
@@ -255,26 +380,36 @@ def main():
         print(f"[{i}/{len(items)}] {item['question'][:44]}", end="", flush=True)
         entry = {"id": qid, "question": item["question"], "category": item.get("category", "")}
         inner_errors = []
+        notices = []
+        fatal_error = None
         try:
             if do_retrieval:
                 entry["retrieval"] = run_retrieval(item)
                 for name, _, _ in STRATEGIES:
                     r = entry["retrieval"].get(name, {})
-                    if "error" in r:
-                        inner_errors.append(f"{name}:{r['error'][:60]}")
+                    if r.get("status") == "error":
+                        inner_errors.append(f"{name}:{r.get('reason', '')[:60]}")
+                    elif r.get("status") == "unscored":
+                        notices.append(
+                            f"UNSCORED {r.get('reason', 'missing_ground_truth')}"
+                        )
+                    elif r.get("status") == "fallback":
+                        notices.append(
+                            f"FALLBACK {name}:{r.get('reason', 'unknown')}"
+                        )
             if do_generation:
                 entry["generation"] = run_generation(item)
                 if "error" in entry["generation"]:
                     inner_errors.append(f"gen:{entry['generation']['error'][:60]}")
-            ok = "✓"
-            if inner_errors:
-                ok = "⚠ " + "; ".join(inner_errors)
         except Exception as e:
             entry["error"] = str(e)[:100]
-            ok = f"✗ {str(e)[:40]}"
+            fatal_error = str(e)
         results["questions"].append(entry)
-        print(f"  {ok}", flush=True)
+        status = format_progress_status(inner_errors, fatal_error, notices)
+        print(f"  {status}", flush=True)
 
+    retrieval_summary = aggregate_retrieval_results(results["questions"])
+    results["retrieval_summary"] = retrieval_summary
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
     print("=" * 66)
@@ -282,24 +417,30 @@ def main():
 
     # ---------------------------------------------------------- 汇总
     print("\n## 检索层对比")
-    agg = {name: {"r5": [], "r10": [], "mrr": [], "hit5": []} for name, _, _ in STRATEGIES}
-    for e in results["questions"]:
-        for name, _, _ in STRATEGIES:
-            r = e.get("retrieval", {}).get(name, {})
-            if "error" not in r:
-                agg[name]["r5"].append(r["recall5"])
-                agg[name]["r10"].append(r["recall10"])
-                agg[name]["mrr"].append(r["mrr"])
-                agg[name]["hit5"].append(r["hit5"])
-
-    print(f"{'策略':<12}{'R@5':<8}{'R@10':<8}{'MRR':<8}{'Hit@5':<8}")
-    print("-" * 44)
+    print(f"{'策略':<12}{'R@5':<8}{'R@10':<8}{'MRR@10':<9}{'Hit@5':<8}{'scored/total':<14}")
+    print("-" * 59)
     for name, _, _ in STRATEGIES:
-        a = agg[name]
-        if not a["r5"]:
-            print(f"{name:<12}（无数据）")
+        item = retrieval_summary[name]
+        metrics = item["metrics"]
+        counts = item["counts"]
+        if not counts["scored"]:
+            print(
+                f"{name:<12}（无可评分数据；"
+                f"error={counts['error']} unscored={counts['unscored']} "
+                f"fallback={counts['fallback']}）"
+            )
             continue
-        print(f"{name:<12}{avg(a['r5']):<8}{avg(a['r10']):<8}{avg(a['mrr']):<8}{avg(a['hit5']):<8}")
+        print(
+            f"{name:<12}{metrics['recall_at_5']:<8}"
+            f"{metrics['recall_at_10']:<8}{metrics['mrr_at_10']:<9}"
+            f"{metrics['hit_rate_at_5']:<8}"
+            f"{counts['scored']}/{counts['total']:<12}"
+        )
+        if counts["empty"] or counts["error"] or counts["unscored"] or counts["fallback"]:
+            print(
+                f"  状态：empty={counts['empty']} error={counts['error']} "
+                f"unscored={counts['unscored']} fallback={counts['fallback']}"
+            )
 
     if do_generation:
         print("\n## 生成层（LLM-as-judge，1-5 分）")
@@ -318,7 +459,7 @@ def main():
                 print(f"  [{e['id']}] {e['question'][:40]}")
                 print(f"      judge: {e['generation'].get('reason', '')[:80]}")
 
-    print("\n汇总已写入 eval/results.md（如存在）")
+    print(f"\n{result_output_message(args.out)}")
 
 
 if __name__ == "__main__":

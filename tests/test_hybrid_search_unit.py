@@ -157,6 +157,32 @@ def test_reranker_fallback_deduplicates_ids():
     assert [item["id"] for item in result] == ["chunk-a", "chunk-b"]
 
 
+def test_reranker_fallback_respects_top_k_and_exposes_status():
+    reranker = rag_advanced.Reranker.__new__(rag_advanced.Reranker)
+    reranker.model = None
+    reranker._fallback_reason = "model_load_failed:OSError"
+    candidates = [
+        {"id": "chunk-a", "text": "A"},
+        {"id": "chunk-b", "text": "B"},
+        {"id": "chunk-c", "text": "C"},
+    ]
+
+    result = reranker.rerank("query", candidates, top_k=2)
+
+    assert [item["id"] for item in result] == ["chunk-a", "chunk-b"]
+    assert reranker.status() == {
+        "mode": "fallback",
+        "reason": "model_load_failed:OSError",
+    }
+
+
+def test_reranker_with_model_exposes_cross_encoder_status():
+    reranker = rag_advanced.Reranker.__new__(rag_advanced.Reranker)
+    reranker.model = FakeCrossEncoder()
+
+    assert reranker.status() == {"mode": "cross_encoder", "reason": None}
+
+
 @pytest.mark.parametrize("bad_id", [None, "", "  "])
 def test_reranker_rejects_invalid_candidate_id(bad_id):
     reranker = rag_advanced.Reranker.__new__(rag_advanced.Reranker)

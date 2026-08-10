@@ -665,7 +665,9 @@ def hybrid_query(req: HybridQueryRequest, request: Request):
         reranker = _get_reranker()
         candidates = select_reranker_candidates(result)
         result["reranked"] = reranker.rerank(req.question, candidates, top_k=5)
-        _log(trace_id, "reranker_done", candidates=len(candidates))
+        result["reranker_status"] = reranker.status()
+        _log(trace_id, "reranker_done", candidates=len(candidates),
+             mode=result["reranker_status"]["mode"])
     _log(trace_id, "hybrid_done", dense=len(result["dense_top"]),
          hybrid=len(result["hybrid_top"]))
     return {"result": result, "trace_id": trace_id}

@@ -186,14 +186,28 @@ class Reranker:
 
     def __init__(self, model_path: Optional[str] = None):
         self.model = None
+        self._fallback_reason = "cross_encoder_dependency_unavailable"
         if CrossEncoder is not None:
             try:
                 path = model_path or os.path.join(
                     os.path.dirname(__file__), "models", "cross-encoder"
                 )
                 self.model = CrossEncoder(path)
+                self._fallback_reason = None
             except Exception as e:
+                self._fallback_reason = f"model_load_failed:{type(e).__name__}"
                 print(f"Reranker 加载失败（可回退）: {e}")
+
+    def status(self) -> dict:
+        """返回实际执行模式，供 API 与评测区分精排和降级。"""
+        if self.model is not None:
+            return {"mode": "cross_encoder", "reason": None}
+        return {
+            "mode": "fallback",
+            "reason": getattr(
+                self, "_fallback_reason", "cross_encoder_unavailable"
+            ),
+        }
 
     def rerank(self, query: str, candidates: list[dict],
                top_k: int = 5) -> list[dict]:
@@ -217,7 +231,7 @@ class Reranker:
         if self.model is None or not candidates:
             return [{"id": c["id"], "text": c["text"],
                      "bi_score": c.get("score", 0), "ce_score": c.get("score", 0)}
-                    for c in candidates]
+                    for c in candidates[:top_k]]
 
         pairs = [(query, c["text"]) for c in candidates]
         ce_scores = self.model.predict(pairs)
