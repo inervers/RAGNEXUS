@@ -2,7 +2,8 @@ from pathlib import Path
 import os
 import subprocess
 
-os.environ.setdefault("RAGNEXUS_API_KEY", "mcp-unit-test-key-74114a4728754dc6")
+# Deliberately non-secret fixture: avoid resembling a provider credential.
+os.environ.setdefault("RAGNEXUS_API_KEY", "mcp-test-placeholder")
 
 import mcp_client_test
 import mcp_server
