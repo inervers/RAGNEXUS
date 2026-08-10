@@ -64,6 +64,14 @@ def test_runtime_embedding_revision_is_configurable_and_pinned_by_default():
     assert "local_files_only=True" in api
 
 
+def test_api_image_copies_local_runtime_dependencies():
+    for dockerfile_name in ("Dockerfile", "Dockerfile.legacy"):
+        dockerfile = _read(dockerfile_name)
+        assert "security_config.py" in dockerfile
+        assert "document_ingest.py" in dockerfile
+        assert "embedding_runtime.py" in dockerfile
+
+
 def test_snapshot_download_is_atomic_and_hash_checked(tmp_path):
     source = tmp_path / "source.bin"
     destination = tmp_path / "model.bin"
