@@ -209,7 +209,7 @@ curl.exe -X POST http://localhost:8000/agent/write -H "Content-Type: application
 
 ## 检索评测
 
-RAG-02 已将检索指标改为基于 `relevant_chunk_ids` 的 Recall@5/10、MRR@10 和 HitRate@5，并把 API error、empty、unscored、Reranker fallback 分开记录。旧 40 题只有关键词标注，迁移检查结果是三种策略各 `unscored=40`，因此旧 README/OPS 中的 Recall、MRR、HitRate 只保留为历史记录，不是当前成绩。
+RAG-02 已将检索指标改为基于 `relevant_chunk_ids` 的 Recall@5/10、MRR@10 和 HitRate@5，并把 API error、empty、unscored、Reranker fallback 分开记录。旧 40 题只有关键词标注，旧 README/OPS 中的 Recall、MRR、HitRate 只保留为历史记录，不是当前成绩。
 
 RAG-04 已建立隔离的 V2 corpus：
 
@@ -217,6 +217,20 @@ RAG-04 已建立隔离的 V2 corpus：
 - chunk ID：`doc_id#sha256(normalized_chunk_text)[:16]`。
 - corpus SHA256：`175a3b5f11b4db312418ebfb73ee1c5439519dd7a191faffc3bcaad0076c6802`。
 - `chroma_db_v2` 与 V1 `chroma_db` 独立；物化前必须停容器，禁止本地/容器并发访问同一 bind mount。
+
+RAG-05 已冻结绑定 V2 manifest 的新版 40 题：`exact` 10、`semantic` 8、`troubleshooting` 8、`multidoc` 6、`version_conflict` 4、`unanswerable` 4。其中 development 24 题用于配置迭代，heldout 16 题只在配置冻结后运行。所有正样本都绑定真实 doc/chunk ID 和 `doc_id@commit`；无答案题不伪造 relevant IDs。
+
+```powershell
+# 默认只运行 development 24 题
+python eval_rag.py --retrieval-only
+
+# 配置冻结后才显式解锁 heldout 16 题
+python eval_rag.py --retrieval-only --split heldout --allow-heldout
+```
+
+`eval/eval_set.schema.json` 固化字段契约，`eval_dataset.py` 还会严格验证题数、分类/split 分布、manifest SHA256、chunk 归属和来源提交。未带 `--allow-heldout` 请求 heldout/all 会在发送 HTTP 前失败。
+
+当前仍没有可对外引用的新版检索分数；RAG-06 将先用 development 选择 Dense/Hybrid/Reranker 与 Embedding 配置，冻结后再消费 heldout。40 题是当前项目知识域的回归集，不代表开放域泛化或生产 SLA。
 
 ```powershell
 # 生成确定性的 JSONL + manifest，不访问 Chroma

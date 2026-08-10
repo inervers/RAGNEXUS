@@ -5,8 +5,9 @@
 并对完整问答链路做 LLM-as-judge 打分（忠实度 + 相关性）。
 
 用法:
-  python eval_rag.py                           # 全量评测（检索层 + 生成层）
+  python eval_rag.py                           # development 24 题（检索层 + 生成层）
   python eval_rag.py --retrieval-only          # 只跑检索层（快，不调生成）
+  python eval_rag.py --split heldout --allow-heldout  # 解锁 heldout 16 题
   python eval_rag.py --generation-only         # 只跑生成层
   python eval_rag.py --set eval/eval_set.json  # 指定评测集
   python eval_rag.py --out eval/results.json   # 指定结果输出
@@ -22,6 +23,8 @@ import time
 import urllib.error
 import urllib.request
 from datetime import datetime
+
+from eval_dataset import load_and_validate_eval_set, select_questions
 
 # ---------------------------------------------------------------- 配置
 
@@ -349,15 +352,29 @@ def result_output_message(path):
 def main():
     ap = argparse.ArgumentParser(description="RAGNEXUS 检索+生成评测")
     ap.add_argument("--set", default="eval/eval_set.json")
+    ap.add_argument("--manifest", default="kb_v2/build/manifest.json")
     ap.add_argument("--out", default="eval/results.json")
+    ap.add_argument(
+        "--split",
+        choices=("development", "heldout", "all"),
+        default="development",
+        help="默认只跑可调优的 development；heldout/all 需显式解锁",
+    )
+    ap.add_argument(
+        "--allow-heldout",
+        action="store_true",
+        help="确认当前运行可以消费 heldout；冻结配置前不要使用",
+    )
     ap.add_argument("--retrieval-only", action="store_true")
     ap.add_argument("--generation-only", action="store_true")
     ap.add_argument("--max-questions", type=int, default=0, help="只跑前 N 题（调试用）")
     args = ap.parse_args()
 
-    with open(args.set, encoding="utf-8") as f:
-        evalset = json.load(f)
-    items = evalset["questions"] if isinstance(evalset, dict) else evalset
+    try:
+        evalset = load_and_validate_eval_set(args.set, args.manifest)
+        items = select_questions(evalset, args.split, args.allow_heldout)
+    except ValueError as exc:
+        ap.error(str(exc))
     if args.max_questions:
         items = items[: args.max_questions]
 
@@ -368,7 +385,8 @@ def main():
         do_generation = False
 
     results = {"generated_at": datetime.now().isoformat(timespec="seconds"),
-               "set": args.set, "n_questions": len(items),
+               "set": args.set, "manifest": args.manifest, "split": args.split,
+               "n_questions": len(items),
                "questions": []}
 
     print(f"RAGNEXUS 评测 | {len(items)} 题 | 检索层={do_retrieval} 生成层={do_generation}")
@@ -378,7 +396,8 @@ def main():
     for i, item in enumerate(items, 1):
         qid = item.get("id", i)
         print(f"[{i}/{len(items)}] {item['question'][:44]}", end="", flush=True)
-        entry = {"id": qid, "question": item["question"], "category": item.get("category", "")}
+        entry = {"id": qid, "question": item["question"],
+                 "category": item.get("category", ""), "split": item["split"]}
         inner_errors = []
         notices = []
         fatal_error = None

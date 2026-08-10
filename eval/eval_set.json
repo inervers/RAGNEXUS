@@ -1,250 +1,400 @@
 {
   "meta": {
-    "name": "RAGNEXUS eval set v1",
-    "created": "2026-08-02",
-    "based_on": "kb_export_20260802.json (190 chunks)",
-    "note": "expected_keywords 取自答案所在知识块中的独特词，用于检索层判分。category=negative 为脏数据探测题（CSS 垃圾块）。"
+    "name": "RAGNEXUS project-truth eval set V2",
+    "schema_version": 2,
+    "corpus_manifest_sha256": "8dc4e9a79100fe7b5f9e93fccb966dc59a64c592bd265de0c2c725aa5b9da0a8",
+    "frozen_at": "2026-08-10",
+    "usage_policy": "development 用于检索配置迭代；heldout 仅在 RAG-06 配置冻结后通过 --allow-heldout 运行"
   },
   "questions": [
     {
-      "id": "agent-001",
-      "category": "agent",
-      "question": "Agent 和 LLM 的本质区别是什么？Agent 由哪些模块组成？",
-      "expected_keywords": ["Memory", "Tool", "RAG", "MCP", "Skills"]
+      "id": "v2-001", "category": "exact", "split": "development", "difficulty": "easy",
+      "question": "RAGNEXUS 生产查询统一使用哪个检索服务？生成阶段为什么排除 search_knowledge？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["ragnexus:architecture:unified-retrieval:v1"],
+      "relevant_chunk_ids": ["ragnexus:architecture:unified-retrieval:v1#2fcb03d9e8100803"],
+      "answer_key_points": ["统一使用 RetrievalService", "避免同一请求产生第二套检索结果"],
+      "reference_answer": "生产 /query 与 /query/stream 都先调用 RetrievalService 做相同 Hybrid 检索；生成工具排除 search_knowledge，避免二次检索导致上下文与 trace 口径分叉。",
+      "source_versions": ["ragnexus:architecture:unified-retrieval:v1@0ec451d"]
     },
     {
-      "id": "agent-002",
-      "category": "agent",
-      "question": "LLM 有哪些天生缺陷？分别由 Agent 的哪些模块补齐？",
-      "expected_keywords": ["无状态", "Stateless", "RAG"]
+      "id": "v2-002", "category": "exact", "split": "development", "difficulty": "easy",
+      "question": "RAGNEXUS Docker Compose 对外暴露哪些端口，前端流量如何转发？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["ragnexus:deployment:docker-bind-mount:v1"],
+      "relevant_chunk_ids": ["ragnexus:deployment:docker-bind-mount:v1#8dc7ae17100cace4"],
+      "answer_key_points": ["前端 8080", "API 8000", "Nginx 转发前端 API 请求"],
+      "reference_answer": "Compose 暴露前端 8080 和 API 8000，前端容器中的 Nginx 承载静态资源并把 API 请求转发到后端。",
+      "source_versions": ["ragnexus:deployment:docker-bind-mount:v1@0ec451d"]
     },
     {
-      "id": "agent-003",
-      "category": "agent",
-      "question": "Tool 调用闭环中 tool_call_id 起什么作用？",
-      "expected_keywords": ["tool_call_id", "ToolMessage", "对齐"]
+      "id": "v2-003", "category": "exact", "split": "development", "difficulty": "easy",
+      "question": "知识库消失事故中，named volume 和本地 bind mount 分别看到了多少条数据？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["ragnexus:incident:storage-split:v1"],
+      "relevant_chunk_ids": ["ragnexus:incident:storage-split:v1#cdd1c783bdf43147"],
+      "answer_key_points": ["named volume 718", "本地 bind mount 7", "不是数据凭空消失"],
+      "reference_answer": "事故现场中 named volume 里是 718 条，而本地 bind mount 只看到 7 条；根因是访问了两个不同的持久化后端。",
+      "source_versions": ["ragnexus:incident:storage-split:v1@0ec451d"]
     },
     {
-      "id": "agent-004",
-      "category": "agent",
-      "question": "为什么 Tool 的处理函数必须是 async 异步的？",
-      "expected_keywords": ["async", "同步阻塞", "卡死"]
+      "id": "v2-004", "category": "exact", "split": "development", "difficulty": "easy",
+      "question": "MCP 的 retrieve_knowledge 工具允许的 top_k 范围是多少？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["ragnexus:integration:mcp-trace:v1"],
+      "relevant_chunk_ids": ["ragnexus:integration:mcp-trace:v1#cad0f48d1f6c467b"],
+      "answer_key_points": ["top_k 取值范围 1 到 10"],
+      "reference_answer": "retrieve_knowledge 的 top_k 参数限制为 1 到 10。",
+      "source_versions": ["ragnexus:integration:mcp-trace:v1@0ec451d"]
     },
     {
-      "id": "agent-005",
-      "category": "agent",
-      "question": "多个互相独立的 Tool 应该串行还是并行执行？为什么？",
-      "expected_keywords": ["Promise.all", "并行", "依赖"]
+      "id": "v2-005", "category": "exact", "split": "development", "difficulty": "easy",
+      "question": "Tradewind 为什么没有在当前小规模本地知识库中引入向量数据库？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["tradewind:adr:local-retrieval-and-data-safety:v1"],
+      "relevant_chunk_ids": ["tradewind:adr:local-retrieval-and-data-safety:v1#12909b58f5ec5f67"],
+      "answer_key_points": ["数据规模小", "本地交付与敏感数据边界优先", "避免额外部署复杂度"],
+      "reference_answer": "当前数据量和场景不足以抵消向量库带来的部署、迁移与数据边界成本，因此先采用可解释的本地检索。",
+      "source_versions": ["tradewind:adr:local-retrieval-and-data-safety:v1@86ff53e"]
     },
     {
-      "id": "agent-006",
-      "category": "agent",
-      "question": "Claude Code 本质上由什么组成？",
-      "expected_keywords": ["Claude Code", "fs", "CLI"]
+      "id": "v2-006", "category": "exact", "split": "development", "difficulty": "medium",
+      "question": "Prism 的 context compaction 每轮怎样缩短 evidence？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["prism:architecture:review-hitl-evaluation:v1"],
+      "relevant_chunk_ids": ["prism:architecture:review-hitl-evaluation:v1#6aaadb007f1b7785"],
+      "answer_key_points": ["反复选择最长 evidence", "保留头部 40%", "最低 150 字符", "保持引用编号集合"],
+      "reference_answer": "超过预算后复制 evidence，反复挑最长条目，保留其头部 40% 且不少于 150 字符，并追加截断标记，从而不删除整条 evidence、保持引用编号稳定。",
+      "source_versions": ["prism:architecture:review-hitl-evaluation:v1@c329fb6"]
     },
     {
-      "id": "agent-007",
-      "category": "agent",
-      "question": "Agent 落地为什么选 LangChain 而不是手搓原生 API？",
-      "expected_keywords": ["LangChain", "抽象层", "标准化"]
+      "id": "v2-007", "category": "exact", "split": "heldout", "difficulty": "medium",
+      "question": "RAGNEXUS Hybrid baseline 的 Dense 与 Sparse 权重是多少？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["ragnexus:integration:mcp-trace:v1"],
+      "relevant_chunk_ids": ["ragnexus:integration:mcp-trace:v1#43a02ba64158cabe"],
+      "answer_key_points": ["Dense 1", "Sparse 2", "只是 baseline"],
+      "reference_answer": "当前显式 Hybrid baseline 使用 Dense:Sparse = 1:2；这是待 V2 评测验证的基线，不是已经证明最优的比例。",
+      "source_versions": ["ragnexus:integration:mcp-trace:v1@0ec451d"]
     },
     {
-      "id": "agent-008",
-      "category": "agent",
-      "question": "Tool 的 description 和 schema 对调用准确率有什么影响？",
-      "expected_keywords": ["description", "schema", "zod"]
+      "id": "v2-008", "category": "exact", "split": "heldout", "difficulty": "medium",
+      "question": "Prism 归档 baseline 的任务数、平均重写次数和平均耗时分别是多少？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["prism:architecture:review-hitl-evaluation:v1"],
+      "relevant_chunk_ids": ["prism:architecture:review-hitl-evaluation:v1#09b6dd30f40606a0"],
+      "answer_key_points": ["6 个任务", "平均重写 0.667 次", "平均耗时 339.067 秒"],
+      "reference_answer": "归档 baseline 包含 6 个任务，平均重写 0.667 次，平均耗时 339.067 秒。",
+      "source_versions": ["prism:architecture:review-hitl-evaluation:v1@c329fb6"]
     },
     {
-      "id": "crawler-001",
-      "category": "crawler",
-      "question": "BOSS 直聘爬虫用的什么框架？核心技巧是什么？",
-      "expected_keywords": ["DrissionPage", "接口监听", "joblist"]
+      "id": "v2-009", "category": "exact", "split": "heldout", "difficulty": "medium",
+      "question": "Tradewind 浏览器绿色版启动器绑定哪个地址和端口？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["tradewind:delivery:portable-support:v1"],
+      "relevant_chunk_ids": ["tradewind:delivery:portable-support:v1#7e863af35d324511"],
+      "answer_key_points": ["127.0.0.1:8101"],
+      "reference_answer": "浏览器绿色版启动器只绑定 127.0.0.1:8101。",
+      "source_versions": ["tradewind:delivery:portable-support:v1@86ff53e"]
     },
     {
-      "id": "crawler-002",
-      "category": "crawler",
-      "question": "从 BOSS 直聘接口返回的 JSON 中，岗位列表在哪个数据节点？",
-      "expected_keywords": ["zpData", "jobList"]
+      "id": "v2-010", "category": "exact", "split": "heldout", "difficulty": "easy",
+      "question": "ChromaDB 0.5.17 到 1.5.9 的迁移中，重新嵌入时沿用了哪个模型系列？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["ragnexus:migration:chroma-0.5.17-to-1.5.9:v1"],
+      "relevant_chunk_ids": ["ragnexus:migration:chroma-0.5.17-to-1.5.9:v1#13fb6b5b761574ff"],
+      "answer_key_points": ["沿用 MiniLM embedding"],
+      "reference_answer": "迁移导出原记录后，在新库中沿用相同的 MiniLM embedding 重新嵌入。",
+      "source_versions": ["ragnexus:migration:chroma-0.5.17-to-1.5.9:v1@0ec451d"]
+    },
+
+    {
+      "id": "v2-011", "category": "semantic", "split": "development", "difficulty": "medium",
+      "question": "为什么 bind mount 解决了“容器和宿主机看到不同知识库”的问题，却没有解决并发写安全？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["ragnexus:incident:storage-split:v1"],
+      "relevant_chunk_ids": ["ragnexus:incident:storage-split:v1#23c2b0062b16ef60"],
+      "answer_key_points": ["统一了存储路径", "没有提供并发控制、schema 迁移或备份能力"],
+      "reference_answer": "bind mount 只让容器和宿主机指向同一物理目录；它不等于锁、事务、schema migration 或 backup，所以仍要停止 API 后串行维护。",
+      "source_versions": ["ragnexus:incident:storage-split:v1@0ec451d"]
     },
     {
-      "id": "crawler-003",
-      "category": "crawler",
-      "question": "爬虫如何实现自动翻页？",
-      "expected_keywords": ["scroll.to_bottom", "懒加载"]
+      "id": "v2-012", "category": "semantic", "split": "development", "difficulty": "medium",
+      "question": "为什么 MCP Server 被设计成 HTTP 薄壳，而不是直接 import RAG API 的内部模块？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["ragnexus:integration:mcp-trace:v1"],
+      "relevant_chunk_ids": ["ragnexus:integration:mcp-trace:v1#3429269bfd69ab1f", "ragnexus:integration:mcp-trace:v1#b8579ce9188ff87f"],
+      "answer_key_points": ["API 持有唯一检索逻辑", "避免进程内重复初始化与逻辑分叉", "通过 HTTP 复用契约"],
+      "reference_answer": "MCP 只负责协议适配并经 HTTP 调 API，让 API 继续拥有唯一检索实现，避免 MCP 进程再初始化一套模型/数据库或复制内部逻辑。",
+      "source_versions": ["ragnexus:integration:mcp-trace:v1@0ec451d"]
     },
     {
-      "id": "crawler-004",
-      "category": "crawler",
-      "question": "爬取数据写入 CSV 用什么方式？为什么用 get 方法取值？",
-      "expected_keywords": ["csv.DictWriter", "job.get", "健壮性"]
+      "id": "v2-013", "category": "semantic", "split": "development", "difficulty": "medium",
+      "question": "为什么 SSE 返回 HTTP 200 仍不能证明一次问答成功？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["ragnexus:incident:container-ssl-eof:v1"],
+      "relevant_chunk_ids": ["ragnexus:incident:container-ssl-eof:v1#2be3df6add702aaa"],
+      "answer_key_points": ["200 只表示流已建立", "后续生成可在流内失败或空结束"],
+      "reference_answer": "SSE 的 200 仅说明响应流建立成功；LLM 调用可能在之后失败，若没有结构化 error event，客户端甚至只看到空流。",
+      "source_versions": ["ragnexus:incident:container-ssl-eof:v1@0ec451d"]
     },
     {
-      "id": "crawler-005",
-      "category": "crawler",
-      "question": "爬取 BOSS 直聘时如何规避反爬机制？",
-      "expected_keywords": ["time.sleep", "反爬", "封禁"]
+      "id": "v2-014", "category": "semantic", "split": "development", "difficulty": "medium",
+      "question": "Tradewind 的“完整交付闭环”为什么不等同于“完整业务闭环”？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["tradewind:architecture:delivery-loop:v1"],
+      "relevant_chunk_ids": ["tradewind:architecture:delivery-loop:v1#98410d5bd48e7b93", "tradewind:architecture:delivery-loop:v1#f2e90be97888628b"],
+      "answer_key_points": ["已完成软件交付闭环", "未证明真实触达、回复或成交结果"],
+      "reference_answer": "项目完成了采集、生成、自检、记忆、界面与可分发运行的产品链，但没有接入并验证真实发送、回复追踪和成交转化，所以只能称软件交付闭环。",
+      "source_versions": ["tradewind:architecture:delivery-loop:v1@86ff53e"]
     },
     {
-      "id": "cursor-001",
-      "category": "cursor",
-      "question": "Cursor 让智能体重造 SQLite 的实验输入是什么？",
-      "expected_keywords": ["835 页", "SQLite", "手册"]
+      "id": "v2-015", "category": "semantic", "split": "development", "difficulty": "hard",
+      "question": "为什么 Prism 的长期记忆已经接入 Planner，也不能据此声称它提升了研究质量？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["prism:architecture:review-hitl-evaluation:v1"],
+      "relevant_chunk_ids": ["prism:architecture:review-hitl-evaluation:v1#70c3dc2c651f5786", "prism:architecture:review-hitl-evaluation:v1#29265f3493476c68"],
+      "answer_key_points": ["只证明数据流接通", "没有 memory on/off 效果评测", "摘要与字符重叠检索存在质量边界"],
+      "reference_answer": "写入和召回能证明记忆进入了 Planner prompt，但未做 memory on/off A/B；同时只存报告前 300 字、按字符重叠召回且无新鲜度治理，因此不能推导质量收益。",
+      "source_versions": ["prism:architecture:review-hitl-evaluation:v1@c329fb6"]
     },
     {
-      "id": "cursor-002",
-      "category": "cursor",
-      "question": "智能体蜂群中规划器和执行者的成本分布有什么特点？",
-      "expected_keywords": ["规划器", "执行者", "token"]
+      "id": "v2-016", "category": "semantic", "split": "heldout", "difficulty": "hard",
+      "question": "为什么 RAGNEXUS 的 trace 中必须记录实际 reranker mode，而不能只记录 use_reranker=true？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["ragnexus:architecture:unified-retrieval:v1"],
+      "relevant_chunk_ids": ["ragnexus:architecture:unified-retrieval:v1#c6f47ce37dff3801"],
+      "answer_key_points": ["配置意图不等于实际执行", "需要区分 cross-encoder 与 fallback", "保证评测可解释"],
+      "reference_answer": "use_reranker 只是请求意图；模型缺失或执行失败时可能 fallback。记录实际 mode 才能防止把降级结果误算成 Cross-Encoder 效果。",
+      "source_versions": ["ragnexus:architecture:unified-retrieval:v1@0ec451d"]
     },
     {
-      "id": "cursor-003",
-      "category": "cursor",
-      "question": "旧蜂群踩了哪些坑？新蜂群如何解决合并冲突？",
-      "expected_keywords": ["脑裂", "冲突", "第三方智能体"]
+      "id": "v2-017", "category": "semantic", "split": "heldout", "difficulty": "medium",
+      "question": "为什么 Tradewind 的 ZIP checksum 能证明完整性，却不能证明软件安全？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["tradewind:delivery:portable-support:v1"],
+      "relevant_chunk_ids": ["tradewind:delivery:portable-support:v1#86b9b08ca5f6fb67"],
+      "answer_key_points": ["checksum 只能发现文件是否变化", "不等于代码签名或安全审计"],
+      "reference_answer": "SHA256 可以验证拿到的 ZIP 是否与发布文件一致，但不能证明发布者身份、代码未含漏洞或产物经过安全审计。",
+      "source_versions": ["tradewind:delivery:portable-support:v1@86ff53e"]
     },
     {
-      "id": "cursor-004",
-      "category": "cursor",
-      "question": "Cursor SQLite 实验最有价值的结论是什么？",
-      "expected_keywords": ["编排", "模型", "重要"]
+      "id": "v2-018", "category": "semantic", "split": "heldout", "difficulty": "hard",
+      "question": "Prism 为什么要给 Reviewer 循环设上限，但达到上限时不应把状态写成 approved？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["prism:architecture:review-hitl-evaluation:v1"],
+      "relevant_chunk_ids": ["prism:architecture:review-hitl-evaluation:v1#82eaa4f4c3912049"],
+      "answer_key_points": ["上限保证成本与终止性", "terminated 与质量通过是不同语义", "应保留 remaining issues"],
+      "reference_answer": "有界循环能控制成本并保证终止，但预算耗尽只是 terminated，不代表问题解决；应单列终止原因和剩余问题，而不是强制 approved。",
+      "source_versions": ["prism:architecture:review-hitl-evaluation:v1@c329fb6"]
+    },
+
+    {
+      "id": "v2-019", "category": "troubleshooting", "split": "development", "difficulty": "medium",
+      "question": "容器内调用 LLM 出现 SSL EOF，但宿主机正常。第一轮应如何隔离根因？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["ragnexus:incident:container-ssl-eof:v1"],
+      "relevant_chunk_ids": ["ragnexus:incident:container-ssl-eof:v1#910895a03377c668", "ragnexus:incident:container-ssl-eof:v1#957dfb25a5e1f165", "ragnexus:incident:container-ssl-eof:v1#c2a5615b3ee8f167"],
+      "answer_key_points": ["分别验证宿主机和容器网络", "检查代理环境与 TLS 路径", "用最小请求区分应用逻辑与网络问题"],
+      "reference_answer": "先用同一目标做宿主机/容器最小 HTTPS 请求对照，再检查容器代理环境、DNS/TLS 与应用 client 配置，以证据区分网络路径和业务代码。",
+      "source_versions": ["ragnexus:incident:container-ssl-eof:v1@0ec451d"]
     },
     {
-      "id": "cursor-005",
-      "category": "cursor",
-      "question": "为什么规划器不参与实现能提升智能体集群的可扩展性？",
-      "expected_keywords": ["上下文", "规划器", "worker"]
+      "id": "v2-020", "category": "troubleshooting", "split": "development", "difficulty": "medium",
+      "question": "切换 Chroma 持久化目录前，为什么要先停止 API，并在切换后核对数量？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["ragnexus:incident:storage-split:v1"],
+      "relevant_chunk_ids": ["ragnexus:incident:storage-split:v1#a6d27ca826d22b34"],
+      "answer_key_points": ["避免本地与容器并发访问同一库", "验证切换指向预期数据集", "减少损坏与误判"],
+      "reference_answer": "先停 API 可避免两个进程同时读写共享 Chroma；切换后核对集合与记录数，确认新路径确实是目标库而不是另一个空库或旧库。",
+      "source_versions": ["ragnexus:incident:storage-split:v1@0ec451d"]
     },
     {
-      "id": "rag-001",
-      "category": "rag",
-      "question": "RAG 的基本流程是什么？解决了 LLM 的什么问题？",
-      "expected_keywords": ["检索", "幻觉", "知识截止"]
+      "id": "v2-021", "category": "troubleshooting", "split": "development", "difficulty": "hard",
+      "question": "Reranker 请求成功但实际发生 fallback，评测脚本应该怎样处理，为什么？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["ragnexus:architecture:unified-retrieval:v1"],
+      "relevant_chunk_ids": ["ragnexus:architecture:unified-retrieval:v1#66854b10c193449e"],
+      "answer_key_points": ["单列 fallback 状态", "不计入 Cross-Encoder 得分", "保留原因与 selected trace"],
+      "reference_answer": "脚本应把该次标为 fallback 并排除出 reranked 的有效评分，同时记录原因；否则会把 Hybrid 兜底结果错误归因给 Cross-Encoder。",
+      "source_versions": ["ragnexus:architecture:unified-retrieval:v1@0ec451d"]
     },
     {
-      "id": "rag-002",
-      "category": "rag",
-      "question": "混合检索为什么比单路检索更好？",
-      "expected_keywords": ["稠密", "稀疏", "BM25"]
+      "id": "v2-022", "category": "troubleshooting", "split": "development", "difficulty": "hard",
+      "question": "Tradewind 一次整体覆盖产品数据导致用户导入记录丢失，正确的修复边界是什么？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["tradewind:adr:local-retrieval-and-data-safety:v1"],
+      "relevant_chunk_ids": ["tradewind:adr:local-retrieval-and-data-safety:v1#95eb526343dbdd88"],
+      "answer_key_points": ["读取当前数据后按 ID 增删改", "原子替换", "首启模板仅在目标不存在时复制"],
+      "reference_answer": "不能再用种子文件整体覆盖运行数据；应读取现状、按 ID 修改、原子替换，并保证默认模板只在首次且目标文件不存在时初始化。",
+      "source_versions": ["tradewind:adr:local-retrieval-and-data-safety:v1@86ff53e"]
     },
     {
-      "id": "rag-003",
-      "category": "rag",
-      "question": "RRF 融合的公式是什么？",
-      "expected_keywords": ["RRF", "Reciprocal Rank Fusion", "排名"]
+      "id": "v2-023", "category": "troubleshooting", "split": "development", "difficulty": "hard",
+      "question": "Prism 重复运行同一 topic 可能复用旧 checkpoint state，应怎样修复评测隔离？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["prism:architecture:review-hitl-evaluation:v1"],
+      "relevant_chunk_ids": ["prism:architecture:review-hitl-evaluation:v1#bd1901cd668bcc99", "prism:architecture:review-hitl-evaluation:v1#5e88e90a26478c41"],
+      "answer_key_points": ["每次评测使用新的 run_id/thread", "或显式清理、隔离 checkpoint namespace", "避免 append reducer 累积旧 evidence/trace"],
+      "reference_answer": "每次 eval 应生成唯一 run_id/thread，或显式清理并隔离 checkpoint namespace，防止稳定 topic ID 与 append reducer 把旧 evidence、trace 带进新运行。",
+      "source_versions": ["prism:architecture:review-hitl-evaluation:v1@c329fb6"]
     },
     {
-      "id": "rag-004",
-      "category": "rag",
-      "question": "Bi-Encoder 和 Cross-Encoder 有什么区别？",
-      "expected_keywords": ["Bi-Encoder", "Cross-Encoder", "交叉注意力"]
+      "id": "v2-024", "category": "troubleshooting", "split": "heldout", "difficulty": "hard",
+      "question": "SSE 发生生成错误时客户端只看到空流，接口契约应补什么？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["ragnexus:incident:container-ssl-eof:v1"],
+      "relevant_chunk_ids": ["ragnexus:incident:container-ssl-eof:v1#d7a963aa198a35ea"],
+      "answer_key_points": ["结构化 error event", "明确终止状态与错误类型", "客户端不能只依赖 HTTP 200"],
+      "reference_answer": "流内应发送结构化 error event 和明确终止状态，让客户端区分正常完成、空答案与后端失败，而不是把 HTTP 200 当成功。",
+      "source_versions": ["ragnexus:incident:container-ssl-eof:v1@0ec451d"]
     },
     {
-      "id": "rag-005",
-      "category": "rag",
-      "question": "典型的两阶段检索流水线是什么？",
-      "expected_keywords": ["粗筛", "精排", "Top-100"]
+      "id": "v2-025", "category": "troubleshooting", "split": "heldout", "difficulty": "hard",
+      "question": "Tradewind Tauri sidecar 目前为什么不应重新分发，应该先改哪里？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["tradewind:delivery:portable-support:v1"],
+      "relevant_chunk_ids": ["tradewind:delivery:portable-support:v1#585f2958b67aacb3", "tradewind:delivery:portable-support:v1#ebd2df800221ed1d"],
+      "answer_key_points": ["spec 直接引用运行时 data", "可能把用户内容打入二进制", "改为唯一干净 seed 并重建审计"],
+      "reference_answer": "sidecar spec 当前直接打包运行目录的 products/emails，其中可能有用户数据；应先与浏览器版共用干净 seed，删除旧产物，重建并审计解包资源。",
+      "source_versions": ["tradewind:delivery:portable-support:v1@86ff53e"]
     },
     {
-      "id": "multiagent-001",
-      "category": "multiagent",
-      "question": "Multi-Agent 系统相比单一 Agent 有什么优势？",
-      "expected_keywords": ["Multi-Agent", "分工", "专业化"]
+      "id": "v2-026", "category": "troubleshooting", "split": "heldout", "difficulty": "hard",
+      "question": "Prism Reviewer 的 JSON 解析失败会 fail-open，怎样修复才不会把执行故障当质量通过？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["prism:architecture:review-hitl-evaluation:v1"],
+      "relevant_chunk_ids": ["prism:architecture:review-hitl-evaluation:v1#39fe0f772cc85a4f"],
+      "answer_key_points": ["解析失败单列 error 状态", "不能设置 approved", "保留原始响应并允许受控重试或终止"],
+      "reference_answer": "解析失败应进入独立 error/invalid-verdict 状态，记录原响应并受控重试或终止，绝不能默认 approved。",
+      "source_versions": ["prism:architecture:review-hitl-evaluation:v1@c329fb6"]
+    },
+
+    {
+      "id": "v2-027", "category": "multidoc", "split": "development", "difficulty": "hard",
+      "question": "结合 RAGNEXUS 统一检索与 MCP 设计，说明一次 MCP 检索怎样保持与生产查询相同的结果口径。",
+      "should_abstain": false,
+      "relevant_doc_ids": ["ragnexus:architecture:unified-retrieval:v1", "ragnexus:integration:mcp-trace:v1"],
+      "relevant_chunk_ids": ["ragnexus:architecture:unified-retrieval:v1#2fcb03d9e8100803", "ragnexus:integration:mcp-trace:v1#3429269bfd69ab1f", "ragnexus:integration:mcp-trace:v1#c41a921dc450e4af"],
+      "answer_key_points": ["MCP 经 HTTP 调统一 API", "API 内 RetrievalService 是唯一检索实现", "selected 与 trace 原样传播"],
+      "reference_answer": "MCP 只做协议转换，经 HTTP 调 API；API 内仍由 RetrievalService 执行策略并返回 selected chunks 与 trace，MCP 传播这些字段而不自行重排，因此与生产路径共享口径。",
+      "source_versions": ["ragnexus:architecture:unified-retrieval:v1@0ec451d", "ragnexus:integration:mcp-trace:v1@0ec451d"]
     },
     {
-      "id": "multiagent-002",
-      "category": "multiagent",
-      "question": "Agent 间通信为什么用结构化协议比纯文本更可靠？",
-      "expected_keywords": ["JSON Schema", "结构化通信", "契约"]
+      "id": "v2-028", "category": "multidoc", "split": "development", "difficulty": "hard",
+      "question": "从 RAGNEXUS 的存储事故和容器 SSL 事故中，总结可复用的故障定位方法。",
+      "should_abstain": false,
+      "relevant_doc_ids": ["ragnexus:incident:storage-split:v1", "ragnexus:incident:container-ssl-eof:v1"],
+      "relevant_chunk_ids": ["ragnexus:incident:storage-split:v1#2ca547c7055cdf2f", "ragnexus:incident:container-ssl-eof:v1#910895a03377c668"],
+      "answer_key_points": ["先确认实际资源身份与路径", "做宿主机/容器最小对照", "按证据逐层隔离存储、网络、应用"],
+      "reference_answer": "共同方法是先验证系统实际连接的资源身份，再做最小对照实验：存储核对路径与记录数，网络对照宿主机和容器请求，逐层排除而不先改业务逻辑。",
+      "source_versions": ["ragnexus:incident:storage-split:v1@0ec451d", "ragnexus:incident:container-ssl-eof:v1@0ec451d"]
     },
     {
-      "id": "multiagent-003",
-      "category": "multiagent",
-      "question": "状态机在 Multi-Agent 流程控制中有什么优势？",
-      "expected_keywords": ["状态机", "守卫", "重试"]
+      "id": "v2-029", "category": "multidoc", "split": "development", "difficulty": "hard",
+      "question": "比较 Tradewind 与 Prism 的“指标不能过度解读”边界，各举一个真实例子。",
+      "should_abstain": false,
+      "relevant_doc_ids": ["tradewind:delivery:portable-support:v1", "prism:architecture:review-hitl-evaluation:v1"],
+      "relevant_chunk_ids": ["tradewind:delivery:portable-support:v1#86b9b08ca5f6fb67", "prism:architecture:review-hitl-evaluation:v1#ed25f2df596d0932"],
+      "answer_key_points": ["Tradewind checksum 不等于安全", "Prism review_approved 不等于问题全部解决"],
+      "reference_answer": "Tradewind 的 ZIP SHA256 只能证明文件完整性，不能证明签名或安全；Prism 的评审通过率包含 forced pass，只表示最终状态为 approved，不能证明质量问题已解决。",
+      "source_versions": ["tradewind:delivery:portable-support:v1@86ff53e", "prism:architecture:review-hitl-evaluation:v1@c329fb6"]
     },
     {
-      "id": "multiagent-004",
-      "category": "multiagent",
-      "question": "持久化记忆对 Agent 有什么帮助？",
-      "expected_keywords": ["持久化记忆", "记忆库", "多轮迭代"]
+      "id": "v2-030", "category": "multidoc", "split": "development", "difficulty": "hard",
+      "question": "三个项目分别有哪些“数据或状态隔离”风险？请给出一项对应治理措施。",
+      "should_abstain": false,
+      "relevant_doc_ids": ["ragnexus:incident:storage-split:v1", "tradewind:adr:local-retrieval-and-data-safety:v1", "prism:architecture:review-hitl-evaluation:v1"],
+      "relevant_chunk_ids": ["ragnexus:incident:storage-split:v1#23c2b0062b16ef60", "tradewind:adr:local-retrieval-and-data-safety:v1#95eb526343dbdd88", "prism:architecture:review-hitl-evaluation:v1#5e88e90a26478c41"],
+      "answer_key_points": ["RAGNEXUS 共享库并发访问需串行维护", "Tradewind 种子与运行数据要分离并原子写", "Prism 每次评测需唯一 run/thread 隔离 checkpoint"],
+      "reference_answer": "RAGNEXUS 的共享 Chroma 需停服务串行维护；Tradewind 要分开干净 seed 与用户运行数据并按 ID 原子更新；Prism 要为每次评测生成唯一 run/thread 或清理 checkpoint namespace。",
+      "source_versions": ["ragnexus:incident:storage-split:v1@0ec451d", "tradewind:adr:local-retrieval-and-data-safety:v1@86ff53e", "prism:architecture:review-hitl-evaluation:v1@c329fb6"]
     },
     {
-      "id": "docker-001",
-      "category": "docker",
-      "question": "Dockerfile 层缓存优化的关键原则是什么？",
-      "expected_keywords": ["层缓存", "变化频率", "基础镜像"]
+      "id": "v2-031", "category": "multidoc", "split": "heldout", "difficulty": "hard",
+      "question": "比较 RAGNEXUS 的检索 trace 与 Prism 的执行 trace：为什么两者都不能只记录配置意图？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["ragnexus:architecture:unified-retrieval:v1", "prism:architecture:review-hitl-evaluation:v1"],
+      "relevant_chunk_ids": ["ragnexus:architecture:unified-retrieval:v1#c6f47ce37dff3801", "prism:architecture:review-hitl-evaluation:v1#f3be188293a8b8b9"],
+      "answer_key_points": ["要记录实际执行模式与降级", "Prism 当前 token/time trace 有遗漏或口径偏差", "否则指标归因错误"],
+      "reference_answer": "RAGNEXUS 要记录 reranker 实际是 Cross-Encoder 还是 fallback；Prism 也要记录真实 token 与关键路径耗时，而不是遗漏 revise 或累加并行节点。两者都需用实际执行证据避免错误归因。",
+      "source_versions": ["ragnexus:architecture:unified-retrieval:v1@0ec451d", "prism:architecture:review-hitl-evaluation:v1@c329fb6"]
     },
     {
-      "id": "docker-002",
-      "category": "docker",
-      "question": "Docker Compose 中 bind mount 和 named volume 有什么区别？",
-      "expected_keywords": ["bind mount", "named volume", "持久化"]
+      "id": "v2-032", "category": "multidoc", "split": "heldout", "difficulty": "hard",
+      "question": "结合 RAGNEXUS 与 Tradewind 的部署材料，说明为什么“构建成功”不能直接等同于“可交付运行”。",
+      "should_abstain": false,
+      "relevant_doc_ids": ["ragnexus:deployment:docker-bind-mount:v1", "tradewind:delivery:portable-support:v1"],
+      "relevant_chunk_ids": ["ragnexus:deployment:docker-bind-mount:v1#96f580c7c50562ec", "tradewind:delivery:portable-support:v1#3768d835049e9fd8"],
+      "answer_key_points": ["RAGNEXUS 镜像依赖本地备份/缓存边界", "Tradewind 构建脚本不自动执行 smoke", "需独立验证运行与数据边界"],
+      "reference_answer": "RAGNEXUS 当前镜像构建受本地备份/依赖链约束；Tradewind 也明确把 ZIP 生成与 smoke 门禁分开。因此构建产物存在只证明 build 阶段完成，还要验证启动、接口、依赖和数据隔离。",
+      "source_versions": ["ragnexus:deployment:docker-bind-mount:v1@0ec451d", "tradewind:delivery:portable-support:v1@86ff53e"]
+    },
+
+    {
+      "id": "v2-033", "category": "version_conflict", "split": "development", "difficulty": "hard",
+      "question": "Prism 归档 baseline 能否证明当前 HEAD 的质量与成本？请说明版本原因。",
+      "should_abstain": false,
+      "relevant_doc_ids": ["prism:architecture:review-hitl-evaluation:v1"],
+      "relevant_chunk_ids": ["prism:architecture:review-hitl-evaluation:v1#5c8fc8d03c3317b8", "prism:architecture:review-hitl-evaluation:v1#13f840c612537165"],
+      "answer_key_points": ["不能", "baseline 是 W4 版本", "之后加入 LocalSearch、SQLite 记忆/checkpointer、compaction 与 thread 隔离", "当前 HEAD 缺新鲜回归报告"],
+      "reference_answer": "不能。归档 baseline 生成于 W4，后续实现又加入 LocalSearch、SQLite 记忆/checkpointer、context compaction 和 thread 隔离；当前 HEAD c329fb6 没有对应的新鲜回归报告。",
+      "source_versions": ["prism:architecture:review-hitl-evaluation:v1@c329fb6"]
     },
     {
-      "id": "docker-003",
-      "category": "docker",
-      "question": "如何缩小 PyTorch 应用的 Docker 镜像体积？",
-      "expected_keywords": ["镜像体积", "CPU-only", "9GB"]
+      "id": "v2-034", "category": "version_conflict", "split": "development", "difficulty": "hard",
+      "question": "Tradewind 现有 portable ZIP 是否代表当前源码？为什么不能这么说？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["tradewind:delivery:portable-support:v1"],
+      "relevant_chunk_ids": ["tradewind:delivery:portable-support:v1#7524a66a82d9d024", "tradewind:delivery:portable-support:v1#86b9b08ca5f6fb67"],
+      "answer_key_points": ["不能", "产物对应 a91afe3", "当前源码 86ff53e 多一个 proxy-safe startup 修复", "本轮未做 EXE smoke"],
+      "reference_answer": "不能。现有 ZIP 的 VERSION 指向 a91afe3，而当前源码是 86ff53e，多了一个 proxy-safe startup 修复；且本轮未执行 EXE smoke，因此只能描述旧产物。",
+      "source_versions": ["tradewind:delivery:portable-support:v1@86ff53e"]
     },
     {
-      "id": "langchain-001",
-      "category": "langchain",
-      "question": "LangChain 是什么？",
-      "expected_keywords": ["LangChain", "framework", "agents"]
+      "id": "v2-035", "category": "version_conflict", "split": "heldout", "difficulty": "hard",
+      "question": "Prism README 所称“SQLite checkpointer 持久化”在默认新安装中是否有保证？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["prism:architecture:review-hitl-evaluation:v1"],
+      "relevant_chunk_ids": ["prism:architecture:review-hitl-evaluation:v1#cb35e672544cf138"],
+      "answer_key_points": ["没有保证", "requirements 缺 langgraph-checkpoint-sqlite", "缺包会降级 MemorySaver", "需补依赖和跨进程测试"],
+      "reference_answer": "没有保证。代码虽优先用 SqliteSaver，但 requirements 未包含 langgraph-checkpoint-sqlite；新安装可能降级为进程内 MemorySaver，需补依赖并通过跨进程恢复测试。",
+      "source_versions": ["prism:architecture:review-hitl-evaluation:v1@c329fb6"]
     },
     {
-      "id": "langchain-002",
-      "category": "langchain",
-      "question": "LangChain 生态包含哪些产品？",
-      "expected_keywords": ["LangGraph", "LangSmith", "Deep Agents"]
+      "id": "v2-036", "category": "version_conflict", "split": "heldout", "difficulty": "hard",
+      "question": "RAGNEXUS 文档中的旧 benchmark 数字现在能否作为 Hybrid/Reranker 增益证据？",
+      "should_abstain": false,
+      "relevant_doc_ids": ["ragnexus:deployment:docker-bind-mount:v1"],
+      "relevant_chunk_ids": ["ragnexus:deployment:docker-bind-mount:v1#ae44712e4258559b"],
+      "answer_key_points": ["不能", "旧 benchmark 有口径/实现问题", "需基于 V2 ground truth 重新评测"],
+      "reference_answer": "不能。旧 benchmark 存在实现或判分口径问题，这些数字已被标记为无效；Hybrid/Reranker 增益必须用 V2 ground truth 重新运行后再声称。",
+      "source_versions": ["ragnexus:deployment:docker-bind-mount:v1@0ec451d"]
+    },
+
+    {
+      "id": "v2-037", "category": "unanswerable", "split": "development", "difficulty": "medium",
+      "question": "RAGNEXUS 在 1,000 名并发用户下的 P95 延迟是多少？",
+      "should_abstain": true,
+      "relevant_doc_ids": [], "relevant_chunk_ids": [], "answer_key_points": [], "reference_answer": "", "source_versions": []
     },
     {
-      "id": "langchain-003",
-      "category": "langchain",
-      "question": "为什么选择用 LangChain 开发 LLM 应用？",
-      "expected_keywords": ["interoperability", "modular", "rapid prototyping"]
+      "id": "v2-038", "category": "unanswerable", "split": "development", "difficulty": "medium",
+      "question": "Tradewind 已经通过真实客户邮件发送带来了多少成交额？",
+      "should_abstain": true,
+      "relevant_doc_ids": [], "relevant_chunk_ids": [], "answer_key_points": [], "reference_answer": "", "source_versions": []
     },
     {
-      "id": "ragnxus-001",
-      "category": "ragnxus",
-      "question": "RAGNEXUS 的架构包含哪些组件？",
-      "expected_keywords": ["rag_api.py", "rag_advanced.py", "rag_multiagent.py"]
+      "id": "v2-039", "category": "unanswerable", "split": "heldout", "difficulty": "medium",
+      "question": "Prism 的 Reviewer 相比人工专家评审提升了多少准确率？",
+      "should_abstain": true,
+      "relevant_doc_ids": [], "relevant_chunk_ids": [], "answer_key_points": [], "reference_answer": "", "source_versions": []
     },
     {
-      "id": "ragnxus-002",
-      "category": "ragnxus",
-      "question": "RAGNEXUS 提供哪些 API 接口？",
-      "expected_keywords": ["/query", "/agent/write", "/kb/docs"]
-    },
-    {
-      "id": "ragnxus-003",
-      "category": "ragnxus",
-      "question": "RAGNEXUS 的检索评测结论是什么？",
-      "expected_keywords": ["Recall", "Reranker", "混合"]
-    },
-    {
-      "id": "basics-001",
-      "category": "basics",
-      "question": "Transformer 架构是哪年由谁提出的？",
-      "expected_keywords": ["Attention Is All You Need", "Google", "2017"]
-    },
-    {
-      "id": "basics-002",
-      "category": "basics",
-      "question": "PyTorch 的动态计算图有什么特点？",
-      "expected_keywords": ["动态计算图", "Define-by-Run"]
-    },
-    {
-      "id": "semantic-001",
-      "category": "semantic",
-      "question": "如何让 LLM 记住用户的长期偏好？",
-      "expected_keywords": ["无状态", "Memory", "记忆"]
-    },
-    {
-      "id": "negative-001",
-      "category": "negative",
-      "question": "markdown-body 的 CSS 样式规则有哪些？",
-      "expected_keywords": ["markdown-body", "hljs"]
+      "id": "v2-040", "category": "unanswerable", "split": "heldout", "difficulty": "medium",
+      "question": "RAGNEXUS 当前生产环境每天有多少真实活跃用户？",
+      "should_abstain": true,
+      "relevant_doc_ids": [], "relevant_chunk_ids": [], "answer_key_points": [], "reference_answer": "", "source_versions": []
     }
   ]
 }

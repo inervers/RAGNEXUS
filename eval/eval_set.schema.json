@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ragnexus.local/schemas/eval-set-v2.json",
+  "title": "RAGNEXUS evaluation set V2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["meta", "questions"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "schema_version", "corpus_manifest_sha256", "frozen_at", "usage_policy"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "schema_version": {"const": 2},
+        "corpus_manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "frozen_at": {"type": "string", "format": "date"},
+        "usage_policy": {"type": "string", "minLength": 1}
+      }
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 40,
+      "maxItems": 40,
+      "items": {"$ref": "#/$defs/question"}
+    }
+  },
+  "$defs": {
+    "stringList": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "category", "split", "difficulty", "question", "should_abstain", "relevant_doc_ids", "relevant_chunk_ids", "answer_key_points", "reference_answer", "source_versions"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^v2-[0-9]{3}$"},
+        "category": {"enum": ["exact", "semantic", "troubleshooting", "multidoc", "version_conflict", "unanswerable"]},
+        "split": {"enum": ["development", "heldout"]},
+        "difficulty": {"enum": ["easy", "medium", "hard"]},
+        "question": {"type": "string", "minLength": 1},
+        "should_abstain": {"type": "boolean"},
+        "relevant_doc_ids": {"$ref": "#/$defs/stringList"},
+        "relevant_chunk_ids": {"$ref": "#/$defs/stringList"},
+        "answer_key_points": {"$ref": "#/$defs/stringList"},
+        "reference_answer": {"type": "string"},
+        "source_versions": {"$ref": "#/$defs/stringList"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"should_abstain": {"const": true}}, "required": ["should_abstain"]},
+          "then": {
+            "properties": {
+              "category": {"const": "unanswerable"},
+              "relevant_doc_ids": {"maxItems": 0},
+              "relevant_chunk_ids": {"maxItems": 0},
+              "answer_key_points": {"maxItems": 0},
+              "reference_answer": {"maxLength": 0},
+              "source_versions": {"maxItems": 0}
+            }
+          },
+          "else": {
+            "properties": {
+              "category": {"not": {"const": "unanswerable"}},
+              "relevant_doc_ids": {"minItems": 1},
+              "relevant_chunk_ids": {"minItems": 1},
+              "answer_key_points": {"minItems": 1},
+              "reference_answer": {"minLength": 1},
+              "source_versions": {"minItems": 1}
+            }
+          }
+        }
+      ]
+    }
+  }
+}
