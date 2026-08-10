@@ -13,19 +13,26 @@ from __future__ import annotations
 
 import asyncio
 import os
+from pathlib import Path
+import sys
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-SERVER_CMD = ["python", "C:/Users/inervers/Desktop/OH-WorkSpace/RAGNEXUS/mcp_server.py"]
 TEST_QUERY = "混合检索"
 
 # 保险：强制子进程输出 UTF-8，避免 Windows 按 GBK 编码中文污染协议流
 SERVER_ENV = {**os.environ, "PYTHONIOENCODING": "utf-8"}
 
 
+def server_command() -> tuple[str, list[str]]:
+    server_path = Path(__file__).resolve().with_name("mcp_server.py")
+    return sys.executable, [str(server_path)]
+
+
 async def main() -> None:
-    params = StdioServerParameters(command=SERVER_CMD[0], args=SERVER_CMD[1:], env=SERVER_ENV)
+    command, args = server_command()
+    params = StdioServerParameters(command=command, args=args, env=SERVER_ENV)
 
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as session:
@@ -35,18 +42,30 @@ async def main() -> None:
 
             # 2. tools/list：发现服务端暴露的工具
             tools = await session.list_tools()
+            tool_names = {tool.name for tool in tools.tools}
+            assert tool_names == {"kb_status", "retrieve_knowledge"}, tool_names
             print(f"[2] tools/list OK: {len(tools.tools)} 个工具")
             for t in tools.tools:
                 print(f"    - {t.name}")
 
             # 3. tools/call：调用 kb_status（走 /health，验证连通性）
             status = await session.call_tool("kb_status", {})
+            assert status.isError is not True
+            assert status.structuredContent is not None
+            assert status.structuredContent["ok"] is True
+            assert status.structuredContent["trace_id"]
             print(f"[3] call kb_status -> {status.content[0].text}")
 
             # 4. tools/call：调用 retrieve_knowledge（走 /query/hybrid，验证鉴权+检索）
             result = await session.call_tool(
                 "retrieve_knowledge", {"query": TEST_QUERY, "top_k": 3}
             )
+            assert result.isError is not True
+            assert result.structuredContent is not None
+            assert result.structuredContent["ok"] is True
+            assert result.structuredContent["strategy"] == "hybrid"
+            assert result.structuredContent["trace_id"]
+            assert all(chunk["id"] for chunk in result.structuredContent["chunks"])
             text = result.content[0].text
             print(f"[4] call retrieve_knowledge('{TEST_QUERY}') -> {len(text)} 字符")
             print("---- 返回内容（前 500 字）----")

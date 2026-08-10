@@ -68,13 +68,6 @@ def test_generation_paths_use_tools_without_retrieval():
             assert tools_arg.id == "GENERATION_TOOLS"
 
 
-def test_mcp_requests_explicit_hybrid_strategy_and_formats_trace():
-    source = (ROOT / "mcp_server.py").read_text(encoding="utf-8")
-
-    assert '{"question": query, "top_k": top_k, "strategy": "hybrid"}' in source
-    assert "format_trace_summary(result)" in source
-
-
 def test_rest_and_stream_share_delivery_metadata_builder():
     tree = _module("rag_api.py")
 

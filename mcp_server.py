@@ -29,7 +29,6 @@ import uuid
 
 import httpx
 from fastmcp import FastMCP
-from retrieval_service import format_trace_summary
 
 # stdio 模式下 stdout 是 MCP 协议通道，只能传 JSON-RPC。
 # 强制 UTF-8，并把一切日志/提示打到 stderr，避免污染协议流（Windows 下默认
@@ -105,6 +104,9 @@ def _call_api(path: str, payload: dict | None = None) -> tuple[int, dict]:
         data = resp.json()
     except Exception:
         data = {"error": f"非 JSON 响应（HTTP {resp.status_code}）"}
+    response_trace = resp.headers.get("X-Trace-Id")
+    if response_trace and "trace_id" not in data:
+        data["trace_id"] = response_trace
     return resp.status_code, data
 
 
@@ -123,8 +125,25 @@ def _friendly_error(status: int, data: dict) -> str:
     return f"RAGNEXUS 错误：{err}" + (f"（trace_id={trace_id}）" if trace_id else "")
 
 
+def _error_payload(status: int, data: dict) -> dict:
+    codes = {
+        0: "connection_error",
+        401: "missing_api_key",
+        403: "invalid_api_key",
+        429: "rate_limited",
+    }
+    return {
+        "ok": False,
+        "error": {
+            "code": codes.get(status, "upstream_error"),
+            "message": _friendly_error(status, data),
+            "trace_id": data.get("trace_id"),
+        },
+    }
+
+
 @mcp.tool()
-def retrieve_knowledge(query: str, top_k: int = 5) -> str:
+def retrieve_knowledge(query: str, top_k: int = 5) -> dict:
     """从 RAGNEXUS 知识库做混合检索（稠密向量 + BM25 + RRF 融合）。
 
     Args:
@@ -138,39 +157,55 @@ def retrieve_knowledge(query: str, top_k: int = 5) -> str:
     )
 
     if status != 200:
-        return _friendly_error(status, data)
+        return _error_payload(status, data)
 
     result = data.get("result", {})
-    hybrid = result.get("hybrid_top", [])
+    selected = result.get("selected", [])
     stats = result.get("stats", {})
-    if not hybrid:
-        return (
-            f"知识库中未检索到与「{query}」相关的内容"
-            f"（dense={stats.get('dense_count', 0)} 条，"
-            f"sparse={stats.get('sparse_count', 0)} 条）。\n"
-            f"（{format_trace_summary(result)}）"
-        )
-
-    lines = [f"查询「{query}」检索到 {len(hybrid)} 条相关内容：", ""]
-    for item in hybrid:
-        lines.append(f"[{item.get('id', '?')}] rrf={item.get('rrf_score', 0)}")
-        lines.append(item.get("text", "").strip())
-        lines.append("")
-    lines.append(f"（dense {stats.get('dense_count', 0)} 条 / BM25 {stats.get('sparse_count', 0)} 条 / 重叠 {stats.get('overlap', 0)}）")
-    lines.append(f"（{format_trace_summary(result)}）")
-    return "\n".join(lines)
+    trace = result.get("trace", {})
+    trace_id = data.get("trace_id") or trace.get("trace_id")
+    summary = (
+        f"查询「{query}」检索到 {len(selected)} 条相关内容"
+        if selected
+        else f"知识库中未检索到与「{query}」相关的内容"
+    )
+    return {
+        "ok": True,
+        "summary": summary,
+        "query": query,
+        "strategy": trace.get("strategy", "hybrid"),
+        "trace_id": trace_id,
+        "chunks": [
+            {
+                "id": item.get("id", ""),
+                "text": item.get("text", "").strip(),
+                "rrf_score": item.get("rrf_score", 0),
+            }
+            for item in selected
+        ],
+        "stats": {
+            "dense_count": stats.get("dense_count", 0),
+            "sparse_count": stats.get("sparse_count", 0),
+            "overlap": stats.get("overlap", 0),
+        },
+    }
 
 
 @mcp.tool()
-def kb_status() -> str:
+def kb_status() -> dict:
     """查看 RAGNEXUS 知识库概况：块数、可用工具、限流策略、版本。"""
     status, data = _call_api("/health")
     if status != 200:
-        return _friendly_error(status, data)
-    return (
-        f"RAGNEXUS {data.get('version', '?')}：知识库 {data.get('chunks', 0)} 块，"
-        f"工具 {', '.join(data.get('tools', []))}，限流 {data.get('rate_limit', '?')}/分钟"
-    )
+        return _error_payload(status, data)
+    return {
+        "ok": True,
+        "status": data.get("status", "unknown"),
+        "version": data.get("version", "?"),
+        "chunks": data.get("chunks", 0),
+        "tools": data.get("tools", []),
+        "rate_limit": data.get("rate_limit", "?"),
+        "trace_id": data.get("trace_id"),
+    }
 
 
 if __name__ == "__main__":
