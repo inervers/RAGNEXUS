@@ -583,17 +583,22 @@ _corpus_version = 0
 
 def _get_hybrid_search():
     global _hybrid_search, _corpus_version
+    from rag_advanced import HybridSearch, build_corpus_records
+
     current_count = _doc_count()
     if _hybrid_search is None:
-        from rag_advanced import HybridSearch
         all_docs = collection.get()
-        corpus = all_docs.get("documents", [])
+        corpus = build_corpus_records(
+            all_docs.get("ids", []), all_docs.get("documents", [])
+        )
         _hybrid_search = HybridSearch(collection, embed_texts, corpus)
         _corpus_version = current_count
     elif _corpus_version != current_count:
         # 知识库有新增文档，重建 BM25 索引
         all_docs = collection.get()
-        corpus = all_docs.get("documents", [])
+        corpus = build_corpus_records(
+            all_docs.get("ids", []), all_docs.get("documents", [])
+        )
         _hybrid_search.set_corpus(corpus)
         _corpus_version = current_count
         logger.info(f"HybridSearch 语料刷新：{current_count} 个文档")
@@ -655,8 +660,10 @@ def hybrid_query(req: HybridQueryRequest, request: Request):
     result = hs.search(query=req.question, top_k=req.top_k,
                        dense_weight=req.dense_weight, sparse_weight=req.sparse_weight)
     if req.use_reranker:
+        from rag_advanced import select_reranker_candidates
+
         reranker = _get_reranker()
-        candidates = result["dense_top"] + result.get("hybrid_top", [])
+        candidates = select_reranker_candidates(result)
         result["reranked"] = reranker.rerank(req.question, candidates, top_k=5)
         _log(trace_id, "reranker_done", candidates=len(candidates))
     _log(trace_id, "hybrid_done", dense=len(result["dense_top"]),

@@ -27,6 +27,29 @@ def test_build_corpus_records_allows_empty_corpus():
     assert rag_advanced.build_corpus_records([], []) == []
 
 
+def test_build_corpus_records_pairs_ids_and_documents_by_position():
+    assert rag_advanced.build_corpus_records(
+        ["chunk-b", "chunk-a"], ["B", "A"]
+    ) == [
+        {"id": "chunk-b", "text": "B"},
+        {"id": "chunk-a", "text": "A"},
+    ]
+
+
+def test_select_reranker_candidates_uses_hybrid_union_only():
+    result = {
+        "dense_top": [{"id": "chunk-a", "text": "A"}],
+        "hybrid_top": [
+            {"id": "chunk-a", "text": "A"},
+            {"id": "chunk-b", "text": "B"},
+        ],
+    }
+
+    candidates = rag_advanced.select_reranker_candidates(result)
+
+    assert [item["id"] for item in candidates] == ["chunk-a", "chunk-b"]
+
+
 class FakeBM25:
     def __init__(self, tokenized):
         self.size = len(tokenized)

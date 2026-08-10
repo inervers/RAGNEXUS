@@ -55,6 +55,11 @@ def build_corpus_records(
     return records
 
 
+def select_reranker_candidates(search_result: dict) -> list[dict]:
+    """RRF 结果已是 dense/sparse union，直接作为 Reranker 候选池。"""
+    return search_result.get("hybrid_top", [])
+
+
 class HybridSearch:
     """
     多路召回：稠密检索（Chroma）+ 稀疏检索（BM25）+ RRF 融合。
@@ -239,7 +244,9 @@ if __name__ == "__main__":
 
     # 获取知识库中的文档作为 BM25 语料
     all_docs = collection.get()
-    corpus = all_docs.get("documents", [])
+    corpus = build_corpus_records(
+        all_docs.get("ids", []), all_docs.get("documents", [])
+    )
 
     hs = HybridSearch(collection, embed_texts, corpus)
 
