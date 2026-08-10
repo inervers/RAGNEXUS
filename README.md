@@ -164,52 +164,36 @@ python mcp_http_client_test.py --url http://127.0.0.1:8101/mcp
 
 ---
 
-## 设计取舍（面试向）
+## 设计决策
 
-> 这部分记录了项目中的关键技术决策和背后思考，面试官问"为什么选这个不选那个"时，答案就在这里。
+### 生成服务与检索路径
 
-### 为什么用 DeepSeek 而不是 OpenAI / Claude？
+- 当前生成层通过兼容接口接入 DeepSeek，模型和凭据由环境变量配置，业务代码不绑定固定供应商。
+- 标准问答入口不依赖 LLM 自主决定是否检索。`/query` 与 `/query/stream` 先通过 `RetrievalService` 完成一次显式检索，再把同一批 `selected` chunks 注入生成上下文。
+- 生成阶段移除 `search_knowledge` 工具，避免单次请求出现两套检索结果；供应商限流和网络故障记录在 `docs/OPS-NOTES.md`。
 
-**不是情怀，是现实考量。**
-- 成本：DeepSeek API 价格约为 GPT-4 的 1/20，在大量 Agent 调用场景下差距显著
-- 中文能力：在中英混合的技术文档问答中，DeepSeek 的表现不逊于 GPT-4
-- Function Calling：DeepSeek 原生支持工具调用，无需额外适配
-- 当前使用官方模型名 `deepseek-v4-flash`（旧别名 deepseek-chat 已于 2026-07-24 停用，过渡期指向 v4-flash 非思考模式）
-- **智谱 GLM 免费版踩过的坑**：单并发 + 15:00-23:00 高峰限流，且高峰可能返回空 content 导致后端崩溃。故切换回 DeepSeek，智谱 key 保留为 fallback
-- 一个踩过的坑：LLM 不总是主动调 `search_knowledge`。现在 `/query` 与 `/query/stream` 都先通过统一 `RetrievalService` 显式检索，再把同一批 `selected` chunks 注入生成上下文；生成阶段移除检索工具，避免一次请求出现两套检索结果
+### 向量存储
 
-### 为什么用 ChromaDB 而不是 Milvus / Qdrant？
+- 当前语料规模使用嵌入式 ChromaDB，以较低部署复杂度提供向量检索和 metadata 管理。
+- V1 archive 为 166 个 chunks；隔离式 V2 artifact 为 10 个逻辑文档、184 个 content-addressed chunks。两者属于不同语料版本。
+- `RetrievalService` 将向量存储与生成层契约隔离。扩大规模后可根据延迟、内存、过滤、并发和运维需求评估 Milvus、Qdrant 等方案；迁移仍需完成数据重建、索引配置与回归评测。
 
-**按实际规模选型，不盲目上分布式。**
-- ChromaDB 是嵌入式向量数据库，零依赖，进程内运行
-- V1 archive 为 166 个 chunk；隔离式 V2 artifact 当前为 10 个逻辑文档、184 个 content-addressed chunks。两个数字来自不同语料版本，不能直接比较质量
-- 如果扩大到 100 万级，瓶颈会依次出现在：向量检索延迟（换 HNSW 参数可撑一撑）→ 单机内存（需换 Milvus/Qdrant）→ 多路召回的吞吐（需加缓存层）
-- **迁移路径是明确的：** ChromaDB 的数据导出到 Milvus 只需要改 `collection.query()` 那几行，检索逻辑本身是框架无关的
+### Hybrid Search 与可观测性
 
-### 为什么自己造多路召回的轮子，而不是直接上 LangChain？
+- 检索使用 dense + BM25 两路召回，并通过可配置权重的 RRF 融合排名。RAG-06 在 development split 比较 1:1、1:2、1:3 后选择 Dense:Sparse = 1:2，再冻结到 held-out 验证。
+- 关键检索流程由项目代码实现，以暴露候选集、权重、排名和 trace，便于定位 `retrieve()`、RRF 融合或 Reranker 阶段的问题。
+- Cross-Encoder 是可选精排层。标准可复现实验镜像缺少 verified snapshot 时显式标记 `fallback` 或 `not_evaluated`，不计为有效重排成绩。
 
-**LangChain 是胶水，不是架构。**
-- LangChain 的 `ensemble_retriever` 确实能快速拼出混合检索，但它的 RRF 实现是硬编码的，调不了 `k` 值和权重
-- 当前所有入口统一使用 `dense_weight=1.0 / sparse_weight=2.0`；RAG-06 development 在 1:1、1:2、1:3 中选择 1:2，冻结后 heldout 复验
-- 自己实现的好处：**调试路径是透明的**。出问题我知道去查 `retrieve()` → `rrf_merge()` → `rerank()` 哪一步
-- **和 Reranker 的关系：** BM25 可能拉入关键词噪声，Cross-Encoder 可做候选精排；标准可复现镜像当前没有 verified Cross-Encoder snapshot，RAG-06 明确记为 `not_evaluated`，不再沿用旧评测的“无增益”结论
+### 限流
 
-### 为什么用滑动窗口限流，而不是令牌桶？
+- 当前单实例使用基于 `deque` 的滑动窗口，严格限制固定时间窗口内的请求次数，并保持 O(1) 的过期时间戳清理和追加。
+- 该实现适合当前单进程部署。多实例部署时需要迁移到 Redis 等共享状态存储，并通过原子操作保证全局限额一致。
 
-**选择标准是"谁先扛不住"。**
-- 令牌桶（Token Bucket）：适合突发流量，积攒的令牌可以一次性消费。但 DeepSeek API 不允许突发调用，被限会返回 429
-- 滑动窗口（Sliding Window）：严格保证每分钟不超过 N 次，对上游 API 更友好
-- 实现上用了 `collections.deque` 存时间戳，O(1) 入队出队，不需要 Redis 或外部依赖
-- 如果未来需要分布式限流（多个容器实例），会迁移到 Redis + Lua 脚本
+### Multi-Agent 工作流
 
-### Multi-Agent 为什么是"研究员→写作者→审核员"三阶段？
-
-**不是花哨，是解决单次 LLM 调用的三个结构性缺陷。**
-- **研究员**：检索知识库 + 提取关键信息，专注精度，不参与生成
-- **写作者**：根据研究员提供的材料组织文章，专注表达
-- **审核员**：输出结构化 `issues/rating/verdict`；未达阈值时 `issues` 显式进入下一轮 Writer prompt，并在 trace 中记录传递
-- **为什么不用链式提示（Chain-of-Thought）：** CoT 在单个 prompt 里模拟多步推理，但 LLM 在长上下文中容易"中途掉线"——写到后面忘了前面的约束。Agent 之间的显式状态传递（研究员输出→写作者输入）避免了这个问题
-- **有界重试**：只在 `verdict=通过` 或 `rating>=4` 时标记通过；否则最多执行 `max_retries + 1` 稿，耗尽后如实返回失败
+- Researcher 负责检索与材料整理，Writer 负责生成，Reviewer 输出结构化 `issues/rating/verdict`。
+- 未通过时，Reviewer issues 会显式进入下一轮 Writer prompt，并写入 trace，避免质量反馈只停留在日志中。
+- 工作流设置有界重试；只有满足通过条件时标记成功，重试耗尽则返回失败状态。对于不需要角色分工和反馈循环的简单请求，标准单次 RAG 路径仍是更低成本的选择。
 
 ---
 
