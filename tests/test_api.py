@@ -8,11 +8,15 @@ API 集成测试（需要 Docker 容器运行中）
 """
 import json, os, sys, time
 import urllib.request
+from pathlib import Path
 
-from security_config import load_api_key
+from security_config import load_api_key_from_sources
 
 API_BASE = os.environ.get("API_BASE", "http://localhost:8000")
-API_KEY = load_api_key(os.environ)
+API_KEY = load_api_key_from_sources(
+    os.environ,
+    Path(__file__).resolve().parents[1] / ".env",
+)
 HDR = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 
 def _req(method, path, body=None):

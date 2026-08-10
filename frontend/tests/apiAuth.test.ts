@@ -2,9 +2,12 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import {
+  ApiAuthError,
   ApiKeyRequiredError,
+  ProtectedRequestScope,
   authHeaders,
   clearSessionApiKey,
+  ensureApiResponse,
   readSessionApiKey,
   saveSessionApiKey,
   type KeyStorage,
@@ -49,4 +52,32 @@ test("saving an empty API key is rejected instead of persisting an unusable cred
 
   assert.throws(() => saveSessionApiKey(storage, ""), ApiKeyRequiredError)
   assert.equal(readSessionApiKey(storage), "")
+})
+
+test("401 and 403 responses become an explicit invalid-key error", async () => {
+  for (const status of [401, 403]) {
+    await assert.rejects(
+      ensureApiResponse(new Response("{}", { status })),
+      (error: unknown) => error instanceof ApiAuthError && error.status === status,
+    )
+  }
+})
+
+test("non-auth API failures remain distinguishable from invalid credentials", async () => {
+  await assert.rejects(
+    ensureApiResponse(new Response("boom", { status: 500 })),
+    /API 请求失败（HTTP 500）/,
+  )
+})
+
+test("protected request scope aborts obsolete requests on key change", () => {
+  const scope = new ProtectedRequestScope()
+  const first = scope.begin()
+  const second = scope.begin()
+
+  assert.equal(first.aborted, true)
+  assert.equal(second.aborted, false)
+
+  scope.abort()
+  assert.equal(second.aborted, true)
 })

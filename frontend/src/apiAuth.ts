@@ -13,6 +13,31 @@ export class ApiKeyRequiredError extends Error {
   }
 }
 
+export class ApiAuthError extends Error {
+  readonly status: number
+
+  constructor(status: number) {
+    super(status === 401 ? "API Key 缺失，请重新配置" : "API Key 无效，请重新配置")
+    this.name = "ApiAuthError"
+    this.status = status
+  }
+}
+
+export class ProtectedRequestScope {
+  private controller: AbortController | null = null
+
+  begin(): AbortSignal {
+    this.abort()
+    this.controller = new AbortController()
+    return this.controller.signal
+  }
+
+  abort(): void {
+    this.controller?.abort()
+    this.controller = null
+  }
+}
+
 export function readSessionApiKey(storage: KeyStorage): string {
   return storage.getItem(SESSION_API_KEY)?.trim() ?? ""
 }
@@ -35,4 +60,14 @@ export function authHeaders(
   const normalized = apiKey.trim()
   if (!normalized) throw new ApiKeyRequiredError()
   return { ...extra, "X-API-Key": normalized }
+}
+
+export async function ensureApiResponse(response: Response): Promise<Response> {
+  if (response.status === 401 || response.status === 403) {
+    throw new ApiAuthError(response.status)
+  }
+  if (!response.ok) {
+    throw new Error(`API 请求失败（HTTP ${response.status}）`)
+  }
+  return response
 }

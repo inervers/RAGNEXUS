@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 from urllib.parse import urlsplit
 
 
@@ -43,6 +44,29 @@ def load_api_key(
             return value
     joined = " or ".join(names)
     raise SecurityConfigError(f"Missing required {joined}")
+
+
+def load_api_key_from_sources(
+    environ: Mapping[str, str],
+    env_path: str | Path,
+    environment_names: Sequence[str] = ("RAG_API_KEY",),
+    file_name: str = "RAG_API_KEY",
+) -> str:
+    """Load an explicit process value, otherwise one value from a project env file."""
+    if any(environ.get(name, "").strip() for name in environment_names):
+        return load_api_key(environ, names=environment_names)
+
+    values: dict[str, str] = {}
+    try:
+        for raw_line in Path(env_path).read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            values[key.strip()] = value.strip().strip('"').strip("'")
+    except OSError:
+        pass
+    return load_api_key(values, names=(file_name,))
 
 
 def parse_cors_origins(raw: str | None) -> list[str]:

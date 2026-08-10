@@ -4,6 +4,7 @@ from security_config import (
     DEFAULT_CORS_ORIGINS,
     SecurityConfigError,
     load_api_key,
+    load_api_key_from_sources,
     parse_cors_origins,
 )
 
@@ -37,6 +38,31 @@ def test_load_api_key_uses_the_first_configured_alias():
     }
 
     assert load_api_key(environ, names=("RAGNEXUS_API_KEY", "RAG_API_KEY")) == environ["RAGNEXUS_API_KEY"]
+
+
+def test_load_api_key_from_sources_reads_a_project_env_file(tmp_path):
+    env_path = tmp_path / ".env"
+    env_path.write_text("IGNORED=x\nRAG_API_KEY=file-test-key-fb9be810829e4fd4\n", encoding="utf-8")  # pragma: allowlist secret -- inert temp-file fixture
+
+    assert load_api_key_from_sources({}, env_path) == "file-test-key-fb9be810829e4fd4"
+
+
+def test_load_api_key_from_sources_prefers_process_environment(tmp_path):
+    env_path = tmp_path / ".env"
+    env_path.write_text("RAG_API_KEY=file-test-key-fb9be810829e4fd4\n", encoding="utf-8")  # pragma: allowlist secret -- inert temp-file fixture
+
+    assert load_api_key_from_sources(
+        {"RAG_API_KEY": "process-test-key-b5bf57ad9cf64eec"},  # pragma: allowlist secret -- inert unit fixture
+        env_path,
+    ) == "process-test-key-b5bf57ad9cf64eec"
+
+
+def test_load_api_key_from_sources_rejects_placeholder_in_project_env(tmp_path):
+    env_path = tmp_path / ".env"
+    env_path.write_text("RAG_API_KEY=replace-with-a-random-secret\n", encoding="utf-8")  # pragma: allowlist secret -- rejected template fixture
+
+    with pytest.raises(SecurityConfigError, match="RAG_API_KEY"):
+        load_api_key_from_sources({}, env_path)
 
 
 def test_parse_cors_origins_uses_local_frontends_by_default():

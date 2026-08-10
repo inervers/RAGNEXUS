@@ -11,7 +11,7 @@ import json
 import os
 from pathlib import Path
 
-from security_config import load_api_key
+from security_config import load_api_key_from_sources
 
 # =============================================
 # 页面配置
@@ -31,7 +31,7 @@ if css_path.exists():
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 API_BASE = os.environ.get("API_BASE", "http://localhost:8000")
-API_KEY = load_api_key(os.environ)
+API_KEY = load_api_key_from_sources(os.environ, Path(__file__).resolve().with_name(".env"))
 HEADERS = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 
 

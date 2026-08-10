@@ -2,11 +2,15 @@
 检索评测脚本：对比单路向量、混合RRF、混合+Reranker
 """
 import json, os, urllib.request, sys
+from pathlib import Path
 
-from security_config import load_api_key
+from security_config import load_api_key_from_sources
 
 API = "http://localhost:8000"
-HDR = {"X-API-Key": load_api_key(os.environ), "Content-Type": "application/json"}
+HDR = {
+    "X-API-Key": load_api_key_from_sources(os.environ, Path(__file__).resolve().with_name(".env")),
+    "Content-Type": "application/json",
+}
 
 QUERIES = [
     ("动态计算图",             ["动态计算图", "Define-by-Run", "PyTorch"]),

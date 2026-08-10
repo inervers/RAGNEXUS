@@ -12,11 +12,11 @@ import os
 from pathlib import Path
 from urllib.request import Request, urlopen
 
-from security_config import load_api_key
+from security_config import load_api_key_from_sources
 
 ROOT = Path(__file__).resolve().parent
 API_ROOT = os.environ.get("RAG_API_ROOT", "http://localhost:8000")
-API_KEY = load_api_key(os.environ)
+API_KEY = load_api_key_from_sources(os.environ, ROOT / ".env")
 DOCS_DIR = ROOT / "demo_docs"
 
 

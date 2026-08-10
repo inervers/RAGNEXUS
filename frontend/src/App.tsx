@@ -15,8 +15,11 @@ import {
   type ServiceState,
 } from "./appStatus"
 import {
+  ApiAuthError,
+  ProtectedRequestScope,
   authHeaders,
   clearSessionApiKey,
+  ensureApiResponse,
   readSessionApiKey,
   saveSessionApiKey,
 } from "./apiAuth"
@@ -24,6 +27,7 @@ import {
 const API_BASE = ""
 
 type TabKey = "qa" | "hybrid" | "kb" | "agent"
+type OnApiError = (error: unknown) => void
 
 interface Message {
   role: "user" | "assistant"
@@ -71,6 +75,15 @@ const FX_BUTTON = {
   autoAnimate: true,
 }
 
+function useProtectedRequestScope(apiKey: string): ProtectedRequestScope {
+  const scopeRef = useRef(new ProtectedRequestScope())
+  useEffect(() => {
+    scopeRef.current.abort()
+    return () => scopeRef.current.abort()
+  }, [apiKey])
+  return scopeRef.current
+}
+
 /* ============================================================
    主应用
    ============================================================ */
@@ -78,6 +91,7 @@ function App() {
   const [tab, setTab] = useState<TabKey>("qa")
   const [serviceState, setServiceState] = useState<ServiceState>("checking")
   const [kbCount, setKbCount] = useState(0)
+  const [authMessage, setAuthMessage] = useState("")
   const [apiKey, setApiKey] = useState(() => {
     try { return readSessionApiKey(sessionStorage) }
     catch { return "" }
@@ -99,11 +113,17 @@ function App() {
   function handleSaveApiKey(value: string) {
     const saved = saveSessionApiKey(sessionStorage, value)
     setApiKey(saved)
+    setAuthMessage("")
   }
 
   function handleClearApiKey() {
     clearSessionApiKey(sessionStorage)
     setApiKey("")
+    setAuthMessage("")
+  }
+
+  const handleApiError: OnApiError = (error) => {
+    if (error instanceof ApiAuthError) setAuthMessage(error.message)
   }
 
   return (
@@ -133,11 +153,14 @@ function App() {
             受保护操作已锁定：请在侧边栏输入 API Key。Key 仅保存在当前浏览器标签页。
           </div>
         )}
+        {apiKey && authMessage && (
+          <div className="auth-banner auth-banner-error" role="alert">{authMessage}</div>
+        )}
         <div className="tab-content">
-          {tab === "qa" && <QATab serviceState={serviceState} apiKey={apiKey} />}
-          {tab === "hybrid" && <HybridTab apiKey={apiKey} />}
-          {tab === "kb" && <KBTab apiKey={apiKey} />}
-          {tab === "agent" && <AgentTab apiKey={apiKey} />}
+          {tab === "qa" && <QATab serviceState={serviceState} apiKey={apiKey} onApiError={handleApiError} />}
+          {tab === "hybrid" && <HybridTab apiKey={apiKey} onApiError={handleApiError} />}
+          {tab === "kb" && <KBTab apiKey={apiKey} onApiError={handleApiError} />}
+          {tab === "agent" && <AgentTab apiKey={apiKey} onApiError={handleApiError} />}
         </div>
       </main>
     </div>
@@ -240,7 +263,15 @@ function Sidebar({
 /* ============================================================
    问答标签页
    ============================================================ */
-function QATab({ serviceState, apiKey }: { serviceState: ServiceState; apiKey: string }) {
+function QATab({
+  serviceState,
+  apiKey,
+  onApiError,
+}: {
+  serviceState: ServiceState
+  apiKey: string
+  onApiError: OnApiError
+}) {
   const [messages, setMessages] = useState<Message[]>(() => {
     try { return JSON.parse(localStorage.getItem("ragnxus_chat") || "[]") }
     catch { return [] }
@@ -310,7 +341,7 @@ function QATab({ serviceState, apiKey }: { serviceState: ServiceState; apiKey: s
     try { localStorage.setItem("ragnxus_chat", JSON.stringify(msgRef.current)) } catch {}
   }
 
-  const abortRef = useRef<AbortController | null>(null)
+  const requestScope = useProtectedRequestScope(apiKey)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -331,16 +362,16 @@ function QATab({ serviceState, apiKey }: { serviceState: ServiceState; apiKey: s
     typingBufRef.current = ""
     typedLenRef.current = 0
 
-    const controller = new AbortController()
-    abortRef.current = controller
+    const signal = requestScope.begin()
 
     try {
       const resp = await fetch(`${API_BASE}/query/stream`, {
         method: "POST",
         headers: authHeaders(apiKey, { "Content-Type": "application/json" }),
         body: JSON.stringify({ question: q }),
-        signal: controller.signal,
+        signal,
       })
+      await ensureApiResponse(resp)
 
       const reader = resp.body?.getReader()
       if (!reader) { setLoading(false); return }
@@ -386,8 +417,8 @@ function QATab({ serviceState, apiKey }: { serviceState: ServiceState; apiKey: s
           return copy
         })
       }
-    } catch (e: any) {
-      if (e?.name === "AbortError") {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === "AbortError") {
         stopTyping(true)
         setMessages((prev) => {
           const copy = [...prev]
@@ -401,12 +432,16 @@ function QATab({ serviceState, apiKey }: { serviceState: ServiceState; apiKey: s
           return copy
         })
       } else {
+        onApiError(error)
         stopTyping(true)
         setMessages((prev) => {
           const copy = [...prev]
           for (let i = copy.length - 1; i >= 0; i--) {
             if (copy[i]?.role === "assistant" && !copy[i].content) {
-              copy[i] = { ...copy[i], content: "请求失败" }
+              copy[i] = {
+                ...copy[i],
+                content: error instanceof ApiAuthError ? error.message : "请求失败",
+              }
               break
             }
           }
@@ -415,7 +450,6 @@ function QATab({ serviceState, apiKey }: { serviceState: ServiceState; apiKey: s
       }
     }
     setLoading(false)
-    abortRef.current = null
     save()
   }
 
@@ -484,7 +518,7 @@ function QATab({ serviceState, apiKey }: { serviceState: ServiceState; apiKey: s
           disabled={loading}
         />
         {loading ? (
-          <button className="btn-cancel" onClick={() => abortRef.current?.abort()}>
+          <button className="btn-cancel" onClick={() => requestScope.abort()}>
             取消
           </button>
         ) : (
@@ -500,7 +534,7 @@ function QATab({ serviceState, apiKey }: { serviceState: ServiceState; apiKey: s
 /* ============================================================
    混合检索标签页
    ============================================================ */
-function HybridTab({ apiKey }: { apiKey: string }) {
+function HybridTab({ apiKey, onApiError }: { apiKey: string; onApiError: OnApiError }) {
   const [query, setQuery] = useState("")
   const [topK, setTopK] = useState(10)
   const [useReranker, setUseReranker] = useState(true)
@@ -512,19 +546,26 @@ function HybridTab({ apiKey }: { apiKey: string }) {
     reranker_status?: RerankerStatus
   } | null>(null)
   const [expanded, setExpanded] = useState<{ group: string; doc: SearchResult } | null>(null)
+  const requestScope = useProtectedRequestScope(apiKey)
 
   async function handleSearch() {
     if (!apiKey || !query.trim() || loading) return
     setLoading(true)
     setResult(null)
     try {
+      const signal = requestScope.begin()
       const resp = await fetch(`${API_BASE}/query/hybrid`, {
         method: "POST",
         headers: authHeaders(apiKey, { "Content-Type": "application/json" }),
         body: JSON.stringify({ question: query.trim(), top_k: topK, use_reranker: useReranker }),
+        signal,
       })
+      await ensureApiResponse(resp)
       setResult((await resp.json()).result ?? null)
-    } catch { setResult(null) }
+    } catch (error) {
+      onApiError(error)
+      setResult(null)
+    }
     setLoading(false)
   }
 
@@ -637,7 +678,7 @@ interface KbGroup {
   chunks: string[]
 }
 
-function KBTab({ apiKey }: { apiKey: string }) {
+function KBTab({ apiKey, onApiError }: { apiKey: string; onApiError: OnApiError }) {
   const [records, setRecords] = useState<KbRecord[]>([])
   const [loading, setLoading] = useState(false)
   const [title, setTitle] = useState("")
@@ -648,6 +689,7 @@ function KBTab({ apiKey }: { apiKey: string }) {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [kbSearch, setKbSearch] = useState("")
   const [deleting, setDeleting] = useState<string | null>(null)
+  const requestScope = useProtectedRequestScope(apiKey)
 
   const groups = useMemo<KbGroup[]>(() => {
     const map = new Map<string, KbGroup>()
@@ -679,12 +721,15 @@ function KBTab({ apiKey }: { apiKey: string }) {
 
   async function fetchDocs() {
     try {
+      const signal = requestScope.begin()
       const resp = await fetch(`${API_BASE}/kb/docs`, {
         headers: authHeaders(apiKey),
+        signal,
       })
+      await ensureApiResponse(resp)
       const data = await resp.json()
       setRecords(data.records ?? [])
-    } catch { /* ignore */ }
+    } catch (error) { onApiError(error) }
   }
 
   async function handleAdd() {
@@ -692,18 +737,21 @@ function KBTab({ apiKey }: { apiKey: string }) {
     setLoading(true)
     setStatusMsg("正在检查并添加...")
     try {
+      const signal = requestScope.begin()
       const resp = await fetch(`${API_BASE}/doc`, {
         method: "POST",
         headers: authHeaders(apiKey, { "Content-Type": "application/json" }),
         body: JSON.stringify({ title: title.trim(), content: content.trim() }),
+        signal,
       })
+      await ensureApiResponse(resp)
       const data = await resp.json()
-      if (!resp.ok) throw new Error(data.detail || data.error || "添加失败")
       setStatusMsg(data.message || "添加完成")
       setTitle("")
       setContent("")
       await fetchDocs()
     } catch (e) {
+      onApiError(e)
       setStatusMsg(e instanceof Error ? `添加失败：${e.message}` : "添加失败，请重试")
     }
     setLoading(false)
@@ -714,17 +762,21 @@ function KBTab({ apiKey }: { apiKey: string }) {
     if (!window.confirm(`删除文档「${g.source}」？（共 ${g.ids.length} 个分块）`)) return
     setDeleting(g.source)
     try {
+      const signal = requestScope.begin()
       const resp = await fetch(`${API_BASE}/kb/docs/delete`, {
         method: "POST",
         headers: authHeaders(apiKey, { "Content-Type": "application/json" }),
         body: JSON.stringify({ ids: g.ids }),
+        signal,
       })
+      await ensureApiResponse(resp)
       const data = await resp.json()
       setStatusMsg(`已删除 ${data.deleted} 个块，剩余 ${data.remaining}`)
       setPreviewIdx(null)
       await fetchDocs()
-    } catch {
-      setStatusMsg("删除失败，请重试")
+    } catch (error) {
+      onApiError(error)
+      setStatusMsg(error instanceof Error ? `删除失败：${error.message}` : "删除失败，请重试")
     }
     setDeleting(null)
   }
@@ -765,25 +817,24 @@ function KBTab({ apiKey }: { apiKey: string }) {
         })
         setUploadProgress(45)
         setStatusMsg("发送到服务器...")
+        const signal = requestScope.begin()
         const resp = await fetch(`${API_BASE}/doc/preview`, {
           method: "POST",
           headers: authHeaders(apiKey, { "Content-Type": "application/json" }),
           body: JSON.stringify({ filename: f.name, content: b64 }),
+          signal,
         })
+        await ensureApiResponse(resp)
         setUploadProgress(75)
         setStatusMsg("正在解析...")
-        if (!resp.ok) {
-          const err = await resp.text()
-          setStatusMsg(`解析失败：${err}`)
-        } else {
-          const data = await resp.json()
-          setTitle(data.title)
-          setContent(data.content)
-          setUploadProgress(100)
-          setStatusMsg(`解析完成（共 ${data.full_length} 字符）`)
-        }
+        const data = await resp.json()
+        setTitle(data.title)
+        setContent(data.content)
+        setUploadProgress(100)
+        setStatusMsg(`解析完成（共 ${data.full_length} 字符）`)
       } catch (e) {
-        setStatusMsg("解析失败，请重试")
+        onApiError(e)
+        setStatusMsg(e instanceof Error ? `解析失败：${e.message}` : "解析失败，请重试")
       }
       setUploadProgress(0)
       setLoading(false)
@@ -895,25 +946,32 @@ function KBTab({ apiKey }: { apiKey: string }) {
 /* ============================================================
    Multi-Agent 写作标签页
    ============================================================ */
-function AgentTab({ apiKey }: { apiKey: string }) {
+function AgentTab({ apiKey, onApiError }: { apiKey: string; onApiError: OnApiError }) {
   const [topic, setTopic] = useState("")
   const [maxRetries, setMaxRetries] = useState(2)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<Record<string, any> | null>(null)
+  const requestScope = useProtectedRequestScope(apiKey)
 
   async function handleStart() {
     if (!apiKey || !topic.trim() || loading) return
     setLoading(true)
     setResult(null)
     try {
+      const signal = requestScope.begin()
       const resp = await fetch(`${API_BASE}/agent/write`, {
         method: "POST",
         headers: authHeaders(apiKey, { "Content-Type": "application/json" }),
         body: JSON.stringify({ topic: topic.trim(), max_retries: maxRetries }),
+        signal,
       })
+      await ensureApiResponse(resp)
       const data = await resp.json()
       setResult(data.result ?? null)
-    } catch { setResult(null) }
+    } catch (error) {
+      onApiError(error)
+      setResult(null)
+    }
     setLoading(false)
   }
 

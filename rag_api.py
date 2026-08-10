@@ -469,6 +469,11 @@ async def stream_rag(question: str, retrieval_result: dict, trace_id: str):
 
 app = FastAPI(title="RAG Agent API (Production)", version="0.7.0")
 
+app.middleware("http")(logging_middleware)
+app.middleware("http")(security_middleware)
+
+# 必须最后注册，使 CORS 位于 middleware stack 最外层；这样由鉴权、限流或
+# logging middleware 直接生成的错误响应也会带 allowed-origin headers。
 app.add_middleware(
     CORSMiddleware,
     allow_origins=RAG_CORS_ORIGINS,
@@ -477,9 +482,6 @@ app.add_middleware(
     allow_headers=["Content-Type", AUTH_HEADER, TRACE_HEADER],
     expose_headers=[TRACE_HEADER, "X-RateLimit-Limit", "X-RateLimit-Remaining"],
 )
-
-app.middleware("http")(logging_middleware)
-app.middleware("http")(security_middleware)
 
 class QueryRequest(BaseModel):
     question: str

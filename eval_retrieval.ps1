@@ -1,7 +1,16 @@
 $API = "http://localhost:8000"
 $ApiKey = $env:RAG_API_KEY
 if ([string]::IsNullOrWhiteSpace($ApiKey)) {
-    throw "Missing required RAG_API_KEY"
+    $EnvFile = Join-Path $PSScriptRoot ".env"
+    if (Test-Path -LiteralPath $EnvFile) {
+        $Match = Get-Content -LiteralPath $EnvFile | Where-Object {
+            $_ -match '^\s*RAG_API_KEY\s*=' -and $_ -notmatch '^\s*#'
+        } | Select-Object -First 1
+        if ($Match) { $ApiKey = ($Match -split '=', 2)[1].Trim().Trim('"').Trim("'") }
+    }
+}
+if ([string]::IsNullOrWhiteSpace($ApiKey)) {
+    throw "Missing required RAG_API_KEY in process environment or project .env"
 }
 
 function Test-Recall($docs, $keywords, $k) {

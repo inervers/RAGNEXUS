@@ -31,7 +31,7 @@ from pathlib import Path
 
 import httpx
 from fastmcp import FastMCP
-from security_config import SecurityConfigError, load_api_key
+from security_config import SecurityConfigError, load_api_key_from_sources
 
 # stdio 模式下 stdout 是 MCP 协议通道，只能传 JSON-RPC。
 # 强制 UTF-8，并把一切日志/提示打到 stderr，避免污染协议流（Windows 下默认
@@ -57,26 +57,20 @@ def _load_api_key(
 ) -> str:
     """Load an explicit MCP key, falling back only to the project's configured `.env`."""
     environ = os.environ if environ is None else environ
-    env_key = environ.get("RAGNEXUS_API_KEY")
-    if env_key:
-        return load_api_key({"RAGNEXUS_API_KEY": env_key}, names=("RAGNEXUS_API_KEY",))
-
     env_path = env_path or Path(__file__).resolve().with_name(".env")
     try:
-        with env_path.open(encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                k, _, v = line.partition("=")
-                if k.strip() == "RAG_API_KEY":
-                    value = v.strip().strip('"').strip("'")
-                    return load_api_key({"RAG_API_KEY": value})
-    except OSError:
-        pass
-    raise SecurityConfigError(
-        "Missing required RAGNEXUS_API_KEY or project .env RAG_API_KEY"
-    )
+        return load_api_key_from_sources(
+            environ,
+            env_path,
+            environment_names=("RAGNEXUS_API_KEY",),
+            file_name="RAG_API_KEY",
+        )
+    except SecurityConfigError as exc:
+        if str(exc).startswith("Missing required"):
+            raise SecurityConfigError(
+                "Missing required RAGNEXUS_API_KEY or project .env RAG_API_KEY"
+            ) from exc
+        raise
 
 
 API_KEY = _load_api_key()

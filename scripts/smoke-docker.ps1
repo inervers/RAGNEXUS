@@ -5,8 +5,10 @@ $apiBase = "http://127.0.0.1:18000"
 $frontendBase = "http://127.0.0.1:18080"
 $allowedOrigin = "http://localhost:5173"
 $deniedOrigin = "https://untrusted.example"
+$hadSmokeApiKey = Test-Path Env:RAG_SMOKE_API_KEY
+$previousSmokeApiKey = $env:RAG_SMOKE_API_KEY
 $env:RAG_SMOKE_API_KEY = "smoke-$([guid]::NewGuid().ToString('N'))"
-$headers = @{ "X-API-Key" = $env:RAG_SMOKE_API_KEY }
+$headers = @{ "X-API-Key" = $env:RAG_SMOKE_API_KEY; Origin = $allowedOrigin }
 
 try {
     docker compose -f $composeFile up --build --detach --wait
@@ -17,19 +19,19 @@ try {
         throw "unexpected API health response"
     }
 
-    try {
-        Invoke-WebRequest -Uri "$apiBase/kb/docs" -UseBasicParsing -TimeoutSec 10 | Out-Null
-        throw "missing API key unexpectedly succeeded"
-    } catch {
-        if ($_.Exception.Response.StatusCode.value__ -ne 401) { throw }
+    $missingKey = Invoke-WebRequest -Uri "$apiBase/kb/docs" -Headers @{ Origin = $allowedOrigin } `
+        -UseBasicParsing -SkipHttpErrorCheck -TimeoutSec 10
+    if ($missingKey.StatusCode -ne 401) { throw "missing API key unexpectedly returned $($missingKey.StatusCode)" }
+    if ($missingKey.Headers["Access-Control-Allow-Origin"] -ne $allowedOrigin) {
+        throw "allowed origin could not read missing-key response"
     }
 
-    try {
-        Invoke-WebRequest -Uri "$apiBase/kb/docs" -Headers @{ "X-API-Key" = "wrong-smoke-key" } `
-            -UseBasicParsing -TimeoutSec 10 | Out-Null
-        throw "wrong API key unexpectedly succeeded"
-    } catch {
-        if ($_.Exception.Response.StatusCode.value__ -ne 403) { throw }
+    $wrongKey = Invoke-WebRequest -Uri "$apiBase/kb/docs" `
+        -Headers @{ "X-API-Key" = "wrong-smoke-key"; Origin = $allowedOrigin } `
+        -UseBasicParsing -SkipHttpErrorCheck -TimeoutSec 10
+    if ($wrongKey.StatusCode -ne 403) { throw "wrong API key unexpectedly returned $($wrongKey.StatusCode)" }
+    if ($wrongKey.Headers["Access-Control-Allow-Origin"] -ne $allowedOrigin) {
+        throw "allowed origin could not read wrong-key response"
     }
 
     $allowedPreflight = Invoke-WebRequest -Uri "$apiBase/query/hybrid" -Method Options -Headers @{
@@ -41,17 +43,25 @@ try {
         throw "allowed CORS origin was not echoed"
     }
 
-    try {
-        $deniedPreflight = Invoke-WebRequest -Uri "$apiBase/query/hybrid" -Method Options -Headers @{
-            Origin = $deniedOrigin
-            "Access-Control-Request-Method" = "POST"
-            "Access-Control-Request-Headers" = "X-API-Key,Content-Type"
-        } -UseBasicParsing -TimeoutSec 10
-    } catch {
-        $deniedPreflight = $_.Exception.Response
-    }
+    $deniedPreflight = Invoke-WebRequest -Uri "$apiBase/query/hybrid" -Method Options -Headers @{
+        Origin = $deniedOrigin
+        "Access-Control-Request-Method" = "POST"
+        "Access-Control-Request-Headers" = "X-API-Key,Content-Type"
+    } -UseBasicParsing -SkipHttpErrorCheck -TimeoutSec 10
     if ($deniedPreflight.Headers["Access-Control-Allow-Origin"]) {
         throw "disallowed CORS origin received an allow-origin header"
+    }
+
+    $allowedProtected = Invoke-WebRequest -Uri "$apiBase/kb/docs" -Headers $headers -UseBasicParsing -TimeoutSec 10
+    if ($allowedProtected.Headers["Access-Control-Allow-Origin"] -ne $allowedOrigin) {
+        throw "allowed origin could not read a successful protected response"
+    }
+
+    $validationError = Invoke-WebRequest -Uri "$apiBase/query/hybrid" -Method Post -Headers $headers `
+        -ContentType "application/json" -Body '{}' -UseBasicParsing -SkipHttpErrorCheck -TimeoutSec 10
+    if ($validationError.StatusCode -ne 422) { throw "malformed request unexpectedly returned $($validationError.StatusCode)" }
+    if ($validationError.Headers["Access-Control-Allow-Origin"] -ne $allowedOrigin) {
+        throw "allowed origin could not read validation error response"
     }
 
     $body = @{
@@ -72,11 +82,25 @@ try {
         throw "frontend or nginx proxy smoke failed"
     }
 
+    $rateLimited = $null
+    foreach ($attempt in 1..10) {
+        $candidate = Invoke-WebRequest -Uri "$apiBase/kb/docs" -Headers $headers `
+            -UseBasicParsing -SkipHttpErrorCheck -TimeoutSec 10
+        if ($candidate.StatusCode -eq 429) { $rateLimited = $candidate; break }
+        if ($candidate.StatusCode -ne 200) { throw "unexpected rate-limit probe status $($candidate.StatusCode)" }
+    }
+    if (-not $rateLimited) { throw "rate-limit response was not reached" }
+    if ($rateLimited.Headers["Access-Control-Allow-Origin"] -ne $allowedOrigin) {
+        throw "allowed origin could not read rate-limit response"
+    }
+
     [PSCustomObject]@{
         ApiStatus = $health.status
         FixtureChunks = $health.chunks
         MissingKeyStatus = 401
         WrongKeyStatus = 403
+        ValidationStatus = 422
+        RateLimitStatus = 429
         AllowedCorsOrigin = $allowedPreflight.Headers["Access-Control-Allow-Origin"]
         DeniedCorsOrigin = "no allow-origin header"
         RetrievalStrategy = $hybrid.result.trace.strategy
@@ -86,5 +110,6 @@ try {
     } | Format-List
 } finally {
     docker compose -f $composeFile down --volumes --remove-orphans
-    Remove-Item Env:RAG_SMOKE_API_KEY -ErrorAction SilentlyContinue
+    if ($hadSmokeApiKey) { $env:RAG_SMOKE_API_KEY = $previousSmokeApiKey }
+    else { Remove-Item Env:RAG_SMOKE_API_KEY -ErrorAction SilentlyContinue }
 }
