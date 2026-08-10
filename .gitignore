@@ -10,7 +10,12 @@ stream_out*
 *.pem
 credentials.*
 memory/
-models/
+models/*
+!models/manifests/
+!models/manifests/*.json
+.rag06-models/
+.codex-tmp-pytest/
+.codex-pytest-run*/
 test_*.py
 
 # 本地安全备份与知识库清理产物

@@ -1,0 +1,13 @@
+{
+  "model_id": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "revision": "e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+  "pooling": "masked_mean",
+  "files": [
+    {"path": "config.json", "size": 645, "sha256": "6300193cb75e01cf80c96decef7187dfb33094d97cc1490b7ead6ff134476e4e"},
+    {"path": "model.safetensors", "size": 470641600, "sha256": "eaa086f0ffee582aeb45b36e34cdd1fe2d6de2bef61f8a559a1bbc9bd955917b"},
+    {"path": "special_tokens_map.json", "size": 239, "sha256": "378eb3bf733eb16e65792d7e3fda5b8a4631387ca04d2015199c4d4f22ae554d"},
+    {"path": "tokenizer_config.json", "size": 526, "sha256": "5036ea374ffedd706e3bef33e2e0d6953cb868ef8a490e76e32ba0faa37a6b9b"},
+    {"path": "tokenizer.json", "size": 9081518, "sha256": "2c3387be76557bd40970cec13153b3bbf80407865484b209e655e5e4729076b8"},
+    {"path": "sentencepiece.bpe.model", "size": 5069051, "sha256": "cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865"}
+  ]
+}
