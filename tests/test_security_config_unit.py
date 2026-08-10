@@ -14,8 +14,8 @@ from security_config import (
         {},
         {"RAG_API_KEY": ""},
         {"RAG_API_KEY": "   "},
-        {"RAG_API_KEY": "rag-secret-key-2024"},
-        {"RAG_API_KEY": "replace-with-a-random-secret"},
+        {"RAG_API_KEY": "rag-secret-key-2024"},  # pragma: allowlist secret -- rejected historical fixture
+        {"RAG_API_KEY": "replace-with-a-random-secret"},  # pragma: allowlist secret -- rejected template fixture
         {"RAG_API_KEY": "<project-key>"},
     ],
 )
@@ -32,8 +32,8 @@ def test_load_api_key_accepts_a_configured_secret_without_logging_it():
 
 def test_load_api_key_uses_the_first_configured_alias():
     environ = {
-        "RAGNEXUS_API_KEY": "mcp-test-key-a58fe36bb79c4f91",
-        "RAG_API_KEY": "backend-test-key-a688786f9eab4050",
+        "RAGNEXUS_API_KEY": "mcp-test-key-a58fe36bb79c4f91",  # pragma: allowlist secret -- inert unit fixture
+        "RAG_API_KEY": "backend-test-key-a688786f9eab4050",  # pragma: allowlist secret -- inert unit fixture
     }
 
     assert load_api_key(environ, names=("RAGNEXUS_API_KEY", "RAG_API_KEY")) == environ["RAGNEXUS_API_KEY"]

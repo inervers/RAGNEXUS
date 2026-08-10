@@ -1,4 +1,4 @@
-const SESSION_API_KEY = "ragnexus_api_key"
+const SESSION_API_KEY = "ragnexus_api_key" // pragma: allowlist secret -- storage field name, not a credential
 
 export interface KeyStorage {
   getItem(key: string): string | null
