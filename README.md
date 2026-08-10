@@ -133,7 +133,7 @@ Agent 的写作记忆保存在本地 `memory/` 目录，容器重建后记忆不
 
 **按实际规模选型，不盲目上分布式。**
 - ChromaDB 是嵌入式向量数据库，零依赖，进程内运行
-- 当前知识库 166 个 chunk，ChromaDB 完全够用，检索延迟 < 50ms
+- V1 archive 为 166 个 chunk；隔离式 V2 artifact 当前为 10 个逻辑文档、184 个 content-addressed chunks。两个数字来自不同语料版本，不能直接比较质量
 - 如果扩大到 100 万级，瓶颈会依次出现在：向量检索延迟（换 HNSW 参数可撑一撑）→ 单机内存（需换 Milvus/Qdrant）→ 多路召回的吞吐（需加缓存层）
 - **迁移路径是明确的：** ChromaDB 的数据导出到 Milvus 只需要改 `collection.query()` 那几行，检索逻辑本身是框架无关的
 
@@ -141,9 +141,9 @@ Agent 的写作记忆保存在本地 `memory/` 目录，容器重建后记忆不
 
 **LangChain 是胶水，不是架构。**
 - LangChain 的 `ensemble_retriever` 确实能快速拼出混合检索，但它的 RRF 实现是硬编码的，调不了 `k` 值和权重
-- 我需要 `sparse_weight=2.0` 这个参数来平衡中英文检索——中文场景 BM25 的 term 匹配比向量更可靠（"动态计算图" 这个词，英文语义匹配就够了，中文必须 BM25 才能精确命中）
+- 当前所有入口统一使用 `dense_weight=1.0 / sparse_weight=2.0` 作为待复验 baseline；它保证生产与评测口径一致，不代表该权重已经最优
 - 自己实现的好处：**调试路径是透明的**。出问题我知道去查 `retrieve()` → `rrf_merge()` → `rerank()` 哪一步
-- **和 Reranker 的关系：** BM25 会拉入关键词噪声。原设计用 Cross-Encoder 二次精排压噪声，但 40 题评测（2026-08）连续两轮显示：中文小语料下 Reranker 无增益（0.27 ≈ 单路向量 0.27）。保留开关、默认关闭，避免无效延迟
+- **和 Reranker 的关系：** BM25 可能拉入关键词噪声，Cross-Encoder 可做候选精排；旧 40 题没有标准 chunk-ID ground truth，因此不能据此判断 Reranker 是否有增益。当前保留开关，最终决策等待 V2 held-out 报告
 
 ### 为什么用滑动窗口限流，而不是令牌桶？
 
@@ -209,58 +209,27 @@ curl.exe -X POST http://localhost:8000/agent/write -H "Content-Type: application
 
 ## 检索评测
 
-> 现行口径（2026-08-07 更新）：40 题评测集（`eval/eval_set.json`），生产与评测统一权重 = dense 1.0 + sparse 2.0（原评测 1.0/1.0 低估了真实能力，对比实测见 docs/OPS-NOTES.md 第 14 节）。
+RAG-02 已将检索指标改为基于 `relevant_chunk_ids` 的 Recall@5/10、MRR@10 和 HitRate@5，并把 API error、empty、unscored、Reranker fallback 分开记录。旧 40 题只有关键词标注，迁移检查结果是三种策略各 `unscored=40`，因此旧 README/OPS 中的 Recall、MRR、HitRate 只保留为历史记录，不是当前成绩。
 
-| 策略 | R@5 | R@10 | MRR | Hit@5 |
-|------|:---:|:----:|:---:|:-----:|
-| dense 单路向量 | 0.27 | 0.27 | 0.43 | 0.60 |
-| **hybrid（dense + BM25×2 + RRF，jieba 中文分词）** | **0.49** | **0.40** | **0.77** | **0.90** |
-| hybrid + Reranker | 0.27 | 0.36 | 0.48 | 0.60 |
+RAG-04 已建立隔离的 V2 corpus：
 
-> **结论：** 混合检索显著优于单路向量（R@5 +0.22，Hit@5 +0.30）；偏关键词权重（sparse=2.0）+ jieba 中文分词（MRR +0.09）；Reranker 在中文小语料无增益，连续两轮评测验证，默认关闭。
-
----
-
-## 性能压测（2026-08-07）
-
-`eval/benchmark.py` 并发打 `/query/hybrid`（检索层，与生产同口径 sparse=2.0，零 LLM 成本），问题池取评测集前 10 题：
-
-| 场景 | QPS | P50 | P95 | 说明 |
-|------|:---:|:---:|:---:|------|
-| 单并发基线 | 38 | 22ms | 42ms | 真实单请求延迟 |
-| 20 并发（单进程） | 63 | 321ms | 397ms | GIL 瓶颈：jieba/BM25/RRF 纯 Python 串行 |
-| 20 并发（4 worker） | **109** | **170ms** | **246ms** | 多进程后 QPS +72%，P50 -47% |
+- 10 个逻辑文档，184 个唯一 chunks；只允许 `public + current`。
+- chunk ID：`doc_id#sha256(normalized_chunk_text)[:16]`。
+- corpus SHA256：`175a3b5f11b4db312418ebfb73ee1c5439519dd7a191faffc3bcaad0076c6802`。
+- `chroma_db_v2` 与 V1 `chroma_db` 独立；物化前必须停容器，禁止本地/容器并发访问同一 bind mount。
 
 ```powershell
-python eval/benchmark.py --concurrency 20 --duration 30
+# 生成确定性的 JSONL + manifest，不访问 Chroma
+python build_kb_v2.py --catalog kb_v2/catalog.json --output kb_v2/build
+
+# 只验证 artifact 与目标路径安全性
+python materialize_kb_v2.py --artifact kb_v2/build --target chroma_db_v2 --check-only
+
+# 仅在目标不存在/为空、rag-api 已停止时物化
+python materialize_kb_v2.py --artifact kb_v2/build --target chroma_db_v2 --batch-size 1
 ```
 
-> 注：压测前把后端限流调高（`$env:RAG_RATE_LIMIT="10000"`），否则全是 429；多 worker 后限流为 per-process 语义（见 docs/OPS-NOTES.md 第 16 节）。
-
-运行方法（检索层零 token）：
-
-```powershell
-python eval_rag.py --retrieval-only
-```
-
----
-
-以下为早期评测存档（`eval_retrieval.py`，28 篇文档 × 5 题小样本，已被 40 题评测集取代）：
-
-| 方法 | Recall@5 平均 | Recall@10 平均 | 说明 |
-|------|:------------:|:-------------:|------|
-| 单路向量 | 0.56 | 0.56 | 仅依赖语义匹配 |
-| 混合+RRF 融合 | 0.60 | 0.42 | BM25 引入噪声，RRF 未有效过滤 |
-| 混合+Reranker | **0.56** | **0.58** | Cross-Encoder 压制噪声，Top-10 略有提升 |
-
-运行方法：
-
-```bash
-# 确保 Docker 容器运行中
-python eval_retrieval.py
-```
-
-> **结论：** 在小规模、高质量知识库中，单路向量和混合+Reranker 表现接近。混合+RRF 在 Top-10 上 Recall 较低，因为 BM25 拉入了不相关文档。Reranker 通过 Cross-Encoder 二次排序恢复了召回率。生产级系统采用多路召回+Reranker 的核心原因是在大规模、含噪声的语料中，同时覆盖语义与关键词的检索盲区。
+当前没有可对外引用的新版检索分数。单条中文事故题 smoke 中 Dense Top-5 失效、BM25/Hybrid 找回正确主题，这只是待验证假设的线索，不是总体结论。下一步先用 V2 manifest 重做 40 题并冻结 24/16，再比较 Dense、Hybrid、Reranker 和中文/多语 Embedding 候选。
 
 ## 运行测试
 
