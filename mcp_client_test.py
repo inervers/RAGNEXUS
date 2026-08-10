@@ -25,6 +25,15 @@ TEST_QUERY = "混合检索"
 SERVER_ENV = {**os.environ, "PYTHONIOENCODING": "utf-8"}
 
 
+def configure_utf8_output() -> None:
+    """让客户端自身日志与 MCP 子进程统一使用 UTF-8。"""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except (AttributeError, OSError):
+            pass
+
+
 def server_command() -> tuple[str, list[str]]:
     server_path = Path(__file__).resolve().with_name("mcp_server.py")
     return sys.executable, [str(server_path)]
@@ -75,4 +84,5 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    configure_utf8_output()
     asyncio.run(main())

@@ -156,3 +156,22 @@ def test_client_server_command_is_clone_independent():
 
     assert Path(command).resolve() == Path(mcp_client_test.sys.executable).resolve()
     assert args == [str(Path(mcp_client_test.__file__).resolve().with_name("mcp_server.py"))]
+
+
+def test_client_configures_its_own_output_as_utf8(monkeypatch):
+    class FakeStream:
+        def __init__(self):
+            self.encoding = None
+
+        def reconfigure(self, *, encoding):
+            self.encoding = encoding
+
+    stdout = FakeStream()
+    stderr = FakeStream()
+    monkeypatch.setattr(mcp_client_test.sys, "stdout", stdout)
+    monkeypatch.setattr(mcp_client_test.sys, "stderr", stderr)
+
+    mcp_client_test.configure_utf8_output()
+
+    assert stdout.encoding == "utf-8"
+    assert stderr.encoding == "utf-8"
