@@ -7,6 +7,8 @@
 
 import sys, os, json, random, base64, asyncio
 
+from security_config import load_api_key, parse_cors_origins
+
 from retrieval_service import (
     GENERATION_SYSTEM_PROMPT,
     RetrievalConfig,
@@ -59,7 +61,8 @@ LLM_BASE_URL = os.environ.get("LLM_BASE_URL",
                               "https://api.deepseek.com" if DEEPSEEK_API_KEY else "https://open.bigmodel.cn/api/paas/v4")
 LLM_MODEL = os.environ.get("LLM_MODEL",
                            "deepseek-v4-flash" if DEEPSEEK_API_KEY else "glm-4.7-flash")
-RAG_API_KEY = os.environ.get("RAG_API_KEY", "rag-secret-key-2024")
+RAG_API_KEY = load_api_key(os.environ)
+RAG_CORS_ORIGINS = parse_cors_origins(os.environ.get("RAG_CORS_ORIGINS"))
 RATE_LIMIT = int(os.environ.get("RAG_RATE_LIMIT", "30"))
 
 if not LLM_API_KEY:
@@ -468,10 +471,11 @@ app = FastAPI(title="RAG Agent API (Production)", version="0.7.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=RAG_CORS_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", AUTH_HEADER, TRACE_HEADER],
+    expose_headers=[TRACE_HEADER, "X-RateLimit-Limit", "X-RateLimit-Remaining"],
 )
 
 app.middleware("http")(logging_middleware)
