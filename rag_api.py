@@ -13,6 +13,7 @@ from document_ingest import (
     import_uploaded_document,
     parse_uploaded_document,
 )
+from embedding_runtime import embed_batch
 from security_config import load_api_key, parse_cors_origins
 
 from retrieval_service import (
@@ -230,10 +231,7 @@ model = AutoModel.from_pretrained(
 )
 
 def embed_texts(texts):
-    inputs = tokenizer(texts, truncation=True, padding=True, return_tensors="pt", max_length=256)
-    with torch.no_grad():
-        pooled = model(**inputs).last_hidden_state.mean(dim=1)
-    return (pooled / torch.norm(pooled, dim=1, keepdim=True)).numpy()
+    return embed_batch(texts, tokenizer, model, torch)
 
 class MiniLMEmbedding(EmbeddingFunction):
     """适配 ChromaDB 1.x：需实现 __init__ 与 name()，query 输入可能是 Document 对象。"""
