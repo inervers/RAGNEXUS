@@ -61,20 +61,24 @@ class HybridSearch:
     直接复用外部传入的 Chroma collection 和 embed 函数。
     """
 
-    def __init__(self, collection, embed_func, corpus_docs: list[str] = None):
+    def __init__(self, collection, embed_func,
+                 corpus_records: list[dict[str, str]] = None):
         self.collection = collection
         self.embed_func = embed_func
         self.bm25 = None
-        self.corpus_docs = corpus_docs or []
-        if BM25Okapi is not None and self.corpus_docs:
-            tokenized = [_tokenize(d) for d in self.corpus_docs]
-            self.bm25 = BM25Okapi(tokenized)
+        self.corpus_records = []
+        self.set_corpus(corpus_records or [])
 
-    def set_corpus(self, docs: list[str]):
+    def set_corpus(self, records: list[dict[str, str]]):
         """设置/更新 BM25 语料库"""
-        self.corpus_docs = docs
-        if BM25Okapi is not None:
-            tokenized = [_tokenize(d) for d in docs]
+        validated = build_corpus_records(
+            [record.get("id") for record in records],
+            [record.get("text") for record in records],
+        )
+        self.corpus_records = [record.copy() for record in validated]
+        self.bm25 = None
+        if BM25Okapi is not None and self.corpus_records:
+            tokenized = [_tokenize(record["text"]) for record in self.corpus_records]
             self.bm25 = BM25Okapi(tokenized)
 
     def dense_search(self, query: str, top_k: int = 10) -> list[dict]:
@@ -103,7 +107,11 @@ class HybridSearch:
             enumerate(scores), key=lambda x: x[1], reverse=True
         )[:top_k]
         return [
-            {"id": f"doc_{idx}", "text": self.corpus_docs[idx], "score": round(score, 4)}
+            {
+                "id": self.corpus_records[idx]["id"],
+                "text": self.corpus_records[idx]["text"],
+                "score": round(score, 4),
+            }
             for idx, score in ranked
             if score > 0
         ]
