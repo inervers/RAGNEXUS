@@ -365,6 +365,28 @@ code, pre { font-family: var(--mono); }
   color: var(--accent);
   cursor: pointer;
 }
+
+.source-id {
+  display: block;
+  color: var(--accent, #8fb4ff);
+  margin-bottom: 4px;
+  overflow-wrap: anywhere;
+}
+
+.reranker-status {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  border-left: 2px solid #8fb4ff;
+  padding: 10px 12px;
+  color: #c6ccd6;
+  background: rgba(53, 102, 214, 0.08);
+}
+
+.reranker-status--fallback {
+  border-left-color: #e0a85c;
+  background: rgba(224, 168, 92, 0.08);
+}
 .source-row {
   margin-top: 6px;
   padding: 6px 8px;

@@ -1,9 +1,38 @@
 import { useRef, useEffect } from 'react';
-import type { CSSProperties } from 'react';
+import type { ButtonHTMLAttributes, CSSProperties, MouseEventHandler, ReactNode } from 'react';
 import { Renderer, Program, Mesh, Triangle, Color } from 'ogl';
 import './SpecularButton.css';
 
 const PAD = 20;
+
+interface SpecularButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'size' | 'onClick'> {
+  children?: ReactNode;
+  size?: 'sm' | 'md' | 'lg';
+  radius?: number;
+  tint?: string;
+  tintOpacity?: number;
+  blur?: number;
+  textColor?: string;
+  lineColor?: string;
+  baseColor?: string;
+  intensity?: number;
+  shineSize?: number;
+  shineFade?: number;
+  thickness?: number;
+  speed?: number;
+  followMouse?: boolean;
+  proximity?: number;
+  autoAnimate?: boolean;
+  disabled?: boolean;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
+  className?: string;
+  type?: 'button' | 'submit' | 'reset';
+}
+
+type RuntimeProps = Required<Pick<SpecularButtonProps,
+  'radius' | 'lineColor' | 'baseColor' | 'intensity' | 'shineSize' |
+  'shineFade' | 'thickness' | 'speed' | 'followMouse' | 'proximity' |
+  'autoAnimate'>>;
 
 const VERT = `#version 300 es
 in vec2 position;
@@ -89,10 +118,10 @@ const SpecularButton = ({
   onClick,
   className = '',
   type = 'button'
-}) => {
-  const btnRef = useRef(null);
-  const fxRef = useRef(null);
-  const propsRef = useRef({});
+}: SpecularButtonProps) => {
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const fxRef = useRef<HTMLSpanElement>(null);
+  const propsRef = useRef<RuntimeProps>({ radius, lineColor, baseColor, intensity, shineSize, shineFade, thickness, speed, followMouse, proximity, autoAnimate });
 
   propsRef.current = { radius, lineColor, baseColor, intensity, shineSize, shineFade, thickness, speed, followMouse, proximity, autoAnimate };
 
@@ -153,9 +182,9 @@ const SpecularButton = ({
 
     // Light angle steers toward the pointer (anywhere on the page) and falls
     // back to a slow sweep when the pointer hasn't moved yet.
-    let pointerAngle = null;
+    let pointerAngle: number | null = null;
     let proximityT = 0;
-    const onPointerMove = e => {
+    const onPointerMove = (e: PointerEvent) => {
       const rect = btn.getBoundingClientRect();
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + rect.height / 2;
@@ -185,7 +214,7 @@ const SpecularButton = ({
     const lineC = new Color();
     const baseC = new Color();
 
-    const update = now => {
+    const update = (now: number) => {
       raf = requestAnimationFrame(update);
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
@@ -193,7 +222,7 @@ const SpecularButton = ({
 
       idleAngle += p.speed * dt;
       const steer = p.followMouse && pointerAngle != null && (!p.autoAnimate || proximityT > 0);
-      const target = steer ? pointerAngle : idleAngle;
+      const target = steer && pointerAngle !== null ? pointerAngle : idleAngle;
       const diff = ((target - angle + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
       angle += diff * (1 - Math.exp(-dt * 7));
 

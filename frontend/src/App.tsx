@@ -7,6 +7,13 @@ import CountUp from "./fxbits/CountUp/CountUp"
 import AnimatedContent from "./fxbits/AnimatedContent/AnimatedContent"
 import SpecularButton from "./fxbits/SpecularButton/SpecularButton"
 import SpotlightCard from "./fxbits/SpotlightCard/SpotlightCard"
+import {
+  qaReadinessCopy,
+  rerankerDisplay,
+  serviceStateFromHealth,
+  type RerankerStatus,
+  type ServiceState,
+} from "./appStatus"
 
 const API_BASE = ""
 const API_KEY = "rag-secret-key-2024"
@@ -16,7 +23,13 @@ type TabKey = "qa" | "hybrid" | "kb" | "agent"
 interface Message {
   role: "user" | "assistant"
   content: string
-  sources?: { query: string; content: string }[]
+  sources?: Source[]
+}
+
+interface Source {
+  id: string
+  query: string
+  content: string
 }
 
 interface SearchResult {
@@ -58,6 +71,23 @@ const FX_BUTTON = {
    ============================================================ */
 function App() {
   const [tab, setTab] = useState<TabKey>("qa")
+  const [serviceState, setServiceState] = useState<ServiceState>("checking")
+  const [kbCount, setKbCount] = useState(0)
+
+  useEffect(() => {
+    fetch(`${API_BASE}/health`, {
+      headers: { "X-API-Key": API_KEY },
+    })
+      .then(async (response) => {
+        const payload = await response.json()
+        setServiceState(serviceStateFromHealth(response.ok, payload.status))
+        setKbCount(response.ok && payload.status === "ok" ? (payload.chunks ?? 0) : 0)
+      })
+      .catch(() => {
+        setServiceState("offline")
+        setKbCount(0)
+      })
+  }, [])
 
   return (
     <div className="app">
@@ -71,10 +101,15 @@ function App() {
         glowColor="rgba(53, 102, 214, 0.15)"
         className="bg-field"
       />
-      <Sidebar tab={tab} onTabChange={setTab} />
+      <Sidebar
+        tab={tab}
+        onTabChange={setTab}
+        serviceState={serviceState}
+        kbCount={kbCount}
+      />
       <main className="main-area">
         <div className="tab-content">
-          {tab === "qa" && <QATab />}
+          {tab === "qa" && <QATab serviceState={serviceState} />}
           {tab === "hybrid" && <HybridTab />}
           {tab === "kb" && <KBTab />}
           {tab === "agent" && <AgentTab />}
@@ -87,19 +122,17 @@ function App() {
 /* ============================================================
    侧边栏
    ============================================================ */
-function Sidebar({ tab, onTabChange }: { tab: TabKey; onTabChange: (t: TabKey) => void }) {
-  const [online, setOnline] = useState<boolean | null>(null)
-  const [kbCount, setKbCount] = useState(0)
-
-  useEffect(() => {
-    fetch(`${API_BASE}/health`, {
-      headers: { "X-API-Key": API_KEY },
-    })
-      .then((r) => r.json())
-      .then((d) => { setOnline(true); setKbCount(d.chunks ?? 0) })
-      .catch(() => setOnline(false))
-  }, [])
-
+function Sidebar({
+  tab,
+  onTabChange,
+  serviceState,
+  kbCount,
+}: {
+  tab: TabKey
+  onTabChange: (t: TabKey) => void
+  serviceState: ServiceState
+  kbCount: number
+}) {
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
@@ -110,10 +143,10 @@ function Sidebar({ tab, onTabChange }: { tab: TabKey; onTabChange: (t: TabKey) =
 
       <div className="status-card">
         <div className="status-row">
-          <span className={`dot ${online === true ? "green" : online === false ? "red" : "gray"}`} />
-          <span>{online === true ? "服务在线" : online === false ? "连接失败" : "检查中..."}</span>
+          <span className={`dot ${serviceState === "online" ? "green" : serviceState === "offline" ? "red" : "gray"}`} />
+          <span>{serviceState === "online" ? "服务在线" : serviceState === "offline" ? "连接失败" : "检查中..."}</span>
         </div>
-        {online && (
+        {serviceState === "online" && (
           <div className="kb-meta">
             <CountUp from={0} to={kbCount} duration={1} /> 个知识块
           </div>
@@ -143,7 +176,7 @@ function Sidebar({ tab, onTabChange }: { tab: TabKey; onTabChange: (t: TabKey) =
 /* ============================================================
    问答标签页
    ============================================================ */
-function QATab() {
+function QATab({ serviceState }: { serviceState: ServiceState }) {
   const [messages, setMessages] = useState<Message[]>(() => {
     try { return JSON.parse(localStorage.getItem("ragnxus_chat") || "[]") }
     catch { return [] }
@@ -250,7 +283,7 @@ function QATab() {
 
       const decoder = new TextDecoder()
       let buf = ""
-      let sourcesData: { query: string; content: string }[] | null = null
+      let sourcesData: Source[] | null = null
 
       // 启动打字动画
       startTyping()
@@ -328,12 +361,12 @@ function QATab() {
         {messages.length === 0 && (
           <AnimatedContent distance={20} duration={0.6} threshold={0.05} container="#qa-scroll" className="welcome-wrap">
             <div className="welcome">
-              <div className="welcome-kicker">RAGNEXUS // ready</div>
+              <div className="welcome-kicker">{qaReadinessCopy(serviceState).kicker}</div>
               <div className="welcome-title">
                 <span className="welcome-dot" />
-                知识库就绪
+                {qaReadinessCopy(serviceState).title}
               </div>
-              <p className="welcome-sub">输入问题开始对话</p>
+              <p className="welcome-sub">{qaReadinessCopy(serviceState).subtitle}</p>
             </div>
           </AnimatedContent>
         )}
@@ -362,7 +395,8 @@ function QATab() {
                 <details className="sources">
                   <summary>sources / {msg.sources.length}</summary>
                   {msg.sources.map((src, j) => (
-                    <div key={j} className="source-row">
+                    <div key={src.id || j} className="source-row">
+                      <code className="source-id">{src.id}</code>
                       <code className="source-query">{src.query}</code>
                       <p className="source-text">{src.content.slice(0, 180)}</p>
                     </div>
@@ -411,6 +445,7 @@ function HybridTab() {
     dense_top: SearchResult[]
     hybrid_top: SearchResult[]
     reranked?: SearchResult[]
+    reranker_status?: RerankerStatus
   } | null>(null)
   const [expanded, setExpanded] = useState<{ group: string; doc: SearchResult } | null>(null)
 
@@ -457,11 +492,17 @@ function HybridTab() {
 
       {result && (
         <div className="search-results">
+          {rerankerDisplay(result.reranker_status) && (
+            <div className={`reranker-status reranker-status--${rerankerDisplay(result.reranker_status)?.mode}`}>
+              <strong>{rerankerDisplay(result.reranker_status)?.title}</strong>
+              <span>{rerankerDisplay(result.reranker_status)?.message}</span>
+            </div>
+          )}
           {(
             [
               { title: "稠密向量检索", items: result.dense_top, key: "score" as const },
               { title: "混合检索（RRF）", items: result.hybrid_top, key: "rrf_score" as const },
-              ...(result.reranked ? [{ title: "Reranker 重排序", items: result.reranked, key: "ce_score" as const }] : []),
+              ...(result.reranked ? [{ title: rerankerDisplay(result.reranker_status)?.title ?? "Reranker", items: result.reranked, key: "ce_score" as const }] : []),
             ] as const
           ).map((g) => (
             <AnimatedContent key={g.title} distance={16} duration={0.5} threshold={0.05} container="#hybrid-scroll">
