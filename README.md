@@ -12,6 +12,9 @@ RAGNEXUS/
 ├── rag_api.py           ← FastAPI 服务（鉴权/限流/日志/RAG/SSE 流式）
 ├── rag_advanced.py      ← 混合检索 + Reranker
 ├── rag_multiagent.py    ← Multi-Agent 工作流（研究员→写作者→审核员）
+├── mcp_server.py        ← MCP thin wrapper（stdio / streamable HTTP）
+├── mcp_client_test.py   ← clone-independent stdio lifecycle smoke
+├── mcp_http_client_test.py ← streamable HTTP lifecycle smoke
 ├── frontend/            ← React 前端（4-tab 终端风格）
 │   ├── src/App.tsx      ← 问答 / 混合检索 / 知识库 / Agent 写作
 │   ├── vite.config.ts   ← dev 代理（/health|/query|/doc|/kb|/agent → 8000）
@@ -27,7 +30,8 @@ RAGNEXUS/
 ├── Dockerfile.legacy    ← 本机旧镜像 + 离线 wheels 的历史 fallback，非默认
 ├── docker-compose.yml   ← 真实数据部署（会挂载 ./chroma_db）
 ├── docker-compose.smoke.yml ← tmpfs fixture 隔离验收，不读取真实数据库/.env
-└── requirements-api.txt ← 标准 API 镜像的 pinned 直接依赖
+├── requirements-api.txt ← 标准 API 镜像的 pinned 直接依赖
+└── requirements-mcp.txt ← 可选 MCP server/client 的 pinned 依赖
 ```
 
 ---
@@ -94,6 +98,38 @@ Agent 的写作记忆保存在本地 `memory/` 目录，容器重建后记忆不
 
 前端为终端风格 4-tab 布局：问答 / 混合检索 / 知识库 / Agent 写作，支持暗色主题与 localStorage 会话持久化。
 
+前端回归命令：
+
+```powershell
+cd frontend
+npm test
+npm run build:check
+npm run build
+```
+
+`build:check` 会检查 App 与 fxbits 组件的完整 TypeScript 契约。服务离线时 Sidebar 与问答主区统一显示 offline；Reranker 缺少 Cross-Encoder 时结果区会显式标为 fallback。
+
+### MCP 接入与验收
+
+MCP 层只适配协议，检索、鉴权、限流和 trace 仍由 FastAPI 生产入口负责。工具成功响应返回机器可读的 `chunks/strategy/trace_id/stats`，失败响应返回稳定的 `error.code/message/trace_id`。
+
+```powershell
+python -m pip install -r requirements-mcp.txt
+
+# stdio（Claude / Cursor / Codex 等本地客户端）
+python mcp_server.py
+
+# streamable HTTP
+python mcp_server.py --transport http --port 8101
+```
+
+后端已启动时，可分别验证两种 transport：
+
+```powershell
+python mcp_client_test.py
+python mcp_http_client_test.py --url http://127.0.0.1:8101/mcp
+```
+
 ### 生产工程化
 
 | 能力 | 实现 |
@@ -102,7 +138,8 @@ Agent 的写作记忆保存在本地 `memory/` 目录，容器重建后记忆不
 | 速率限制 | 滑动窗口限流（30次/分钟），超限返回 429 |
 | 结构化日志 | 全链路 trace_id 追踪，JSON 格式写入文件 |
 | Docker 部署 | 标准 Python 3.11 API 镜像 + nginx 前端；固定模型 revision；tmpfs smoke |
-| SSE 流式 | 后端 X-Accel-Buffering: no + nginx proxy_buffering off |
+| SSE 流式 | 后端 X-Accel-Buffering: no + nginx proxy_buffering off；最终 done event 与非流式接口共享 `sources/retrieval_trace/trace_id` |
+| MCP 交付 | stdio + streamable HTTP；结构化成功/错误 payload；客户端按脚本目录定位 server |
 
 ---
 

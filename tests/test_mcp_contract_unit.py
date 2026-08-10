@@ -1,4 +1,5 @@
 from pathlib import Path
+import subprocess
 
 import mcp_client_test
 import mcp_server
@@ -175,3 +176,21 @@ def test_client_configures_its_own_output_as_utf8(monkeypatch):
 
     assert stdout.encoding == "utf-8"
     assert stderr.encoding == "utf-8"
+
+
+def test_client_cleanup_terminates_unresponsive_server_process():
+    process = subprocess.Popen(
+        [mcp_client_test.sys.executable, "-c", "import time; time.sleep(30)"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    try:
+        mcp_client_test.close_server_process(process, timeout=0.1)
+        assert process.poll() is not None
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=2)
