@@ -76,6 +76,20 @@ try {
         throw "hybrid retrieval smoke failed"
     }
 
+    $longText = "完整文档段落" * 1001
+    $encodedText = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($longText))
+    $uploadBody = @{ filename = "smoke-long.txt"; content = $encodedText } | ConvertTo-Json -Compress
+    $preview = Invoke-RestMethod -Uri "$apiBase/doc/preview" -Method Post `
+        -Headers $headers -ContentType "application/json" -Body $uploadBody -TimeoutSec 10
+    if ($preview.preview.Length -ne 5000 -or $preview.full_length -ne $longText.Length -or -not $preview.truncated) {
+        throw "document preview contract failed"
+    }
+    $imported = Invoke-RestMethod -Uri "$apiBase/doc/import" -Method Post `
+        -Headers $headers -ContentType "application/json" -Body $uploadBody -TimeoutSec 30
+    if ($imported.parsed_length -ne $longText.Length -or $imported.chunks -lt 2) {
+        throw "formal document import was truncated"
+    }
+
     $frontend = Invoke-WebRequest -Uri "$frontendBase/" -UseBasicParsing -TimeoutSec 10
     $proxiedHealth = Invoke-RestMethod -Uri "$frontendBase/health" -TimeoutSec 10
     if ($frontend.StatusCode -ne 200 -or $proxiedHealth.status -ne "ok") {
@@ -105,6 +119,9 @@ try {
         DeniedCorsOrigin = "no allow-origin header"
         RetrievalStrategy = $hybrid.result.trace.strategy
         RetrievalSelected = $hybrid.result.selected.Count
+        PreviewLength = $preview.preview.Length
+        ImportedLength = $imported.parsed_length
+        ImportedChunks = $imported.chunks
         FrontendStatus = $frontend.StatusCode
         ProxyHealth = $proxiedHealth.status
     } | Format-List
