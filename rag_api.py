@@ -5,8 +5,14 @@
 - 日志：trace_id 追踪、工具调用链路、请求耗时、错误记录
 """
 
-import sys, os, json, random, base64, asyncio
+import sys, os, json, random, asyncio
 
+from document_ingest import (
+    DocumentIngestError,
+    build_preview,
+    import_uploaded_document,
+    parse_uploaded_document,
+)
 from security_config import load_api_key, parse_cors_origins
 
 from retrieval_service import (
@@ -378,6 +384,10 @@ def _tool_search_chunks(query: str) -> list:
     return [item["text"] for item in result["selected"]]
 
 def _tool_add(title: str, content: str) -> str:
+    return _add_document_to_kb(title, content)["message"]
+
+
+def _add_document_to_kb(title: str, content: str) -> dict:
     full = f"{title}：{content}"
     chunks = splitter.split_documents([Document(full)])
     ids = _doc_ids(_doc_count() + 1, len(chunks))
@@ -385,7 +395,12 @@ def _tool_add(title: str, content: str) -> str:
     # 标记语料过期，下次 hybrid 查询会重建 BM25
     global _corpus_version
     _corpus_version = -1
-    return f"添加成功（{len(chunks)} 个分块），共 {_doc_count()} 个块"
+    total_chunks = _doc_count()
+    return {
+        "message": f"添加成功（{len(chunks)} 个分块），共 {total_chunks} 个块",
+        "chunks": len(chunks),
+        "total_chunks": total_chunks,
+    }
 
 def _tool_summarize(text: str) -> str:
     return _deepseek_ask("You are a summarizer.", f"Summarize:\n\n{text}")
@@ -512,27 +527,21 @@ class AgentWriteRequest(BaseModel):
 @app.post("/doc/preview")
 def preview_doc(req: UploadDocRequest, request: Request):
     """解析 PDF/TXT 并返回文本（不写入知识库），供前端预览后手动确认"""
-    if not req.filename.strip() or not req.content.strip():
-        raise HTTPException(400, "文件名和内容不能为空")
-    ext = req.filename.rsplit(".", 1)[-1].lower() if "." in req.filename else ""
     try:
-        raw_bytes = base64.b64decode(req.content)
-    except Exception:
-        raise HTTPException(400, "Base64 解码失败")
-    if ext == "pdf":
-        try:
-            from pdf_parser import extract_text
-            parsed = extract_text(raw_bytes)
-            text = parsed["text"]
-            title = req.filename.rsplit(".", 1)[0]
-        except Exception as e:
-            raise HTTPException(500, f"PDF 解析失败：{e}")
-    elif ext == "txt":
-        text = raw_bytes.decode("utf-8", errors="replace")
-        title = req.filename.rsplit(".", 1)[0]
-    else:
-        raise HTTPException(400, f"不支持的文件格式：.{ext}（仅支持 pdf/txt）")
-    return {"title": title, "content": text[:5000], "full_length": len(text)}
+        return build_preview(parse_uploaded_document(req.filename, req.content))
+    except DocumentIngestError as error:
+        raise HTTPException(error.status_code, str(error)) from error
+
+
+@app.post("/doc/import")
+def import_doc(req: UploadDocRequest, request: Request):
+    """重新解析原始文件并将完整文本写入知识库。"""
+    try:
+        return import_uploaded_document(
+            req.filename, req.content, _add_document_to_kb
+        )
+    except DocumentIngestError as error:
+        raise HTTPException(error.status_code, str(error)) from error
 
 @app.get("/health")
 def health(request: Request):

@@ -23,6 +23,7 @@ import {
   readSessionApiKey,
   saveSessionApiKey,
 } from "./apiAuth"
+import { buildImportRequest, type SelectedDocumentFile } from "./documentImport"
 
 const API_BASE = ""
 
@@ -687,6 +688,7 @@ function KBTab({ apiKey, onApiError }: { apiKey: string; onApiError: OnApiError 
   const [previewIdx, setPreviewIdx] = useState<number | null>(null)
   const [statusMsg, setStatusMsg] = useState("")
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [selectedFile, setSelectedFile] = useState<SelectedDocumentFile | null>(null)
   const [kbSearch, setKbSearch] = useState("")
   const [deleting, setDeleting] = useState<string | null>(null)
   const requestScope = useProtectedRequestScope(apiKey)
@@ -757,6 +759,30 @@ function KBTab({ apiKey, onApiError }: { apiKey: string; onApiError: OnApiError 
     setLoading(false)
   }
 
+  async function handleImport() {
+    if (!apiKey || !selectedFile) return
+    setLoading(true)
+    setStatusMsg("正在导入完整文档...")
+    try {
+      const signal = requestScope.begin()
+      const resp = await fetch(`${API_BASE}/doc/import`, {
+        method: "POST",
+        headers: authHeaders(apiKey, { "Content-Type": "application/json" }),
+        body: JSON.stringify(buildImportRequest(selectedFile)),
+        signal,
+      })
+      await ensureApiResponse(resp)
+      const data = await resp.json()
+      setStatusMsg(`${data.message}；完整导入 ${data.parsed_length} 字符`)
+      setSelectedFile(null)
+      await fetchDocs()
+    } catch (error) {
+      onApiError(error)
+      setStatusMsg(error instanceof Error ? `导入失败：${error.message}` : "导入失败，请重试")
+    }
+    setLoading(false)
+  }
+
   async function handleDelete(g: KbGroup) {
     if (!apiKey || deleting) return
     if (!window.confirm(`删除文档「${g.source}」？（共 ${g.ids.length} 个分块）`)) return
@@ -783,62 +809,55 @@ function KBTab({ apiKey, onApiError }: { apiKey: string; onApiError: OnApiError 
 
   async function fillFromFile(f: File) {
     const ext = f.name.split(".").pop()?.toLowerCase()
-    if (ext === "txt") {
-      const reader = new FileReader()
-      reader.onload = () => {
-        const text = reader.result as string
-        setTitle(f.name.replace(/\.txt$/i, ""))
-        setContent(text.slice(0, 5000))
-      }
-      reader.readAsText(f)
-      return
-    }
-    if (ext === "pdf") {
-      setStatusMsg("读取文件...")
-      setUploadProgress(5)
-      setLoading(true)
-      try {
-        // 用 FileReader 读取并追踪进度
-        const b64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onprogress = (e) => {
-            if (e.lengthComputable) {
-              setUploadProgress(5 + Math.round(e.loaded / e.total * 35))
-            }
+    if (ext !== "pdf" && ext !== "txt") return
+    setStatusMsg("读取文件...")
+    setUploadProgress(5)
+    setLoading(true)
+    try {
+      const b64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onprogress = (event) => {
+          if (event.lengthComputable) {
+            setUploadProgress(5 + Math.round(event.loaded / event.total * 35))
           }
-          reader.onload = () => {
-            const bytes = new Uint8Array(reader.result as ArrayBuffer)
-            let bin = ""
-            for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i])
-            resolve(btoa(bin))
-          }
-          reader.onerror = () => reject(reader.error)
-          reader.readAsArrayBuffer(f)
-        })
-        setUploadProgress(45)
-        setStatusMsg("发送到服务器...")
-        const signal = requestScope.begin()
-        const resp = await fetch(`${API_BASE}/doc/preview`, {
-          method: "POST",
-          headers: authHeaders(apiKey, { "Content-Type": "application/json" }),
-          body: JSON.stringify({ filename: f.name, content: b64 }),
-          signal,
-        })
-        await ensureApiResponse(resp)
-        setUploadProgress(75)
-        setStatusMsg("正在解析...")
-        const data = await resp.json()
-        setTitle(data.title)
-        setContent(data.content)
-        setUploadProgress(100)
-        setStatusMsg(`解析完成（共 ${data.full_length} 字符）`)
-      } catch (e) {
-        onApiError(e)
-        setStatusMsg(e instanceof Error ? `解析失败：${e.message}` : "解析失败，请重试")
-      }
-      setUploadProgress(0)
-      setLoading(false)
+        }
+        reader.onload = () => {
+          const bytes = new Uint8Array(reader.result as ArrayBuffer)
+          let binary = ""
+          for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+          resolve(btoa(binary))
+        }
+        reader.onerror = () => reject(reader.error)
+        reader.readAsArrayBuffer(f)
+      })
+      setUploadProgress(45)
+      setStatusMsg("发送到服务器预览...")
+      const signal = requestScope.begin()
+      const resp = await fetch(`${API_BASE}/doc/preview`, {
+        method: "POST",
+        headers: authHeaders(apiKey, { "Content-Type": "application/json" }),
+        body: JSON.stringify({ filename: f.name, content: b64 }),
+        signal,
+      })
+      await ensureApiResponse(resp)
+      setUploadProgress(75)
+      const data = await resp.json()
+      setSelectedFile({
+        filename: f.name,
+        encodedContent: b64,
+        title: data.title,
+        preview: data.preview,
+        fullLength: data.full_length,
+        truncated: data.truncated,
+      })
+      setUploadProgress(100)
+      setStatusMsg(`预览完成（共 ${data.full_length} 字符，正式导入使用原始文件）`)
+    } catch (error) {
+      onApiError(error)
+      setStatusMsg(error instanceof Error ? `解析失败：${error.message}` : "解析失败，请重试")
     }
+    setUploadProgress(0)
+    setLoading(false)
   }
 
   return (
@@ -876,6 +895,21 @@ function KBTab({ apiKey, onApiError }: { apiKey: string; onApiError: OnApiError 
             const f = e.target.files?.[0] ?? null
             if (f) fillFromFile(f)
           }} />
+        {selectedFile && (
+          <div className="kb-preview">
+            <div className="kb-preview-header">
+              <span>{selectedFile.title} · {selectedFile.fullLength} 字符</span>
+              <button className="btn-close" onClick={() => setSelectedFile(null)}>清除</button>
+            </div>
+            <p className="kb-preview-text">{selectedFile.preview}</p>
+            {selectedFile.truncated && (
+              <p className="upload-msg">这里只展示前 5000 字符；正式导入会重新解析完整文件。</p>
+            )}
+            <SpecularButton {...FX_BUTTON} onClick={handleImport} disabled={loading}>
+              {loading ? "导入中..." : "导入完整文档"}
+            </SpecularButton>
+          </div>
+        )}
         {statusMsg && <p className="upload-msg">{statusMsg}</p>}
       </div>
 
