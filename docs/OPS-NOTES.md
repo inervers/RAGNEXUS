@@ -128,8 +128,9 @@ LLM_MODEL = os.environ.get("LLM_MODEL", "deepseek-v4-flash" if DEEPSEEK_API_KEY 
 | POST /query/hybrid | 混合检索（dense+sparse） |
 | POST /doc | 上传文档 |
 | GET /kb/docs | 知识库列表 |
-| POST /doc/preview | `{filename, content: base64}` → `{title, content[:5000], full_length}` |
-| POST /agent/write | 多 Agent 写作 `{topic, max_retries}` |
+| POST /doc/preview | `{filename, content: base64}` → `{title, preview, full_length, truncated}`，只用于展示 |
+| POST /doc/import | 从原始 base64 重新解析并写入完整文档，不使用 preview 作为数据源 |
+| POST /agent/write | 三角色有界协作 `{topic, max_retries}`，Reviewer issues 回灌 Writer |
 
 ---
 
@@ -137,7 +138,7 @@ LLM_MODEL = os.environ.get("LLM_MODEL", "deepseek-v4-flash" if DEEPSEEK_API_KEY 
 
 - `API_BASE=""`（同源）：本地 dev 靠 vite.config.ts proxy（`/health|/query|/doc|/kb|/agent` → 8000）；Docker 靠 nginx 正则转发
 - **改了前端代码，浏览器必须 Ctrl+Shift+R 强刷**——旧缓存会导致"问问题不回答"这类假故障
-- 4-tab 结构：问答 / 混合检索 / 知识库 / Agent 写作；问答打字动画 + 取消按钮（abortRef）；知识库 PAGE_SIZE=30 + 拖拽 PDF 预览（/doc/preview）
+- 4-tab 结构：问答 / 混合检索 / 知识库 / Agent 写作；问答打字动画 + 取消按钮（abortRef）；知识库 PAGE_SIZE=30 + PDF/TXT 预览（/doc/preview）与完整导入（/doc/import）分离
 
 ---
 

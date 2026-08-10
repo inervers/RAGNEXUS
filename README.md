@@ -94,8 +94,8 @@ Agent 的写作记忆保存在本地 `memory/` 目录，容器重建后记忆不
 | **标准 RAG 问答** | Function Calling 驱动，自动检索知识库 + LLM 回答，SSE 流式 + 打字动画 + 取消 |
 | **混合检索** | 稠密向量 + BM25 + RRF；V2 评测冻结 Dense:Sparse=1:2，目标 Embedding 为 multilingual MiniLM |
 | **Reranker 精排** | 可选 Cross-Encoder；模型缺失会显式 fallback，RAG-06 未把 fallback 计作有效成绩 |
-| **Multi-Agent 写作** | 研究员→写作者→审核员协作流水线，带持久化记忆与评分/重试循环 |
-| **知识库管理** | 支持 .txt/.pdf 拖拽上传，PDF 实时预览（/doc/preview），分页浏览与跳页 |
+| **Multi-Agent 写作** | Researcher→Writer→Reviewer 有界协作流水线；未达阈值时 Reviewer issues 回灌下一轮 Writer，带 trace 与持久化记忆 |
+| **知识库管理** | 支持 .txt/.pdf 拖拽上传；preview 最多展示 5000 字符，正式 import 从原始文件重新解析完整文本 |
 
 前端为终端风格 4-tab 布局：问答 / 混合检索 / 知识库 / Agent 写作，支持暗色主题与 localStorage 会话持久化。
 
@@ -207,9 +207,9 @@ python mcp_http_client_test.py --url http://127.0.0.1:8101/mcp
 **不是花哨，是解决单次 LLM 调用的三个结构性缺陷。**
 - **研究员**：检索知识库 + 提取关键信息，专注精度，不参与生成
 - **写作者**：根据研究员提供的材料组织文章，专注表达
-- **审核员**：检查事实错误和逻辑漏洞，回退到写作者重新修改
+- **审核员**：输出结构化 `issues/rating/verdict`；未达阈值时 `issues` 显式进入下一轮 Writer prompt，并在 trace 中记录传递
 - **为什么不用链式提示（Chain-of-Thought）：** CoT 在单个 prompt 里模拟多步推理，但 LLM 在长上下文中容易"中途掉线"——写到后面忘了前面的约束。Agent 之间的显式状态传递（研究员输出→写作者输入）避免了这个问题
-- **状态驱动机**：写作者返回后检查状态，已审核通过就不重复跑，防止写作者 ↔ 审核员死循环
+- **有界重试**：只在 `verdict=通过` 或 `rating>=4` 时标记通过；否则最多执行 `max_retries + 1` 稿，耗尽后如实返回失败
 
 ---
 
@@ -223,8 +223,9 @@ python mcp_http_client_test.py --url http://127.0.0.1:8101/mcp
 | `POST /query/hybrid` | X-API-Key | 混合检索，可选 Reranker |
 | `POST /doc` | X-API-Key | 添加知识 |
 | `GET /kb/docs` | X-API-Key | 获取知识库全部文档 |
-| `POST /doc/preview` | X-API-Key | 文档预览（`{filename, content: base64}` → 文本前 5000 字符） |
-| `POST /agent/write` | X-API-Key | Multi-Agent 写作流水线 |
+| `POST /doc/preview` | X-API-Key | 文档预览（`{filename, content: base64}` → `preview/full_length/truncated`） |
+| `POST /doc/import` | X-API-Key | 从原始 base64 重新解析并导入完整文档，不消费 preview 文本 |
+| `POST /agent/write` | X-API-Key | 三角色有界协作流水线，Reviewer 反馈最多按 `max_retries` 回灌 Writer |
 
 ### 测试示例
 

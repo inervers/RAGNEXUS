@@ -231,7 +231,7 @@ class MultiAgentWorkflow:
         article = ""
         final_rating = 0
         passed = False
-        previous_rating = 0
+        review_feedback: list[str] = []
 
         for attempt in range(1, max_retries + 2):
             self.trace.log("writer", "write", "ok",
@@ -244,13 +244,18 @@ class MultiAgentWorkflow:
                 mem_context = "\n\n历史反馈：\n" + "\n".join(
                     f"- {m.get('outcome', '')[:100]}" for m in mems
                 )
+            feedback_context = ""
+            if review_feedback:
+                feedback_context = "\n\n上一轮审核反馈（逐项修改）：\n" + "\n".join(
+                    f"- {issue}" for issue in review_feedback
+                )
 
             article = self._call_llm(
                 "你是科普写作者。输出 JSON：{\"title\": \"...\", \"content\": \"...\", \"word_count\": 0}"
                 + (f"\n\n这是第 {attempt} 次修改，请改进之前的不足。" if attempt > 1 else ""),
                 f"主题：{topic}\n研究资料：{research or ''}\n"
                 + (f"知识库来源：{kb_context}\n" if kb_context else "")
-                + f"{mem_context}",
+                + f"{mem_context}{feedback_context}",
                 temperature=0.4
             ) or ""
             writer_mem.add({"task": f"写作{topic}第{attempt}稿",
@@ -274,12 +279,14 @@ class MultiAgentWorkflow:
 
             final_rating = review.get("rating", 0)
             verdict = review.get("verdict", "需要修改")
+            issues = review.get("issues", [])
+            review_feedback = [str(issue) for issue in issues] if isinstance(issues, list) else [str(issues)]
 
             reviewer_mem.add({
                 "task": f"审核{topic}第{attempt}稿",
                 "outcome": f"评分{final_rating}，裁决{verdict}",
                 "rating": final_rating,
-                "issues": review.get("issues", [])
+                "issues": review_feedback
             })
 
             # 通过判定：绝对达标或相对改进
@@ -287,14 +294,16 @@ class MultiAgentWorkflow:
                 passed = True
                 break
 
-            if previous_rating > 0 and final_rating > previous_rating:
-                passed = True
-                break
-
-            previous_rating = final_rating
-
             if attempt > max_retries:
                 break
+            self.trace.log(
+                "reviewer",
+                "feedback_to_writer",
+                "ok",
+                detail=f"round={attempt}, issues={len(review_feedback)}",
+                target="writer",
+                issue_count=len(review_feedback),
+            )
 
         elapsed = round(time.time() - start, 1)
 
