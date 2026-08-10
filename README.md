@@ -87,8 +87,8 @@ Agent 的写作记忆保存在本地 `memory/` 目录，容器重建后记忆不
 | 功能 | 说明 |
 |------|------|
 | **标准 RAG 问答** | Function Calling 驱动，自动检索知识库 + LLM 回答，SSE 流式 + 打字动画 + 取消 |
-| **混合检索** | 稠密向量（all-MiniLM-L6-v2）+ BM25 稀疏检索 + RRF 融合，覆盖语义相关与精确术语匹配 |
-| **Reranker 精排** | Cross-Encoder 对粗筛结果重排序，修正 Bi-Encoder 的排序偏差 |
+| **混合检索** | 稠密向量 + BM25 + RRF；V2 评测冻结 Dense:Sparse=1:2，目标 Embedding 为 multilingual MiniLM |
+| **Reranker 精排** | 可选 Cross-Encoder；模型缺失会显式 fallback，RAG-06 未把 fallback 计作有效成绩 |
 | **Multi-Agent 写作** | 研究员→写作者→审核员协作流水线，带持久化记忆与评分/重试循环 |
 | **知识库管理** | 支持 .txt/.pdf 拖拽上传，PDF 实时预览（/doc/preview），分页浏览与跳页 |
 
@@ -152,9 +152,9 @@ Agent 的写作记忆保存在本地 `memory/` 目录，容器重建后记忆不
 
 **LangChain 是胶水，不是架构。**
 - LangChain 的 `ensemble_retriever` 确实能快速拼出混合检索，但它的 RRF 实现是硬编码的，调不了 `k` 值和权重
-- 当前所有入口统一使用 `dense_weight=1.0 / sparse_weight=2.0` 作为待复验 baseline；它保证生产与评测口径一致，不代表该权重已经最优
+- 当前所有入口统一使用 `dense_weight=1.0 / sparse_weight=2.0`；RAG-06 development 在 1:1、1:2、1:3 中选择 1:2，冻结后 heldout 复验
 - 自己实现的好处：**调试路径是透明的**。出问题我知道去查 `retrieve()` → `rrf_merge()` → `rerank()` 哪一步
-- **和 Reranker 的关系：** BM25 可能拉入关键词噪声，Cross-Encoder 可做候选精排；旧 40 题没有标准 chunk-ID ground truth，因此不能据此判断 Reranker 是否有增益。当前保留开关，最终决策等待 V2 held-out 报告
+- **和 Reranker 的关系：** BM25 可能拉入关键词噪声，Cross-Encoder 可做候选精排；标准可复现镜像当前没有 verified Cross-Encoder snapshot，RAG-06 明确记为 `not_evaluated`，不再沿用旧评测的“无增益”结论
 
 ### 为什么用滑动窗口限流，而不是令牌桶？
 
@@ -241,7 +241,9 @@ python eval_rag.py --retrieval-only --split heldout --allow-heldout
 
 `eval/eval_set.schema.json` 固化字段契约，`eval_dataset.py` 还会严格验证题数、分类/split 分布、manifest SHA256、chunk 归属和来源提交。未带 `--allow-heldout` 请求 heldout/all 会在发送 HTTP 前失败。
 
-当前仍没有可对外引用的新版检索分数；RAG-06 将先用 development 选择 Dense/Hybrid/Reranker 与 Embedding 配置，冻结后再消费 heldout。40 题是当前项目知识域的回归集，不代表开放域泛化或生产 SLA。
+RAG-06 只用 development 选择并冻结 `paraphrase-multilingual-MiniLM-L12-v2 + Hybrid 1:2 + top_k=10`，随后一次性运行 heldout。16 道 heldout 中 14 道正样本的结果为：Recall@5 0.8929、Recall@10 0.9286、MRR@10 0.7917、HitRate@5 1.0000；另 2 道无答案题不混入正样本检索指标。原始结果、freeze 和 Case 分析见 `eval/experiments/`。
+
+这些数字只代表当前 184-chunk 项目知识域回归集，不代表开放域泛化或生产 SLA。检索 median 16.507 ms、P95 20.857 ms 来自同一容器单进程相对实验，也不能当成并发性能结论。heldout 的 multidoc Recall@5 只有 0.5，下一步应优先做 source diversity/query decomposition，而不是继续微调 RRF 权重。
 
 ```powershell
 # 生成确定性的 JSONL + manifest，不访问 Chroma
@@ -254,7 +256,7 @@ python materialize_kb_v2.py --artifact kb_v2/build --target chroma_db_v2 --check
 python materialize_kb_v2.py --artifact kb_v2/build --target chroma_db_v2 --batch-size 1
 ```
 
-当前没有可对外引用的新版检索分数。单条中文事故题 smoke 中 Dense Top-5 失效、BM25/Hybrid 找回正确主题，这只是待验证假设的线索，不是总体结论。下一步先用 V2 manifest 重做 40 题并冻结 24/16，再比较 Dense、Hybrid、Reranker 和中文/多语 Embedding 候选。
+V2 的目标 Embedding 已根据评测选为 multilingual MiniLM，但默认 `rag_api.py` 与真实持久库尚未直接切换：现有 document embeddings 来自旧 model/pooling，只换 query encoder 会造成向量口径不一致。生产迁移必须在新数据库中全量重算 184 chunks、校验后再显式切换，并保留旧库回滚。
 
 ## 运行测试
 

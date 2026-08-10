@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "status": "consumed",
+  "freeze_file": "rag06-freeze.json",
+  "freeze_sha256": "b22e529b6d2e459e7c04867767c6696e66919ae718d2a6ccba4ad76e840c5fa2",
+  "heldout_result_file": "rag06-heldout.json",
+  "heldout_result_sha256": "66c82eddc4a9cc33576e481f1c9e1c1c83c559390b24fb01afbaa4fa06ad2e05",
+  "code_commit": "4e22051",
+  "chosen_config": "hybrid-1-2",
+  "embedding_model_revision": "e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+  "n_questions": 16,
+  "scored": 14,
+  "unscored": 2,
+  "errors": 0
+}

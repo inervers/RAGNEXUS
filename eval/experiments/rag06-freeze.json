@@ -1,0 +1,179 @@
+{
+  "chosen_config": {
+    "dense_weight": 1.0,
+    "name": "hybrid-1-2",
+    "sparse_weight": 2.0,
+    "strategy": "hybrid",
+    "top_k": 10
+  },
+  "chosen_summary": {
+    "categories": {
+      "exact": {
+        "counts": {
+          "empty": 0,
+          "error": 0,
+          "fallback": 0,
+          "ok": 6,
+          "scored": 6,
+          "total": 6,
+          "unscored": 0
+        },
+        "latency_ms": {
+          "median": 15.872,
+          "p95": 17.704
+        },
+        "metrics": {
+          "hit_rate_at_5": 1.0,
+          "mrr_at_10": 0.6389,
+          "recall_at_10": 1.0,
+          "recall_at_5": 1.0
+        }
+      },
+      "multidoc": {
+        "counts": {
+          "empty": 0,
+          "error": 0,
+          "fallback": 0,
+          "ok": 4,
+          "scored": 4,
+          "total": 4,
+          "unscored": 0
+        },
+        "latency_ms": {
+          "median": 14.43,
+          "p95": 15.895
+        },
+        "metrics": {
+          "hit_rate_at_5": 0.25,
+          "mrr_at_10": 0.0857,
+          "recall_at_10": 0.2917,
+          "recall_at_5": 0.0833
+        }
+      },
+      "semantic": {
+        "counts": {
+          "empty": 0,
+          "error": 0,
+          "fallback": 0,
+          "ok": 5,
+          "scored": 5,
+          "total": 5,
+          "unscored": 0
+        },
+        "latency_ms": {
+          "median": 12.981,
+          "p95": 14.325
+        },
+        "metrics": {
+          "hit_rate_at_5": 1.0,
+          "mrr_at_10": 0.9,
+          "recall_at_10": 0.9,
+          "recall_at_5": 0.9
+        }
+      },
+      "troubleshooting": {
+        "counts": {
+          "empty": 0,
+          "error": 0,
+          "fallback": 0,
+          "ok": 5,
+          "scored": 5,
+          "total": 5,
+          "unscored": 0
+        },
+        "latency_ms": {
+          "median": 12.073,
+          "p95": 13.777
+        },
+        "metrics": {
+          "hit_rate_at_5": 0.6,
+          "mrr_at_10": 0.6,
+          "recall_at_10": 0.5333,
+          "recall_at_5": 0.4667
+        }
+      },
+      "unanswerable": {
+        "counts": {
+          "empty": 0,
+          "error": 0,
+          "fallback": 0,
+          "ok": 0,
+          "scored": 0,
+          "total": 2,
+          "unscored": 2
+        },
+        "latency_ms": {
+          "median": 12.399,
+          "p95": 13.67
+        },
+        "metrics": {
+          "hit_rate_at_5": null,
+          "mrr_at_10": null,
+          "recall_at_10": null,
+          "recall_at_5": null
+        }
+      },
+      "version_conflict": {
+        "counts": {
+          "empty": 0,
+          "error": 0,
+          "fallback": 0,
+          "ok": 2,
+          "scored": 2,
+          "total": 2,
+          "unscored": 0
+        },
+        "latency_ms": {
+          "median": 13.454,
+          "p95": 13.524
+        },
+        "metrics": {
+          "hit_rate_at_5": 1.0,
+          "mrr_at_10": 0.75,
+          "recall_at_10": 1.0,
+          "recall_at_5": 0.75
+        }
+      }
+    },
+    "counts": {
+      "empty": 0,
+      "error": 0,
+      "fallback": 0,
+      "ok": 22,
+      "scored": 22,
+      "total": 24,
+      "unscored": 2
+    },
+    "latency_ms": {
+      "median": 13.588,
+      "p95": 15.918
+    },
+    "metrics": {
+      "hit_rate_at_5": 0.7727,
+      "mrr_at_10": 0.5989,
+      "recall_at_10": 0.7424,
+      "recall_at_5": 0.6667
+    }
+  },
+  "development_result": "/results/rag06-development-multilingual-minilm.json",
+  "development_result_sha256": "d213c281e4bccd45a240142d3bb26b737c0c14541e0334762b94ec5d87b8f6a1",
+  "frozen_at": "2026-08-10T11:36:25+00:00",
+  "provenance": {
+    "code_commit": "4e22051",
+    "corpus_sha256": "175a3b5f11b4db312418ebfb73ee1c5439519dd7a191faffc3bcaad0076c6802",
+    "embedding_model_id": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "embedding_model_revision": "e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+    "embedding_pooling": "masked_mean",
+    "embedding_snapshot_sha256": "d0b5f8505b675db0b8b3b7a125d833c7c4d6b115d5ac841195bc51e1cc1578d6",
+    "eval_set_sha256": "b5cd4471db7db31163a98c5a68d031e375adf036cb6e3a8b1eb2d153ad4bb466",
+    "manifest_sha256": "8dc4e9a79100fe7b5f9e93fccb966dc59a64c592bd265de0c2c725aa5b9da0a8"
+  },
+  "schema_version": 1,
+  "selection_rule": [
+    "hit_rate_at_5",
+    "mrr_at_10",
+    "recall_at_5"
+  ],
+  "split": "development",
+  "status": "frozen"
+}

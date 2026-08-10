@@ -1,0 +1,728 @@
+{
+  "configs": [
+    {
+      "dense_weight": 1.0,
+      "name": "hybrid-1-2",
+      "sparse_weight": 2.0,
+      "strategy": "hybrid",
+      "top_k": 10
+    }
+  ],
+  "generated_at": "2026-08-10T12:25:39+00:00",
+  "n_corpus_chunks": 184,
+  "n_questions": 16,
+  "preregistered_selection_rule": [
+    "hit_rate_at_5",
+    "mrr_at_10",
+    "recall_at_5",
+    "lower_dependency_cost_on_exact_quality_tie",
+    "lower_median_latency"
+  ],
+  "provenance": {
+    "code_commit": "4e22051",
+    "corpus_sha256": "175a3b5f11b4db312418ebfb73ee1c5439519dd7a191faffc3bcaad0076c6802",
+    "embedding_model_id": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "embedding_model_revision": "e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+    "embedding_pooling": "masked_mean",
+    "embedding_snapshot_sha256": "d0b5f8505b675db0b8b3b7a125d833c7c4d6b115d5ac841195bc51e1cc1578d6",
+    "eval_set_sha256": "b5cd4471db7db31163a98c5a68d031e375adf036cb6e3a8b1eb2d153ad4bb466",
+    "manifest_sha256": "8dc4e9a79100fe7b5f9e93fccb966dc59a64c592bd265de0c2c725aa5b9da0a8"
+  },
+  "reranker": {
+    "reason": "no verified cross-encoder snapshot in the reproducible image",
+    "status": "not_evaluated"
+  },
+  "rows": [
+    {
+      "category": "exact",
+      "config": "hybrid-1-2",
+      "difficulty": "medium",
+      "elapsed_ms": 20.857,
+      "outcome": {
+        "metrics": {
+          "hit_rate_at_5": 1.0,
+          "mrr_at_10": 0.25,
+          "recall_at_10": 1.0,
+          "recall_at_5": 1.0
+        },
+        "n": 10,
+        "selected_ids": [
+          "ragnexus:integration:mcp-trace:v1#cad0f48d1f6c467b",
+          "ragnexus:integration:mcp-trace:v1#8b5fc77b7f879ed5",
+          "ragnexus:architecture:unified-retrieval:v1#66854b10c193449e",
+          "ragnexus:integration:mcp-trace:v1#43a02ba64158cabe",
+          "ragnexus:integration:mcp-trace:v1#f517e93f27f6d46e",
+          "ragnexus:architecture:unified-retrieval:v1#2fcb03d9e8100803",
+          "ragnexus:integration:mcp-trace:v1#44ba3c5ca5b72e14",
+          "ragnexus:architecture:unified-retrieval:v1#df8ba5332fbc8190",
+          "ragnexus:architecture:unified-retrieval:v1#34be7a558e12eca8",
+          "ragnexus:integration:mcp-trace:v1#aaa8274ff38447bb"
+        ],
+        "status": "ok"
+      },
+      "question": "RAGNEXUS Hybrid baseline 的 Dense 与 Sparse 权重是多少？",
+      "question_id": "v2-007",
+      "relevant_chunk_ids": [
+        "ragnexus:integration:mcp-trace:v1#43a02ba64158cabe"
+      ],
+      "should_abstain": false
+    },
+    {
+      "category": "exact",
+      "config": "hybrid-1-2",
+      "difficulty": "medium",
+      "elapsed_ms": 15.624,
+      "outcome": {
+        "metrics": {
+          "hit_rate_at_5": 1.0,
+          "mrr_at_10": 1.0,
+          "recall_at_10": 1.0,
+          "recall_at_5": 1.0
+        },
+        "n": 10,
+        "selected_ids": [
+          "prism:architecture:review-hitl-evaluation:v1#09b6dd30f40606a0",
+          "prism:architecture:review-hitl-evaluation:v1#8acb5df8dc343904",
+          "prism:architecture:review-hitl-evaluation:v1#750c66e05f7313a3",
+          "prism:architecture:review-hitl-evaluation:v1#5c8fc8d03c3317b8",
+          "prism:architecture:review-hitl-evaluation:v1#59f8d4e740b40aaa",
+          "prism:architecture:review-hitl-evaluation:v1#70c3dc2c651f5786",
+          "prism:architecture:review-hitl-evaluation:v1#82eaa4f4c3912049",
+          "prism:architecture:review-hitl-evaluation:v1#f3be188293a8b8b9",
+          "prism:architecture:review-hitl-evaluation:v1#542c448b4dc74c1d",
+          "tradewind:architecture:delivery-loop:v1#3f5728b29a82a694"
+        ],
+        "status": "ok"
+      },
+      "question": "Prism 归档 baseline 的任务数、平均重写次数和平均耗时分别是多少？",
+      "question_id": "v2-008",
+      "relevant_chunk_ids": [
+        "prism:architecture:review-hitl-evaluation:v1#09b6dd30f40606a0"
+      ],
+      "should_abstain": false
+    },
+    {
+      "category": "exact",
+      "config": "hybrid-1-2",
+      "difficulty": "medium",
+      "elapsed_ms": 16.305,
+      "outcome": {
+        "metrics": {
+          "hit_rate_at_5": 1.0,
+          "mrr_at_10": 1.0,
+          "recall_at_10": 1.0,
+          "recall_at_5": 1.0
+        },
+        "n": 10,
+        "selected_ids": [
+          "tradewind:delivery:portable-support:v1#7e863af35d324511",
+          "tradewind:delivery:portable-support:v1#3768d835049e9fd8",
+          "tradewind:delivery:portable-support:v1#01a24e73d1acf71b",
+          "tradewind:delivery:portable-support:v1#baa16ee999989737",
+          "tradewind:architecture:delivery-loop:v1#6a0eed2113683514",
+          "tradewind:delivery:portable-support:v1#ca5771fb78449c7c",
+          "tradewind:architecture:delivery-loop:v1#89f4e5a66c4d200b",
+          "ragnexus:incident:container-ssl-eof:v1#86250633c40f872a",
+          "tradewind:delivery:portable-support:v1#28d7a69795de0c76",
+          "tradewind:architecture:delivery-loop:v1#d2880ec6522f4065"
+        ],
+        "status": "ok"
+      },
+      "question": "Tradewind 浏览器绿色版启动器绑定哪个地址和端口？",
+      "question_id": "v2-009",
+      "relevant_chunk_ids": [
+        "tradewind:delivery:portable-support:v1#7e863af35d324511"
+      ],
+      "should_abstain": false
+    },
+    {
+      "category": "exact",
+      "config": "hybrid-1-2",
+      "difficulty": "easy",
+      "elapsed_ms": 16.03,
+      "outcome": {
+        "metrics": {
+          "hit_rate_at_5": 1.0,
+          "mrr_at_10": 1.0,
+          "recall_at_10": 1.0,
+          "recall_at_5": 1.0
+        },
+        "n": 10,
+        "selected_ids": [
+          "ragnexus:migration:chroma-0.5.17-to-1.5.9:v1#13fb6b5b761574ff",
+          "ragnexus:migration:chroma-0.5.17-to-1.5.9:v1#0ca4f92d7c5945d5",
+          "ragnexus:migration:chroma-0.5.17-to-1.5.9:v1#641a134fe889fc12",
+          "ragnexus:deployment:docker-bind-mount:v1#96f580c7c50562ec",
+          "ragnexus:migration:chroma-0.5.17-to-1.5.9:v1#ebde366e1cec3f7a",
+          "ragnexus:incident:storage-split:v1#afcbfb97e2200dc7",
+          "ragnexus:deployment:docker-bind-mount:v1#5a39fe479e9ed89e",
+          "tradewind:adr:local-retrieval-and-data-safety:v1#013dd599339e59b5",
+          "tradewind:adr:local-retrieval-and-data-safety:v1#e02762d328331f29",
+          "tradewind:adr:local-retrieval-and-data-safety:v1#5dac041e3d70f9e4"
+        ],
+        "status": "ok"
+      },
+      "question": "ChromaDB 0.5.17 到 1.5.9 的迁移中，重新嵌入时沿用了哪个模型系列？",
+      "question_id": "v2-010",
+      "relevant_chunk_ids": [
+        "ragnexus:migration:chroma-0.5.17-to-1.5.9:v1#13fb6b5b761574ff"
+      ],
+      "should_abstain": false
+    },
+    {
+      "category": "semantic",
+      "config": "hybrid-1-2",
+      "difficulty": "hard",
+      "elapsed_ms": 19.926,
+      "outcome": {
+        "metrics": {
+          "hit_rate_at_5": 1.0,
+          "mrr_at_10": 1.0,
+          "recall_at_10": 1.0,
+          "recall_at_5": 1.0
+        },
+        "n": 10,
+        "selected_ids": [
+          "ragnexus:architecture:unified-retrieval:v1#c6f47ce37dff3801",
+          "ragnexus:architecture:unified-retrieval:v1#2fcb03d9e8100803",
+          "ragnexus:integration:mcp-trace:v1#8b5fc77b7f879ed5",
+          "ragnexus:integration:mcp-trace:v1#44ba3c5ca5b72e14",
+          "ragnexus:incident:storage-split:v1#1e25a37d16101558",
+          "ragnexus:incident:container-ssl-eof:v1#74233fd339846c81",
+          "tradewind:adr:local-retrieval-and-data-safety:v1#f3d2ea416c83341d",
+          "ragnexus:incident:storage-split:v1#afcbfb97e2200dc7",
+          "prism:architecture:review-hitl-evaluation:v1#09b6dd30f40606a0",
+          "tradewind:adr:local-retrieval-and-data-safety:v1#b918dce22adbbac3"
+        ],
+        "status": "ok"
+      },
+      "question": "为什么 RAGNEXUS 的 trace 中必须记录实际 reranker mode，而不能只记录 use_reranker=true？",
+      "question_id": "v2-016",
+      "relevant_chunk_ids": [
+        "ragnexus:architecture:unified-retrieval:v1#c6f47ce37dff3801"
+      ],
+      "should_abstain": false
+    },
+    {
+      "category": "semantic",
+      "config": "hybrid-1-2",
+      "difficulty": "medium",
+      "elapsed_ms": 15.008,
+      "outcome": {
+        "metrics": {
+          "hit_rate_at_5": 1.0,
+          "mrr_at_10": 0.5,
+          "recall_at_10": 1.0,
+          "recall_at_5": 1.0
+        },
+        "n": 10,
+        "selected_ids": [
+          "ragnexus:incident:storage-split:v1#1e25a37d16101558",
+          "tradewind:delivery:portable-support:v1#86b9b08ca5f6fb67",
+          "prism:architecture:review-hitl-evaluation:v1#64de8796ea3629ce",
+          "prism:architecture:review-hitl-evaluation:v1#5e88e90a26478c41",
+          "tradewind:architecture:delivery-loop:v1#f4c4e6cae7888940",
+          "tradewind:adr:local-retrieval-and-data-safety:v1#bf9a9a6a1064207e",
+          "ragnexus:migration:chroma-0.5.17-to-1.5.9:v1#0ca4f92d7c5945d5",
+          "ragnexus:architecture:unified-retrieval:v1#c6f47ce37dff3801",
+          "tradewind:architecture:delivery-loop:v1#3f5728b29a82a694",
+          "tradewind:architecture:delivery-loop:v1#98410d5bd48e7b93"
+        ],
+        "status": "ok"
+      },
+      "question": "为什么 Tradewind 的 ZIP checksum 能证明完整性，却不能证明软件安全？",
+      "question_id": "v2-017",
+      "relevant_chunk_ids": [
+        "tradewind:delivery:portable-support:v1#86b9b08ca5f6fb67"
+      ],
+      "should_abstain": false
+    },
+    {
+      "category": "semantic",
+      "config": "hybrid-1-2",
+      "difficulty": "hard",
+      "elapsed_ms": 15.744,
+      "outcome": {
+        "metrics": {
+          "hit_rate_at_5": 1.0,
+          "mrr_at_10": 0.5,
+          "recall_at_10": 1.0,
+          "recall_at_5": 1.0
+        },
+        "n": 10,
+        "selected_ids": [
+          "prism:architecture:review-hitl-evaluation:v1#59f8d4e740b40aaa",
+          "prism:architecture:review-hitl-evaluation:v1#82eaa4f4c3912049",
+          "prism:architecture:review-hitl-evaluation:v1#688dfefd56dd53b2",
+          "prism:architecture:review-hitl-evaluation:v1#53622934eb8cc2b8",
+          "prism:architecture:review-hitl-evaluation:v1#2e89c334fd4ed225",
+          "prism:architecture:review-hitl-evaluation:v1#39fe0f772cc85a4f",
+          "prism:architecture:review-hitl-evaluation:v1#18b0493c903c8fb6",
+          "prism:architecture:review-hitl-evaluation:v1#289f1b218bec6928",
+          "prism:architecture:review-hitl-evaluation:v1#f522f38b6a17d561",
+          "prism:architecture:review-hitl-evaluation:v1#18e325591e14f2ee"
+        ],
+        "status": "ok"
+      },
+      "question": "Prism 为什么要给 Reviewer 循环设上限，但达到上限时不应把状态写成 approved？",
+      "question_id": "v2-018",
+      "relevant_chunk_ids": [
+        "prism:architecture:review-hitl-evaluation:v1#82eaa4f4c3912049"
+      ],
+      "should_abstain": false
+    },
+    {
+      "category": "troubleshooting",
+      "config": "hybrid-1-2",
+      "difficulty": "hard",
+      "elapsed_ms": 15.829,
+      "outcome": {
+        "metrics": {
+          "hit_rate_at_5": 1.0,
+          "mrr_at_10": 0.3333333333333333,
+          "recall_at_10": 1.0,
+          "recall_at_5": 1.0
+        },
+        "n": 10,
+        "selected_ids": [
+          "ragnexus:incident:container-ssl-eof:v1#2be3df6add702aaa",
+          "ragnexus:incident:container-ssl-eof:v1#4c26a88a9d3f0ca5",
+          "ragnexus:incident:container-ssl-eof:v1#d7a963aa198a35ea",
+          "ragnexus:incident:storage-split:v1#1e25a37d16101558",
+          "ragnexus:integration:mcp-trace:v1#a47aba2d7f1134bb",
+          "ragnexus:integration:mcp-trace:v1#c41a921dc450e4af",
+          "ragnexus:architecture:unified-retrieval:v1#401a192970812aeb",
+          "ragnexus:incident:container-ssl-eof:v1#abcf73274104a183",
+          "tradewind:adr:local-retrieval-and-data-safety:v1#694021cd86ba3bee",
+          "ragnexus:integration:mcp-trace:v1#aaa8274ff38447bb"
+        ],
+        "status": "ok"
+      },
+      "question": "SSE 发生生成错误时客户端只看到空流，接口契约应补什么？",
+      "question_id": "v2-024",
+      "relevant_chunk_ids": [
+        "ragnexus:incident:container-ssl-eof:v1#d7a963aa198a35ea"
+      ],
+      "should_abstain": false
+    },
+    {
+      "category": "troubleshooting",
+      "config": "hybrid-1-2",
+      "difficulty": "hard",
+      "elapsed_ms": 16.692,
+      "outcome": {
+        "metrics": {
+          "hit_rate_at_5": 1.0,
+          "mrr_at_10": 1.0,
+          "recall_at_10": 0.5,
+          "recall_at_5": 0.5
+        },
+        "n": 10,
+        "selected_ids": [
+          "tradewind:delivery:portable-support:v1#ebd2df800221ed1d",
+          "tradewind:delivery:portable-support:v1#e4bd774c0ae308aa",
+          "tradewind:architecture:delivery-loop:v1#1b29989245cc1fba",
+          "tradewind:delivery:portable-support:v1#27ff49963642a516",
+          "tradewind:architecture:delivery-loop:v1#21d892ca30978548",
+          "tradewind:delivery:portable-support:v1#77a618f84d1f4e65",
+          "tradewind:delivery:portable-support:v1#25651731963f3f94",
+          "tradewind:adr:local-retrieval-and-data-safety:v1#5dac041e3d70f9e4",
+          "tradewind:delivery:portable-support:v1#01a24e73d1acf71b",
+          "tradewind:architecture:delivery-loop:v1#4896bf05445fb3b3"
+        ],
+        "status": "ok"
+      },
+      "question": "Tradewind Tauri sidecar 目前为什么不应重新分发，应该先改哪里？",
+      "question_id": "v2-025",
+      "relevant_chunk_ids": [
+        "tradewind:delivery:portable-support:v1#585f2958b67aacb3",
+        "tradewind:delivery:portable-support:v1#ebd2df800221ed1d"
+      ],
+      "should_abstain": false
+    },
+    {
+      "category": "troubleshooting",
+      "config": "hybrid-1-2",
+      "difficulty": "hard",
+      "elapsed_ms": 18.695,
+      "outcome": {
+        "metrics": {
+          "hit_rate_at_5": 1.0,
+          "mrr_at_10": 1.0,
+          "recall_at_10": 1.0,
+          "recall_at_5": 1.0
+        },
+        "n": 10,
+        "selected_ids": [
+          "prism:architecture:review-hitl-evaluation:v1#39fe0f772cc85a4f",
+          "prism:architecture:review-hitl-evaluation:v1#59f8d4e740b40aaa",
+          "prism:architecture:review-hitl-evaluation:v1#53622934eb8cc2b8",
+          "prism:architecture:review-hitl-evaluation:v1#688dfefd56dd53b2",
+          "prism:architecture:review-hitl-evaluation:v1#001995b689d072a0",
+          "tradewind:architecture:delivery-loop:v1#e4e0c6f65b344ffd",
+          "prism:architecture:review-hitl-evaluation:v1#18b0493c903c8fb6",
+          "prism:architecture:review-hitl-evaluation:v1#f522f38b6a17d561",
+          "prism:architecture:review-hitl-evaluation:v1#c10181af8c4bf188",
+          "tradewind:delivery:portable-support:v1#3768d835049e9fd8"
+        ],
+        "status": "ok"
+      },
+      "question": "Prism Reviewer 的 JSON 解析失败会 fail-open，怎样修复才不会把执行故障当质量通过？",
+      "question_id": "v2-026",
+      "relevant_chunk_ids": [
+        "prism:architecture:review-hitl-evaluation:v1#39fe0f772cc85a4f"
+      ],
+      "should_abstain": false
+    },
+    {
+      "category": "multidoc",
+      "config": "hybrid-1-2",
+      "difficulty": "hard",
+      "elapsed_ms": 18.641,
+      "outcome": {
+        "metrics": {
+          "hit_rate_at_5": 1.0,
+          "mrr_at_10": 1.0,
+          "recall_at_10": 0.5,
+          "recall_at_5": 0.5
+        },
+        "n": 10,
+        "selected_ids": [
+          "ragnexus:architecture:unified-retrieval:v1#c6f47ce37dff3801",
+          "ragnexus:architecture:unified-retrieval:v1#2fcb03d9e8100803",
+          "ragnexus:architecture:unified-retrieval:v1#6266399ee5d3caa1",
+          "ragnexus:integration:mcp-trace:v1#43a02ba64158cabe",
+          "ragnexus:integration:mcp-trace:v1#f517e93f27f6d46e",
+          "ragnexus:integration:mcp-trace:v1#c41a921dc450e4af",
+          "ragnexus:incident:storage-split:v1#1e25a37d16101558",
+          "ragnexus:integration:mcp-trace:v1#8b5fc77b7f879ed5",
+          "ragnexus:integration:mcp-trace:v1#a47aba2d7f1134bb",
+          "tradewind:adr:local-retrieval-and-data-safety:v1#f3d2ea416c83341d"
+        ],
+        "status": "ok"
+      },
+      "question": "比较 RAGNEXUS 的检索 trace 与 Prism 的执行 trace：为什么两者都不能只记录配置意图？",
+      "question_id": "v2-031",
+      "relevant_chunk_ids": [
+        "ragnexus:architecture:unified-retrieval:v1#c6f47ce37dff3801",
+        "prism:architecture:review-hitl-evaluation:v1#f3be188293a8b8b9"
+      ],
+      "should_abstain": false
+    },
+    {
+      "category": "multidoc",
+      "config": "hybrid-1-2",
+      "difficulty": "hard",
+      "elapsed_ms": 16.849,
+      "outcome": {
+        "metrics": {
+          "hit_rate_at_5": 1.0,
+          "mrr_at_10": 1.0,
+          "recall_at_10": 1.0,
+          "recall_at_5": 0.5
+        },
+        "n": 10,
+        "selected_ids": [
+          "tradewind:delivery:portable-support:v1#3768d835049e9fd8",
+          "ragnexus:deployment:docker-bind-mount:v1#6aabcd9c079cab89",
+          "ragnexus:deployment:docker-bind-mount:v1#5df3b7d22a854cb1",
+          "tradewind:architecture:delivery-loop:v1#f4c4e6cae7888940",
+          "ragnexus:incident:storage-split:v1#afcbfb97e2200dc7",
+          "ragnexus:deployment:docker-bind-mount:v1#96f580c7c50562ec",
+          "tradewind:adr:local-retrieval-and-data-safety:v1#5dac041e3d70f9e4",
+          "ragnexus:deployment:docker-bind-mount:v1#6417ff178134f475",
+          "tradewind:delivery:portable-support:v1#f13724394680cddb",
+          "tradewind:delivery:portable-support:v1#25651731963f3f94"
+        ],
+        "status": "ok"
+      },
+      "question": "结合 RAGNEXUS 与 Tradewind 的部署材料，说明为什么“构建成功”不能直接等同于“可交付运行”。",
+      "question_id": "v2-032",
+      "relevant_chunk_ids": [
+        "ragnexus:deployment:docker-bind-mount:v1#96f580c7c50562ec",
+        "tradewind:delivery:portable-support:v1#3768d835049e9fd8"
+      ],
+      "should_abstain": false
+    },
+    {
+      "category": "version_conflict",
+      "config": "hybrid-1-2",
+      "difficulty": "hard",
+      "elapsed_ms": 18.109,
+      "outcome": {
+        "metrics": {
+          "hit_rate_at_5": 1.0,
+          "mrr_at_10": 1.0,
+          "recall_at_10": 1.0,
+          "recall_at_5": 1.0
+        },
+        "n": 10,
+        "selected_ids": [
+          "prism:architecture:review-hitl-evaluation:v1#cb35e672544cf138",
+          "prism:architecture:review-hitl-evaluation:v1#5e88e90a26478c41",
+          "prism:architecture:review-hitl-evaluation:v1#c10181af8c4bf188",
+          "prism:architecture:review-hitl-evaluation:v1#bd1901cd668bcc99",
+          "prism:architecture:review-hitl-evaluation:v1#70c3dc2c651f5786",
+          "prism:architecture:review-hitl-evaluation:v1#29265f3493476c68",
+          "prism:architecture:review-hitl-evaluation:v1#5c8fc8d03c3317b8",
+          "tradewind:adr:local-retrieval-and-data-safety:v1#f3d2ea416c83341d",
+          "ragnexus:deployment:docker-bind-mount:v1#60aef2972551e4c1",
+          "ragnexus:integration:mcp-trace:v1#1dd34dd9c2af61a2"
+        ],
+        "status": "ok"
+      },
+      "question": "Prism README 所称“SQLite checkpointer 持久化”在默认新安装中是否有保证？",
+      "question_id": "v2-035",
+      "relevant_chunk_ids": [
+        "prism:architecture:review-hitl-evaluation:v1#cb35e672544cf138"
+      ],
+      "should_abstain": false
+    },
+    {
+      "category": "version_conflict",
+      "config": "hybrid-1-2",
+      "difficulty": "hard",
+      "elapsed_ms": 17.637,
+      "outcome": {
+        "metrics": {
+          "hit_rate_at_5": 1.0,
+          "mrr_at_10": 0.5,
+          "recall_at_10": 1.0,
+          "recall_at_5": 1.0
+        },
+        "n": 10,
+        "selected_ids": [
+          "ragnexus:architecture:unified-retrieval:v1#66854b10c193449e",
+          "ragnexus:deployment:docker-bind-mount:v1#ae44712e4258559b",
+          "ragnexus:deployment:docker-bind-mount:v1#2998d2e76d811e80",
+          "ragnexus:migration:chroma-0.5.17-to-1.5.9:v1#641a134fe889fc12",
+          "ragnexus:incident:storage-split:v1#1e25a37d16101558",
+          "ragnexus:architecture:unified-retrieval:v1#2fcb03d9e8100803",
+          "ragnexus:integration:mcp-trace:v1#8b5fc77b7f879ed5",
+          "tradewind:delivery:portable-support:v1#ebd2df800221ed1d",
+          "ragnexus:integration:mcp-trace:v1#44ba3c5ca5b72e14",
+          "prism:architecture:review-hitl-evaluation:v1#5c8fc8d03c3317b8"
+        ],
+        "status": "ok"
+      },
+      "question": "RAGNEXUS 文档中的旧 benchmark 数字现在能否作为 Hybrid/Reranker 增益证据？",
+      "question_id": "v2-036",
+      "relevant_chunk_ids": [
+        "ragnexus:deployment:docker-bind-mount:v1#ae44712e4258559b"
+      ],
+      "should_abstain": false
+    },
+    {
+      "category": "unanswerable",
+      "config": "hybrid-1-2",
+      "difficulty": "medium",
+      "elapsed_ms": 15.785,
+      "outcome": {
+        "reason": "missing_relevant_chunk_ids",
+        "selected_ids": [
+          "prism:architecture:review-hitl-evaluation:v1#59f8d4e740b40aaa",
+          "prism:architecture:review-hitl-evaluation:v1#ed25f2df596d0932",
+          "prism:architecture:review-hitl-evaluation:v1#2e89c334fd4ed225",
+          "prism:architecture:review-hitl-evaluation:v1#750c66e05f7313a3",
+          "prism:architecture:review-hitl-evaluation:v1#5527f482efcbb968",
+          "prism:architecture:review-hitl-evaluation:v1#82eaa4f4c3912049",
+          "prism:architecture:review-hitl-evaluation:v1#18e325591e14f2ee",
+          "prism:architecture:review-hitl-evaluation:v1#f522f38b6a17d561",
+          "tradewind:adr:local-retrieval-and-data-safety:v1#bf9a9a6a1064207e",
+          "tradewind:architecture:delivery-loop:v1#f2e90be97888628b"
+        ],
+        "status": "unscored"
+      },
+      "question": "Prism 的 Reviewer 相比人工专家评审提升了多少准确率？",
+      "question_id": "v2-039",
+      "relevant_chunk_ids": [],
+      "should_abstain": true
+    },
+    {
+      "category": "unanswerable",
+      "config": "hybrid-1-2",
+      "difficulty": "medium",
+      "elapsed_ms": 16.322,
+      "outcome": {
+        "reason": "missing_relevant_chunk_ids",
+        "selected_ids": [
+          "ragnexus:architecture:unified-retrieval:v1#6266399ee5d3caa1",
+          "prism:architecture:review-hitl-evaluation:v1#82eaa4f4c3912049",
+          "ragnexus:architecture:unified-retrieval:v1#401a192970812aeb",
+          "tradewind:adr:local-retrieval-and-data-safety:v1#74ac97881c846e4d",
+          "tradewind:delivery:portable-support:v1#baa16ee999989737",
+          "ragnexus:integration:mcp-trace:v1#aaa8274ff38447bb",
+          "tradewind:delivery:portable-support:v1#01a24e73d1acf71b",
+          "ragnexus:architecture:unified-retrieval:v1#34be7a558e12eca8",
+          "ragnexus:deployment:docker-bind-mount:v1#5a39fe479e9ed89e",
+          "tradewind:architecture:delivery-loop:v1#bbeceb600e7c8e40"
+        ],
+        "status": "unscored"
+      },
+      "question": "RAGNEXUS 当前生产环境每天有多少真实活跃用户？",
+      "question_id": "v2-040",
+      "relevant_chunk_ids": [],
+      "should_abstain": true
+    }
+  ],
+  "schema_version": 1,
+  "selected_config": {
+    "dense_weight": 1.0,
+    "name": "hybrid-1-2",
+    "sparse_weight": 2.0,
+    "strategy": "hybrid",
+    "top_k": 10
+  },
+  "split": "heldout",
+  "summary": {
+    "hybrid-1-2": {
+      "categories": {
+        "exact": {
+          "counts": {
+            "empty": 0,
+            "error": 0,
+            "fallback": 0,
+            "ok": 4,
+            "scored": 4,
+            "total": 4,
+            "unscored": 0
+          },
+          "latency_ms": {
+            "median": 16.168,
+            "p95": 20.857
+          },
+          "metrics": {
+            "hit_rate_at_5": 1.0,
+            "mrr_at_10": 0.8125,
+            "recall_at_10": 1.0,
+            "recall_at_5": 1.0
+          }
+        },
+        "multidoc": {
+          "counts": {
+            "empty": 0,
+            "error": 0,
+            "fallback": 0,
+            "ok": 2,
+            "scored": 2,
+            "total": 2,
+            "unscored": 0
+          },
+          "latency_ms": {
+            "median": 17.745,
+            "p95": 18.641
+          },
+          "metrics": {
+            "hit_rate_at_5": 1.0,
+            "mrr_at_10": 1.0,
+            "recall_at_10": 0.75,
+            "recall_at_5": 0.5
+          }
+        },
+        "semantic": {
+          "counts": {
+            "empty": 0,
+            "error": 0,
+            "fallback": 0,
+            "ok": 3,
+            "scored": 3,
+            "total": 3,
+            "unscored": 0
+          },
+          "latency_ms": {
+            "median": 15.744,
+            "p95": 19.926
+          },
+          "metrics": {
+            "hit_rate_at_5": 1.0,
+            "mrr_at_10": 0.6667,
+            "recall_at_10": 1.0,
+            "recall_at_5": 1.0
+          }
+        },
+        "troubleshooting": {
+          "counts": {
+            "empty": 0,
+            "error": 0,
+            "fallback": 0,
+            "ok": 3,
+            "scored": 3,
+            "total": 3,
+            "unscored": 0
+          },
+          "latency_ms": {
+            "median": 16.692,
+            "p95": 18.695
+          },
+          "metrics": {
+            "hit_rate_at_5": 1.0,
+            "mrr_at_10": 0.7778,
+            "recall_at_10": 0.8333,
+            "recall_at_5": 0.8333
+          }
+        },
+        "unanswerable": {
+          "counts": {
+            "empty": 0,
+            "error": 0,
+            "fallback": 0,
+            "ok": 0,
+            "scored": 0,
+            "total": 2,
+            "unscored": 2
+          },
+          "latency_ms": {
+            "median": 16.053,
+            "p95": 16.322
+          },
+          "metrics": {
+            "hit_rate_at_5": null,
+            "mrr_at_10": null,
+            "recall_at_10": null,
+            "recall_at_5": null
+          }
+        },
+        "version_conflict": {
+          "counts": {
+            "empty": 0,
+            "error": 0,
+            "fallback": 0,
+            "ok": 2,
+            "scored": 2,
+            "total": 2,
+            "unscored": 0
+          },
+          "latency_ms": {
+            "median": 17.873,
+            "p95": 18.109
+          },
+          "metrics": {
+            "hit_rate_at_5": 1.0,
+            "mrr_at_10": 0.75,
+            "recall_at_10": 1.0,
+            "recall_at_5": 1.0
+          }
+        }
+      },
+      "counts": {
+        "empty": 0,
+        "error": 0,
+        "fallback": 0,
+        "ok": 14,
+        "scored": 14,
+        "total": 16,
+        "unscored": 2
+      },
+      "latency_ms": {
+        "median": 16.507,
+        "p95": 20.857
+      },
+      "metrics": {
+        "hit_rate_at_5": 1.0,
+        "mrr_at_10": 0.7917,
+        "recall_at_10": 0.9286,
+        "recall_at_5": 0.8929
+      }
+    }
+  }
+}
