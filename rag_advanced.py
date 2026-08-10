@@ -198,6 +198,17 @@ class Reranker:
         candidates: [{"id": "...", "text": "...", "score": 0.xx}, ...]
         返回：[{"id": "...", "text": "...", "bi_score": 0.xx, "ce_score": 0.xx}, ...]
         """
+        unique_candidates = []
+        seen_ids = set()
+        for index, candidate in enumerate(candidates):
+            candidate_id = candidate.get("id")
+            if not isinstance(candidate_id, str) or not candidate_id.strip():
+                raise ValueError(f"candidate[{index}] 的 id 必须是非空字符串")
+            if candidate_id not in seen_ids:
+                seen_ids.add(candidate_id)
+                unique_candidates.append(candidate)
+        candidates = unique_candidates
+
         if self.model is None or not candidates:
             return [{"id": c["id"], "text": c["text"],
                      "bi_score": c.get("score", 0), "ce_score": c.get("score", 0)}

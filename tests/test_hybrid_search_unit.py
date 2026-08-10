@@ -94,3 +94,50 @@ def test_empty_corpus_disables_sparse_search(monkeypatch):
     search = rag_advanced.HybridSearch(FakeCollection(), lambda _: [], [])
 
     assert search.sparse_search("anything") == []
+
+
+class FakeCrossEncoder:
+    def __init__(self):
+        self.pairs = []
+
+    def predict(self, pairs):
+        self.pairs = list(pairs)
+        return [0.2, 0.9]
+
+
+def test_reranker_deduplicates_ids_before_model_call():
+    reranker = rag_advanced.Reranker.__new__(rag_advanced.Reranker)
+    reranker.model = FakeCrossEncoder()
+    candidates = [
+        {"id": "chunk-a", "text": "A1", "rrf_score": 0.3},
+        {"id": "chunk-a", "text": "A2", "rrf_score": 0.2},
+        {"id": "chunk-b", "text": "B", "rrf_score": 0.1},
+    ]
+
+    result = reranker.rerank("query", candidates, top_k=5)
+
+    assert reranker.model.pairs == [("query", "A1"), ("query", "B")]
+    assert [item["id"] for item in result] == ["chunk-b", "chunk-a"]
+
+
+def test_reranker_fallback_deduplicates_ids():
+    reranker = rag_advanced.Reranker.__new__(rag_advanced.Reranker)
+    reranker.model = None
+    candidates = [
+        {"id": "chunk-a", "text": "A1", "score": 0.3},
+        {"id": "chunk-a", "text": "A2", "score": 0.2},
+        {"id": "chunk-b", "text": "B", "score": 0.1},
+    ]
+
+    result = reranker.rerank("query", candidates, top_k=5)
+
+    assert [item["id"] for item in result] == ["chunk-a", "chunk-b"]
+
+
+@pytest.mark.parametrize("bad_id", [None, "", "  "])
+def test_reranker_rejects_invalid_candidate_id(bad_id):
+    reranker = rag_advanced.Reranker.__new__(rag_advanced.Reranker)
+    reranker.model = None
+
+    with pytest.raises(ValueError, match="id"):
+        reranker.rerank("query", [{"id": bad_id, "text": "A"}])
