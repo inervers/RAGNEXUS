@@ -34,6 +34,27 @@ except ImportError:
     CrossEncoder = None
 
 
+def build_corpus_records(
+    ids: list[str], documents: list[str]
+) -> list[dict[str, str]]:
+    """将 Chroma 的平行数组绑定成携带 canonical ID 的 records。"""
+    if len(ids) != len(documents):
+        raise ValueError("ids 与 documents 数量不一致")
+
+    records = []
+    seen_ids = set()
+    for index, (doc_id, text) in enumerate(zip(ids, documents)):
+        if not isinstance(doc_id, str) or not doc_id.strip():
+            raise ValueError(f"record[{index}] 的 id 必须是非空字符串")
+        if doc_id in seen_ids:
+            raise ValueError(f"发现重复 id: {doc_id}")
+        if not isinstance(text, str) or not text.strip():
+            raise ValueError(f"record[{index}] 的 text 必须是非空字符串")
+        seen_ids.add(doc_id)
+        records.append({"id": doc_id, "text": text})
+    return records
+
+
 class HybridSearch:
     """
     多路召回：稠密检索（Chroma）+ 稀疏检索（BM25）+ RRF 融合。
