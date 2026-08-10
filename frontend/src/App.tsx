@@ -14,9 +14,14 @@ import {
   type RerankerStatus,
   type ServiceState,
 } from "./appStatus"
+import {
+  authHeaders,
+  clearSessionApiKey,
+  readSessionApiKey,
+  saveSessionApiKey,
+} from "./apiAuth"
 
 const API_BASE = ""
-const API_KEY = "rag-secret-key-2024"
 
 type TabKey = "qa" | "hybrid" | "kb" | "agent"
 
@@ -73,11 +78,13 @@ function App() {
   const [tab, setTab] = useState<TabKey>("qa")
   const [serviceState, setServiceState] = useState<ServiceState>("checking")
   const [kbCount, setKbCount] = useState(0)
+  const [apiKey, setApiKey] = useState(() => {
+    try { return readSessionApiKey(sessionStorage) }
+    catch { return "" }
+  })
 
   useEffect(() => {
-    fetch(`${API_BASE}/health`, {
-      headers: { "X-API-Key": API_KEY },
-    })
+    fetch(`${API_BASE}/health`)
       .then(async (response) => {
         const payload = await response.json()
         setServiceState(serviceStateFromHealth(response.ok, payload.status))
@@ -88,6 +95,16 @@ function App() {
         setKbCount(0)
       })
   }, [])
+
+  function handleSaveApiKey(value: string) {
+    const saved = saveSessionApiKey(sessionStorage, value)
+    setApiKey(saved)
+  }
+
+  function handleClearApiKey() {
+    clearSessionApiKey(sessionStorage)
+    setApiKey("")
+  }
 
   return (
     <div className="app">
@@ -106,13 +123,21 @@ function App() {
         onTabChange={setTab}
         serviceState={serviceState}
         kbCount={kbCount}
+        apiKey={apiKey}
+        onSaveApiKey={handleSaveApiKey}
+        onClearApiKey={handleClearApiKey}
       />
       <main className="main-area">
+        {!apiKey && (
+          <div className="auth-banner" role="status">
+            受保护操作已锁定：请在侧边栏输入 API Key。Key 仅保存在当前浏览器标签页。
+          </div>
+        )}
         <div className="tab-content">
-          {tab === "qa" && <QATab serviceState={serviceState} />}
-          {tab === "hybrid" && <HybridTab />}
-          {tab === "kb" && <KBTab />}
-          {tab === "agent" && <AgentTab />}
+          {tab === "qa" && <QATab serviceState={serviceState} apiKey={apiKey} />}
+          {tab === "hybrid" && <HybridTab apiKey={apiKey} />}
+          {tab === "kb" && <KBTab apiKey={apiKey} />}
+          {tab === "agent" && <AgentTab apiKey={apiKey} />}
         </div>
       </main>
     </div>
@@ -127,18 +152,57 @@ function Sidebar({
   onTabChange,
   serviceState,
   kbCount,
+  apiKey,
+  onSaveApiKey,
+  onClearApiKey,
 }: {
   tab: TabKey
   onTabChange: (t: TabKey) => void
   serviceState: ServiceState
   kbCount: number
+  apiKey: string
+  onSaveApiKey: (value: string) => void
+  onClearApiKey: () => void
 }) {
+  const [apiKeyDraft, setApiKeyDraft] = useState(apiKey)
+
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
         <span className="logo">R</span>
         <ShinyText text="RAGNEXUS" speed={2.5} color="#C6CCD6" shineColor="#9DBDFF" spread={160} className="logo-text" />
         <span className="badge">v0.7</span>
+      </div>
+
+      <div className="auth-card">
+        <label htmlFor="api-key">API Key</label>
+        <input
+          id="api-key"
+          type="password"
+          value={apiKeyDraft}
+          onChange={(event) => setApiKeyDraft(event.target.value)}
+          placeholder="仅保存在当前标签页"
+          autoComplete="off"
+        />
+        <div className="auth-actions">
+          <button
+            type="button"
+            onClick={() => onSaveApiKey(apiKeyDraft)}
+            disabled={!apiKeyDraft.trim()}
+          >
+            保存
+          </button>
+          {apiKey && (
+            <button
+              type="button"
+              className="auth-clear"
+              onClick={() => { setApiKeyDraft(""); onClearApiKey() }}
+            >
+              清除
+            </button>
+          )}
+        </div>
+        <span>{apiKey ? "已配置 · session only" : "未配置"}</span>
       </div>
 
       <div className="status-card">
@@ -176,7 +240,7 @@ function Sidebar({
 /* ============================================================
    问答标签页
    ============================================================ */
-function QATab({ serviceState }: { serviceState: ServiceState }) {
+function QATab({ serviceState, apiKey }: { serviceState: ServiceState; apiKey: string }) {
   const [messages, setMessages] = useState<Message[]>(() => {
     try { return JSON.parse(localStorage.getItem("ragnxus_chat") || "[]") }
     catch { return [] }
@@ -253,7 +317,7 @@ function QATab({ serviceState }: { serviceState: ServiceState }) {
   }, [messages])
 
   async function handleSend() {
-    if (!input.trim() || loading) return
+    if (!apiKey || !input.trim() || loading) return
     const q = input.trim()
     setInput("")
     // 添加用户消息
@@ -273,7 +337,7 @@ function QATab({ serviceState }: { serviceState: ServiceState }) {
     try {
       const resp = await fetch(`${API_BASE}/query/stream`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
+        headers: authHeaders(apiKey, { "Content-Type": "application/json" }),
         body: JSON.stringify({ question: q }),
         signal: controller.signal,
       })
@@ -424,7 +488,7 @@ function QATab({ serviceState }: { serviceState: ServiceState }) {
             取消
           </button>
         ) : (
-          <SpecularButton {...FX_BUTTON} onClick={handleSend} disabled={!input.trim()}>
+          <SpecularButton {...FX_BUTTON} onClick={handleSend} disabled={!apiKey || !input.trim()}>
             发送
           </SpecularButton>
         )}
@@ -436,7 +500,7 @@ function QATab({ serviceState }: { serviceState: ServiceState }) {
 /* ============================================================
    混合检索标签页
    ============================================================ */
-function HybridTab() {
+function HybridTab({ apiKey }: { apiKey: string }) {
   const [query, setQuery] = useState("")
   const [topK, setTopK] = useState(10)
   const [useReranker, setUseReranker] = useState(true)
@@ -450,13 +514,13 @@ function HybridTab() {
   const [expanded, setExpanded] = useState<{ group: string; doc: SearchResult } | null>(null)
 
   async function handleSearch() {
-    if (!query.trim() || loading) return
+    if (!apiKey || !query.trim() || loading) return
     setLoading(true)
     setResult(null)
     try {
       const resp = await fetch(`${API_BASE}/query/hybrid`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
+        headers: authHeaders(apiKey, { "Content-Type": "application/json" }),
         body: JSON.stringify({ question: query.trim(), top_k: topK, use_reranker: useReranker }),
       })
       setResult((await resp.json()).result ?? null)
@@ -482,7 +546,7 @@ function HybridTab() {
               onChange={(e) => setUseReranker(e.target.checked)} />
             Reranker
           </label>
-          <SpecularButton {...FX_BUTTON} onClick={handleSearch} disabled={loading || !query.trim()}>
+          <SpecularButton {...FX_BUTTON} onClick={handleSearch} disabled={!apiKey || loading || !query.trim()}>
             {loading ? "检索中" : "检索"}
           </SpecularButton>
         </div>
@@ -573,7 +637,7 @@ interface KbGroup {
   chunks: string[]
 }
 
-function KBTab() {
+function KBTab({ apiKey }: { apiKey: string }) {
   const [records, setRecords] = useState<KbRecord[]>([])
   const [loading, setLoading] = useState(false)
   const [title, setTitle] = useState("")
@@ -608,12 +672,15 @@ function KBTab() {
     )
   }, [groups, kbSearch])
 
-  useEffect(() => { fetchDocs() }, [])
+  useEffect(() => {
+    if (apiKey) fetchDocs()
+    else setRecords([])
+  }, [apiKey])
 
   async function fetchDocs() {
     try {
       const resp = await fetch(`${API_BASE}/kb/docs`, {
-        headers: { "X-API-Key": API_KEY },
+        headers: authHeaders(apiKey),
       })
       const data = await resp.json()
       setRecords(data.records ?? [])
@@ -621,13 +688,13 @@ function KBTab() {
   }
 
   async function handleAdd() {
-    if (!title.trim() || !content.trim()) return
+    if (!apiKey || !title.trim() || !content.trim()) return
     setLoading(true)
     setStatusMsg("正在检查并添加...")
     try {
       const resp = await fetch(`${API_BASE}/doc`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
+        headers: authHeaders(apiKey, { "Content-Type": "application/json" }),
         body: JSON.stringify({ title: title.trim(), content: content.trim() }),
       })
       const data = await resp.json()
@@ -643,13 +710,13 @@ function KBTab() {
   }
 
   async function handleDelete(g: KbGroup) {
-    if (deleting) return
+    if (!apiKey || deleting) return
     if (!window.confirm(`删除文档「${g.source}」？（共 ${g.ids.length} 个分块）`)) return
     setDeleting(g.source)
     try {
       const resp = await fetch(`${API_BASE}/kb/docs/delete`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
+        headers: authHeaders(apiKey, { "Content-Type": "application/json" }),
         body: JSON.stringify({ ids: g.ids }),
       })
       const data = await resp.json()
@@ -700,7 +767,7 @@ function KBTab() {
         setStatusMsg("发送到服务器...")
         const resp = await fetch(`${API_BASE}/doc/preview`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
+          headers: authHeaders(apiKey, { "Content-Type": "application/json" }),
           body: JSON.stringify({ filename: f.name, content: b64 }),
         })
         setUploadProgress(75)
@@ -828,20 +895,20 @@ function KBTab() {
 /* ============================================================
    Multi-Agent 写作标签页
    ============================================================ */
-function AgentTab() {
+function AgentTab({ apiKey }: { apiKey: string }) {
   const [topic, setTopic] = useState("")
   const [maxRetries, setMaxRetries] = useState(2)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<Record<string, any> | null>(null)
 
   async function handleStart() {
-    if (!topic.trim() || loading) return
+    if (!apiKey || !topic.trim() || loading) return
     setLoading(true)
     setResult(null)
     try {
       const resp = await fetch(`${API_BASE}/agent/write`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-API-Key": API_KEY },
+        headers: authHeaders(apiKey, { "Content-Type": "application/json" }),
         body: JSON.stringify({ topic: topic.trim(), max_retries: maxRetries }),
       })
       const data = await resp.json()
@@ -861,7 +928,7 @@ function AgentTab() {
           <label>最大重试 <input type="number" min={1} max={5} value={maxRetries}
             onChange={(e) => setMaxRetries(+e.target.value)} /></label>
           <SpecularButton {...FX_BUTTON} onClick={handleStart}
-            disabled={loading || !topic.trim()}>
+            disabled={!apiKey || loading || !topic.trim()}>
             {loading ? "写作中..." : "开始写作"}
           </SpecularButton>
         </div>

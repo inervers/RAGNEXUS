@@ -141,6 +141,57 @@ code, pre { font-family: var(--mono); }
   color: var(--text-muted);
 }
 
+.auth-card {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-3);
+  border-radius: var(--radius);
+}
+.auth-card label,
+.auth-card span {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.auth-card input {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  background: var(--bg);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+.auth-card input:focus {
+  outline: 1px solid var(--accent);
+  border-color: var(--accent);
+}
+.auth-actions {
+  display: flex;
+  gap: 6px;
+}
+.auth-actions button {
+  flex: 1;
+  padding: 5px 6px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  color: var(--accent-hover);
+  background: var(--accent-dim);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 10px;
+}
+.auth-actions button:disabled { opacity: .45; cursor: not-allowed; }
+.auth-actions .auth-clear {
+  border-color: var(--border-strong);
+  color: var(--text-muted);
+  background: transparent;
+}
+
 .sidebar-nav {
   display: flex;
   flex-direction: column;
@@ -205,6 +256,16 @@ code, pre { font-family: var(--mono); }
     linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px),
     var(--bg);
   background-size: 24px 24px;
+}
+
+.auth-banner {
+  flex: 0 0 auto;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(245, 158, 11, .35);
+  color: var(--amber);
+  background: rgba(245, 158, 11, .08);
+  font-family: var(--mono);
+  font-size: 11px;
 }
 
 .tab-content {
