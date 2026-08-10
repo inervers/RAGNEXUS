@@ -18,10 +18,15 @@ import argparse
 import json
 import os
 import statistics
+import sys
 import threading
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from security_config import load_api_key
 
 
 def load_env(path=".env"):
@@ -47,7 +52,7 @@ def main():
     args = ap.parse_args()
 
     load_env()
-    api_key = os.getenv("RAG_API_KEY", "rag-secret-key-2024")
+    api_key = load_api_key(os.environ)
     headers = {
         "X-API-Key": api_key,
         "Content-Type": "application/json",

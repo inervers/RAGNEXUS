@@ -1,4 +1,8 @@
 $API = "http://localhost:8000"
+$ApiKey = $env:RAG_API_KEY
+if ([string]::IsNullOrWhiteSpace($ApiKey)) {
+    throw "Missing required RAG_API_KEY"
+}
 
 function Test-Recall($docs, $keywords, $k) {
     $top = $docs | Select-Object -First $k
@@ -55,7 +59,7 @@ foreach ($qi in 0..($QUERIES.Count-1)) {
             $bodyStr = '{"question":"' + $q.q.Replace('"','\"') + '","top_k":10,"use_reranker":' + $rr + '}'
             $tmpFile = [System.IO.Path]::GetTempFileName()
             [System.IO.File]::WriteAllText($tmpFile, $bodyStr, [System.Text.UTF8Encoding]::new($false))
-            $raw = curl.exe -s -X POST "$API/query/hybrid" -H "X-API-Key: rag-secret-key-2024" -H "Content-Type: application/json" -d "@$tmpFile" 2>$null
+            $raw = curl.exe -s -X POST "$API/query/hybrid" -H "X-API-Key: $ApiKey" -H "Content-Type: application/json" -d "@$tmpFile" 2>$null
             Remove-Item $tmpFile -ErrorAction SilentlyContinue
 
             $resp = $raw | ConvertFrom-Json

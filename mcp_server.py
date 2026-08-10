@@ -26,9 +26,12 @@ import argparse
 import os
 import sys
 import uuid
+from collections.abc import Mapping
+from pathlib import Path
 
 import httpx
 from fastmcp import FastMCP
+from security_config import SecurityConfigError, load_api_key
 
 # stdio 模式下 stdout 是 MCP 协议通道，只能传 JSON-RPC。
 # 强制 UTF-8，并把一切日志/提示打到 stderr，避免污染协议流（Windows 下默认
@@ -48,30 +51,32 @@ BASE_URL = os.environ.get("RAGNEXUS_BASE_URL", "http://127.0.0.1:8000").rstrip("
 TIMEOUT = 30.0
 
 
-def _load_api_key() -> str:
-    """API Key 优先级：环境变量 RAGNEXUS_API_KEY > 脚本同目录 .env 的 RAG_API_KEY > 后端默认值。
-
-    注意：RAGNEXUS 本地跑 rag_api.py 时并不加载 .env（只有 docker compose 通过
-    env_file 注入），所以本地后端实际用的很可能是默认 key rag-secret-key-2024。
-    这里直接从脚本同目录 .env 读取，保证与后端配置一致，零额外配置。
-    """
-    env_key = os.environ.get("RAGNEXUS_API_KEY")
+def _load_api_key(
+    environ: Mapping[str, str] | None = None,
+    env_path: Path | None = None,
+) -> str:
+    """Load an explicit MCP key, falling back only to the project's configured `.env`."""
+    environ = os.environ if environ is None else environ
+    env_key = environ.get("RAGNEXUS_API_KEY")
     if env_key:
-        return env_key
+        return load_api_key({"RAGNEXUS_API_KEY": env_key}, names=("RAGNEXUS_API_KEY",))
 
-    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    env_path = env_path or Path(__file__).resolve().with_name(".env")
     try:
-        with open(env_path, encoding="utf-8") as f:
+        with env_path.open(encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line or line.startswith("#") or "=" not in line:
                     continue
                 k, _, v = line.partition("=")
                 if k.strip() == "RAG_API_KEY":
-                    return v.strip().strip('"').strip("'")
+                    value = v.strip().strip('"').strip("'")
+                    return load_api_key({"RAG_API_KEY": value})
     except OSError:
         pass
-    return "rag-secret-key-2024"  # 与 rag_api.py 默认值一致
+    raise SecurityConfigError(
+        "Missing required RAGNEXUS_API_KEY or project .env RAG_API_KEY"
+    )
 
 
 API_KEY = _load_api_key()
@@ -214,9 +219,6 @@ if __name__ == "__main__":
                         help="stdio 给本地客户端；http 走 streamable HTTP 远程调用")
     parser.add_argument("--port", type=int, default=8101, help="http 模式端口")
     args = parser.parse_args()
-
-    if API_KEY == "rag-secret-key-2024":
-        _log("[warn] 使用后端默认鉴权 key（rag-secret-key-2024）。若后端 .env 改过 RAG_API_KEY，请设置 RAGNEXUS_API_KEY 覆盖。")
 
     if args.transport == "http":
         mcp.run(transport="streamable-http", host="127.0.0.1", port=args.port)

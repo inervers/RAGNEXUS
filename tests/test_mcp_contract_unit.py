@@ -1,9 +1,35 @@
 from pathlib import Path
+import os
 import subprocess
+
+os.environ.setdefault("RAGNEXUS_API_KEY", "mcp-unit-test-key-74114a4728754dc6")
 
 import mcp_client_test
 import mcp_server
 import pytest
+from security_config import SecurityConfigError
+
+
+def test_mcp_key_loader_fails_without_environment_or_env_file(tmp_path):
+    with pytest.raises(SecurityConfigError, match="RAGNEXUS_API_KEY"):
+        mcp_server._load_api_key(environ={}, env_path=tmp_path / "missing.env")
+
+
+def test_mcp_key_loader_rejects_repository_placeholder(tmp_path):
+    env_path = tmp_path / ".env"
+    env_path.write_text("RAG_API_KEY=rag-secret-key-2024\n", encoding="utf-8")
+
+    with pytest.raises(SecurityConfigError, match="RAG_API_KEY"):
+        mcp_server._load_api_key(environ={}, env_path=env_path)
+
+
+def test_mcp_key_loader_prefers_explicit_client_environment(tmp_path):
+    key = "mcp-test-key-1a9be27656654bd4"
+
+    assert mcp_server._load_api_key(
+        environ={"RAGNEXUS_API_KEY": key},
+        env_path=tmp_path / "missing.env",
+    ) == key
 
 
 def test_call_api_propagates_response_trace_header(monkeypatch):

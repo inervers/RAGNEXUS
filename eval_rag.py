@@ -25,15 +25,13 @@ import urllib.request
 from datetime import datetime
 
 from eval_dataset import load_and_validate_eval_set, select_questions
+from security_config import load_api_key
 
 # ---------------------------------------------------------------- 配置
 
 API = os.getenv("RAGNEXUS_API", "http://localhost:8000")
-API_KEY = os.getenv("RAG_API_KEY", "rag-secret-key-2024")
 LLM_BASE = os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
 LLM_MODEL = os.getenv("LLM_MODEL", "deepseek-v4-flash")
-
-HDR = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 
 # 检索策略 -> (/query/hybrid 参数, 结果字段)
 # 口径说明：1.0/2.0 暂作为生产 baseline；旧关键词评测已失效，
@@ -62,7 +60,8 @@ def load_env(path=".env"):
 
 load_env()
 DEEPSEEK_KEY = os.getenv("DEEPSEEK_API_KEY", "")
-API_KEY = os.getenv("RAG_API_KEY", API_KEY)
+API_KEY = load_api_key(os.environ)
+HDR = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 
 
 # ---------------------------------------------------------------- HTTP

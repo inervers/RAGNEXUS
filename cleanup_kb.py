@@ -20,6 +20,8 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from security_config import load_api_key
+
 ROOT = Path(__file__).resolve().parent
 API_ROOT = os.environ.get("RAG_API_ROOT", "http://localhost:8000")
 REPORT_PATH = ROOT / "kb_audit_report.json"
@@ -41,7 +43,7 @@ def load_env(path: Path) -> dict[str, str]:
 
 
 ENV = load_env(ROOT / ".env")
-API_KEY = os.environ.get("RAG_API_KEY") or ENV.get("RAG_API_KEY") or "rag-secret-key-2024"
+API_KEY = load_api_key({**ENV, **os.environ})
 
 
 def api_json(path: str, method: str = "GET", payload: dict | None = None, attempts: int = 12) -> dict:

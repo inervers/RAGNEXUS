@@ -21,6 +21,8 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from security_config import load_api_key
+
 ROOT = Path(__file__).resolve().parent
 API_URL = os.environ.get("RAG_API_URL", "http://localhost:8000/kb/docs")
 REPORT_JSON = ROOT / "kb_audit_report.json"
@@ -52,7 +54,7 @@ def preview(text: str, limit: int = 180) -> str:
 
 def fetch_records(max_attempts: int = 12, retry_delay: int = 5) -> list[dict]:
     env = load_env(ROOT / ".env")
-    api_key = os.environ.get("RAG_API_KEY") or env.get("RAG_API_KEY") or "rag-secret-key-2024"
+    api_key = load_api_key({**env, **os.environ})
     request = Request(API_URL, headers={"X-API-Key": api_key})
     payload = None
 
