@@ -23,9 +23,11 @@ RAGNEXUS/
 ├── pdf_parser.py        ← PDF 解析
 ├── ocr_client.py        ← 百度 OCR（扫描件识别）
 ├── docs/OPS-NOTES.md    ← 运维笔记（踩坑手册，遇到问题先看这里）
-├── Dockerfile           ← 后端容器构建
-├── docker-compose.yml   ← 一键部署
-└── requirements.txt     ← 依赖清单
+├── Dockerfile           ← 标准可复现后端构建（CPU Torch + 固定 MiniLM revision）
+├── Dockerfile.legacy    ← 本机旧镜像 + 离线 wheels 的历史 fallback，非默认
+├── docker-compose.yml   ← 真实数据部署（会挂载 ./chroma_db）
+├── docker-compose.smoke.yml ← tmpfs fixture 隔离验收，不读取真实数据库/.env
+└── requirements-api.txt ← 标准 API 镜像的 pinned 直接依赖
 ```
 
 ---
@@ -50,11 +52,10 @@ npm run dev
 ### Docker 部署
 
 ```powershell
-# 国内网络：先开代理手动拉基础镜像（BuildKit 的 FROM 不继承 pull 代理）
-docker pull node:20-alpine
-docker pull nginx:alpine
+# 先复制示例配置并填写真实 key
+Copy-Item .env.example .env
 
-# 构建并启动全部服务
+# 默认标准构建：Python 3.11 + CPU Torch + 固定 MiniLM snapshot
 docker compose up -d --build
 ```
 
@@ -63,7 +64,17 @@ docker compose up -d --build
 - API 服务 → `http://localhost:8000`
 - 前端 API 走同源（`API_BASE=""`），由 nginx 正则转发 `/health|/query|/doc|/kb|/agent`，无需跨域配置
 
-> ⚠️ 镜像构建细节（npm ci 崩溃、npmmirror 直连、.dockerignore 优化）见 [docs/OPS-NOTES.md](docs/OPS-NOTES.md)。
+默认镜像不依赖个人旧镜像、`.wheels`、本机模型目录或真实数据库。MiniLM revision 固定为 `1110a243fdf4706b3f48f1d95db1a4f5529b4d41`，6 个必需文件在 build 阶段逐一校验 SHA256，运行时仍为 `local_files_only`。CPU Torch 从官方 CPU wheel index 安装，其余 Python 依赖默认使用阿里云镜像；均可通过 build args 覆盖。
+
+提交或部署前可先运行完全隔离的 smoke：
+
+```powershell
+.\scripts\smoke-docker.ps1
+```
+
+该脚本使用 18000/18080 端口和 tmpfs fixture，验证 API health、无 key 401、Hybrid 检索、前端首页与 Nginx 代理，最后自动销毁容器/临时数据。它不读取 `.env`、`chroma_db` 或 `chroma_db_v2`，也不调用外部 LLM。
+
+`Dockerfile.legacy` 只保留 2026-08-02 国内网络故障时的增量构建证据；需要本机 `ragnxus-rag-api:0.5.17-backup` 与 `.wheels`，不得作为 fresh clone 默认路径。更多历史细节见 [docs/OPS-NOTES.md](docs/OPS-NOTES.md)。
 
 ### Agent 记忆持久化
 
@@ -90,7 +101,7 @@ Agent 的写作记忆保存在本地 `memory/` 目录，容器重建后记忆不
 | API 鉴权 | X-API-Key 请求头校验，无 Key 返回 401 |
 | 速率限制 | 滑动窗口限流（30次/分钟），超限返回 429 |
 | 结构化日志 | 全链路 trace_id 追踪，JSON 格式写入文件 |
-| Docker 部署 | 后端 Python 镜像 + 前端 nginx 镜像，双容器编排 |
+| Docker 部署 | 标准 Python 3.11 API 镜像 + nginx 前端；固定模型 revision；tmpfs smoke |
 | SSE 流式 | 后端 X-Accel-Buffering: no + nginx proxy_buffering off |
 
 ---

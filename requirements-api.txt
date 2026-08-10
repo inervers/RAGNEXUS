@@ -1,0 +1,16 @@
+# Direct runtime dependencies pinned to the versions verified in the working API image.
+# torch==2.5.1 is installed separately from the CPU wheel index in Dockerfile.
+fastapi==0.140.0
+uvicorn==0.51.0
+pydantic==2.13.4
+chromadb==1.5.9
+transformers==4.57.6
+sentence-transformers==2.7.0
+langchain-core==1.5.1
+langchain-text-splitters==1.1.2
+rank-bm25==0.2.2
+jieba==0.42.1
+openai==2.48.0
+pdfplumber==0.11.10
+PyMuPDF==1.28.0
+httpx==0.28.1

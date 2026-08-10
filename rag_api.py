@@ -202,8 +202,23 @@ async def security_middleware(request: Request, call_next):
 # =============================================
 # 嵌入模型
 # =============================================
-tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2", local_files_only=True)
-model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2", local_files_only=True)
+EMBEDDING_MODEL_ID = os.environ.get(
+    "RAG_EMBEDDING_MODEL_ID", "sentence-transformers/all-MiniLM-L6-v2"
+)
+EMBEDDING_MODEL_REVISION = os.environ.get(
+    "RAG_EMBEDDING_MODEL_REVISION",
+    "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+)
+tokenizer = AutoTokenizer.from_pretrained(
+    EMBEDDING_MODEL_ID,
+    revision=EMBEDDING_MODEL_REVISION,
+    local_files_only=True,
+)
+model = AutoModel.from_pretrained(
+    EMBEDDING_MODEL_ID,
+    revision=EMBEDDING_MODEL_REVISION,
+    local_files_only=True,
+)
 
 def embed_texts(texts):
     inputs = tokenizer(texts, truncation=True, padding=True, return_tensors="pt", max_length=256)
@@ -731,7 +746,6 @@ if __name__ == "__main__":
     logger.info(f"结构化日志：启用")
     logger.info(f"用法：X-API-Key header + X-Trace-Id header(可选)")
     logger.info("=" * 50)
-    # v0.7.1：统一生产/评测检索口径（sparse=2.0）；v0.7.2：压测优化，多 worker 提升并发吞吐
-    # 注意：uvicorn 传 app 对象时不能带 workers，必须传字符串 "rag_api:app"
-    # 限流为进程内实现，多 worker 后变为 per-process 语义（4 进程 × RAG_RATE_LIMIT）
-    uvicorn.run("rag_api:app", host="0.0.0.0", port=8000, workers=4)
+    # 嵌入式 Chroma 与进程内限流默认单 worker；扩容前需先外置共享状态。
+    workers = int(os.environ.get("RAG_WORKERS", "1"))
+    uvicorn.run("rag_api:app", host="0.0.0.0", port=8000, workers=workers)

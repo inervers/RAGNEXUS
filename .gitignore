@@ -4,6 +4,11 @@ chroma_db*/
 *.log
 stream_out*
 .env
+.env.*
+!.env.example
+*.local
+*.pem
+credentials.*
 memory/
 models/
 test_*.py

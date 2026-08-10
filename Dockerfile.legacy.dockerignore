@@ -1,0 +1,10 @@
+*
+!Dockerfile.legacy
+!.wheels/
+!.wheels/**
+!rag_api.py
+!rag_advanced.py
+!rag_multiagent.py
+!retrieval_service.py
+!pdf_parser.py
+!ocr_client.py

@@ -1,19 +1,45 @@
-# ============================================================
-# RAGNEXUS rag-api 镜像（增量构建）
-# 基础：旧镜像 ragnxus-rag-api:0.5.17-backup
-#   （torch 2.5.1 + chromadb 0.5.17 + 应用依赖已装）
-# 增量1：离线升级 chromadb 0.5.17 → 1.5.9（.wheels 本地交叉下载）
-# 增量2：覆盖最新代码（MiniLMEmbedding 已适配 chromadb 1.x）
-# 背景 2026-08-02：WSL2 出口对 pypi 限速/SSL EOF、清华源 403 风控、
-#   torch 2.5.1 与本地 Python 3.13 不兼容 → 旧镜像增量升级绕开大下载
-# ============================================================
-FROM ragnxus-rag-api:0.5.17-backup
+# RAGNEXUS standard reproducible API image.
+# The legacy offline-wheel path is preserved in Dockerfile.legacy.
+FROM python:3.11-slim@sha256:db3ff2e1800a8581e2c48a27c3995339d47bdf046da21c7627accd3d51053a93
 
-# === 增量层1：chromadb 0.5.17 → 1.5.9（离线 wheel，不碰网络）===
-COPY .wheels /wheels
-RUN pip install --no-index --find-links=/wheels chromadb==1.5.9 && rm -rf /wheels
+ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
+ARG PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+ARG HF_ENDPOINT=https://hf-mirror.com
+ARG RAG_EMBEDDING_MODEL_REPO=sentence-transformers/all-MiniLM-L6-v2
+ARG RAG_EMBEDDING_MODEL_REVISION=1110a243fdf4706b3f48f1d95db1a4f5529b4d41
 
-# === 增量层2：最新代码（覆盖旧镜像中的旧版）===
-COPY rag_api.py rag_advanced.py rag_multiagent.py pdf_parser.py ocr_client.py .
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    HF_HOME=/root/.cache/huggingface \
+    HF_HUB_DISABLE_SYMLINKS=1 \
+    HF_ENDPOINT=${HF_ENDPOINT} \
+    RAG_EMBEDDING_MODEL_ID=/opt/models/all-MiniLM-L6-v2 \
+    RAG_EMBEDDING_MODEL_REVISION=${RAG_EMBEDDING_MODEL_REVISION}
 
-# 旧镜像已含：WORKDIR=/app、EXPOSE 8000、CMD uvicorn、第②层依赖、HF 缓存
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements-api.txt .
+RUN python -m pip install --no-cache-dir --index-url "${TORCH_INDEX_URL}" torch==2.5.1 \
+    && python -m pip install --no-cache-dir --index-url "${PIP_INDEX_URL}" -r requirements-api.txt
+
+# Download and hash-check one immutable snapshot. Runtime remains offline/local-only.
+COPY scripts/download_embedding_snapshot.py /tmp/download_embedding_snapshot.py
+RUN python /tmp/download_embedding_snapshot.py \
+      --endpoint "${HF_ENDPOINT}" \
+      --repo "${RAG_EMBEDDING_MODEL_REPO}" \
+      --revision "${RAG_EMBEDDING_MODEL_REVISION}" \
+      --output /opt/models/all-MiniLM-L6-v2 \
+    && rm /tmp/download_embedding_snapshot.py
+
+COPY rag_api.py rag_advanced.py rag_multiagent.py retrieval_service.py pdf_parser.py ocr_client.py ./
+
+EXPOSE 8000
+HEALTHCHECK --interval=10s --timeout=5s --start-period=40s --retries=6 \
+    CMD python -c "import json,urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)); assert data['status']=='ok'"
+
+CMD ["uvicorn", "rag_api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
