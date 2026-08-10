@@ -73,3 +73,15 @@ def test_import_rejects_whitespace_only_text_before_kb_mutation() -> None:
         import_uploaded_document("empty.txt", encoded, add_document)
 
     assert called is False
+
+
+def test_empty_pdf_is_a_sanitized_client_validation_error(monkeypatch) -> None:
+    import pdf_parser
+
+    monkeypatch.setattr(pdf_parser, "extract_text", lambda raw: {"text": "   "})
+    encoded = base64.b64encode(b"fake-pdf").decode("ascii")
+
+    with pytest.raises(DocumentIngestError, match="有效文本") as raised:
+        parse_uploaded_document("empty.pdf", encoded)
+
+    assert raised.value.status_code == 400

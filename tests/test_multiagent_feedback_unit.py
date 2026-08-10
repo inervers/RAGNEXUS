@@ -70,6 +70,8 @@ def test_reviewer_issues_reach_next_writer_prompt_and_trace(monkeypatch, tmp_pat
         json.dumps({"issues": [], "rating": "4", "verdict": "通过"}),
         json.dumps({"issues": [], "rating": 6, "verdict": "通过"}),
         json.dumps({"issues": "not-a-list", "rating": 4, "verdict": "通过"}),
+        json.dumps({"issues": [], "rating": 2, "verdict": "需要修改"}),
+        json.dumps({"issues": ["  "], "rating": 2, "verdict": "需要修改"}),
     ],
 )
 def test_malformed_reviewer_payload_falls_back_to_failed_review(

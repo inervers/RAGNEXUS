@@ -71,6 +71,7 @@ def test_api_image_copies_local_runtime_dependencies():
         assert "document_ingest.py" in dockerfile
         assert "embedding_runtime.py" in dockerfile
         assert "agent_contract.py" in dockerfile
+        assert "request_limits.py" in dockerfile
 
 
 def test_snapshot_download_is_atomic_and_hash_checked(tmp_path):

@@ -45,7 +45,10 @@ def parse_review_result(review_raw) -> ReviewResult:
         return fallback
     if (rating >= 4) != (verdict == "通过"):
         return fallback
-    return ReviewResult(issues, rating, verdict)
+    normalized_issues = [issue.strip() for issue in issues if issue.strip()]
+    if verdict == "需要修改" and not normalized_issues:
+        return fallback
+    return ReviewResult(normalized_issues, rating, verdict)
 
 
 # =============================================

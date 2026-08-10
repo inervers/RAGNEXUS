@@ -29,6 +29,7 @@ from retrieval_service import (
     build_generation_context,
     without_retrieval_tool,
 )
+from request_limits import MAX_REQUEST_BODY_BYTES, RequestBodyLimitMiddleware
 
 # Windows user-site 兼容（Docker 中直接跳过）
 _REAL_USER_SITE = os.environ.get("PYTHON_USER_SITE")
@@ -495,6 +496,7 @@ app = FastAPI(title="RAG Agent API (Production)", version="0.7.0")
 
 app.middleware("http")(logging_middleware)
 app.middleware("http")(security_middleware)
+app.add_middleware(RequestBodyLimitMiddleware, max_bytes=MAX_REQUEST_BODY_BYTES)
 
 # 必须最后注册，使 CORS 位于 middleware stack 最外层；这样由鉴权、限流或
 # logging middleware 直接生成的错误响应也会带 allowed-origin headers。

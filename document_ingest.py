@@ -65,6 +65,8 @@ def parse_uploaded_document(
             return _require_meaningful_text(
                 ParsedDocument(title=title, text=parsed["text"])
             )
+        except DocumentIngestError:
+            raise
         except Exception as error:
             raise DocumentIngestError(
                 f"PDF 解析失败：{error}", status_code=500

@@ -831,7 +831,7 @@ function KBTab({ apiKey, onApiError }: { apiKey: string; onApiError: OnApiError 
       const b64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader()
         reader.onprogress = (event) => {
-          if (event.lengthComputable) {
+          if (fileSelection.current.isCurrent(selection) && event.lengthComputable) {
             setUploadProgress(5 + Math.round(event.loaded / event.total * 35))
           }
         }
