@@ -29,6 +29,7 @@ import uuid
 
 import httpx
 from fastmcp import FastMCP
+from retrieval_service import format_trace_summary
 
 # stdio 模式下 stdout 是 MCP 协议通道，只能传 JSON-RPC。
 # 强制 UTF-8，并把一切日志/提示打到 stderr，避免污染协议流（Windows 下默认
@@ -131,7 +132,10 @@ def retrieve_knowledge(query: str, top_k: int = 5) -> str:
         top_k: 返回片段数，1-10，默认 5
     """
     top_k = max(1, min(10, int(top_k)))
-    status, data = _call_api("/query/hybrid", {"question": query, "top_k": top_k})
+    status, data = _call_api(
+        "/query/hybrid",
+        {"question": query, "top_k": top_k, "strategy": "hybrid"},
+    )
 
     if status != 200:
         return _friendly_error(status, data)
@@ -140,7 +144,12 @@ def retrieve_knowledge(query: str, top_k: int = 5) -> str:
     hybrid = result.get("hybrid_top", [])
     stats = result.get("stats", {})
     if not hybrid:
-        return f"知识库中未检索到与「{query}」相关的内容（dense={stats.get('dense_count', 0)} 条，sparse={stats.get('sparse_count', 0)} 条）。"
+        return (
+            f"知识库中未检索到与「{query}」相关的内容"
+            f"（dense={stats.get('dense_count', 0)} 条，"
+            f"sparse={stats.get('sparse_count', 0)} 条）。\n"
+            f"（{format_trace_summary(result)}）"
+        )
 
     lines = [f"查询「{query}」检索到 {len(hybrid)} 条相关内容：", ""]
     for item in hybrid:
@@ -148,6 +157,7 @@ def retrieve_knowledge(query: str, top_k: int = 5) -> str:
         lines.append(item.get("text", "").strip())
         lines.append("")
     lines.append(f"（dense {stats.get('dense_count', 0)} 条 / BM25 {stats.get('sparse_count', 0)} 条 / 重叠 {stats.get('overlap', 0)}）")
+    lines.append(f"（{format_trace_summary(result)}）")
     return "\n".join(lines)
 
 

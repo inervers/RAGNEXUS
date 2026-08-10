@@ -33,12 +33,12 @@ LLM_MODEL = os.getenv("LLM_MODEL", "deepseek-v4-flash")
 HDR = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 
 # 检索策略 -> (/query/hybrid 参数, 结果字段)
-# 口径说明：hybrid = dense 1.0 + sparse 2.0（2026-08-07 全量评测胜出，生产/评测统一）；
-# reranked 保留为反面证据（连续两轮评测：中文小语料下 Reranker 无增益）。
+# 口径说明：1.0/2.0 暂作为生产 baseline；旧关键词评测已失效，
+# Hybrid/Reranker 是否有增益必须等 V2 ground truth 与 held-out 报告复验。
 STRATEGIES = [
-    ("dense",    {"use_reranker": False}, "dense_top"),
-    ("hybrid",   {"use_reranker": False, "sparse_weight": 2.0}, "hybrid_top"),
-    ("reranked", {"use_reranker": True},  "reranked"),
+    ("dense",    {"strategy": "dense", "use_reranker": False}, "dense_top"),
+    ("hybrid",   {"strategy": "hybrid", "use_reranker": False}, "hybrid_top"),
+    ("reranked", {"strategy": "reranked", "use_reranker": True}, "reranked"),
 ]
 
 

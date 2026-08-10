@@ -156,7 +156,7 @@ class HybridSearch:
         sparse = self.sparse_search(query, top_k)
 
         # 稠密单独结果
-        dense_only = dense[:5] if dense else []
+        dense_only = dense[:top_k] if dense else []
 
         # 混合
         hybrid = self.rrf_fusion(dense, sparse, weights=(dense_weight, sparse_weight))[:top_k]

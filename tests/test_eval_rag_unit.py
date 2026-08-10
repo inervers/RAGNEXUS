@@ -3,6 +3,14 @@ import pytest
 import eval_rag
 
 
+def test_retrieval_strategies_send_explicit_strategy_to_shared_endpoint():
+    params_by_name = {name: params for name, params, _ in eval_rag.STRATEGIES}
+
+    assert params_by_name["dense"]["strategy"] == "dense"
+    assert params_by_name["hybrid"]["strategy"] == "hybrid"
+    assert params_by_name["reranked"]["strategy"] == "reranked"
+
+
 def test_id_based_metrics_are_hand_calculable():
     docs = [
         {"id": "X", "text": "mentions A but is not relevant"},

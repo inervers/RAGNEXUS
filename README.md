@@ -127,7 +127,7 @@ Agent 的写作记忆保存在本地 `memory/` 目录，容器重建后记忆不
 - Function Calling：DeepSeek 原生支持工具调用，无需额外适配
 - 当前使用官方模型名 `deepseek-v4-flash`（旧别名 deepseek-chat 已于 2026-07-24 停用，过渡期指向 v4-flash 非思考模式）
 - **智谱 GLM 免费版踩过的坑**：单并发 + 15:00-23:00 高峰限流，且高峰可能返回空 content 导致后端崩溃。故切换回 DeepSeek，智谱 key 保留为 fallback
-- 一个踩过的坑：LLM 不总是主动调 `search_knowledge`，所以我在 `/query` 端点做了 **强制检索注入**——先把 query 查知识库，再把结果塞进 system prompt，确保每轮回答都有知识支撑，不依赖模型自己的"意愿"
+- 一个踩过的坑：LLM 不总是主动调 `search_knowledge`。现在 `/query` 与 `/query/stream` 都先通过统一 `RetrievalService` 显式检索，再把同一批 `selected` chunks 注入生成上下文；生成阶段移除检索工具，避免一次请求出现两套检索结果
 
 ### 为什么用 ChromaDB 而不是 Milvus / Qdrant？
 

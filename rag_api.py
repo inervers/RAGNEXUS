@@ -5,7 +5,16 @@
 - 日志：trace_id 追踪、工具调用链路、请求耗时、错误记录
 """
 
-import sys, os, json, random, base64
+import sys, os, json, random, base64, asyncio
+
+from retrieval_service import (
+    GENERATION_SYSTEM_PROMPT,
+    RetrievalConfig,
+    RetrievalService,
+    build_generation_context,
+    build_sources,
+    without_retrieval_tool,
+)
 
 # Windows user-site 兼容（Docker 中直接跳过）
 _REAL_USER_SITE = os.environ.get("PYTHON_USER_SITE")
@@ -322,40 +331,33 @@ TOOLS = [
     }},
 ]
 
+GENERATION_TOOLS = without_retrieval_tool(TOOLS)
+
 SEARCH_N_RESULTS = 3
 
-# 混合检索权重（生产与评测统一口径 = sparse 偏关键词）。
-# 2026-08-07 全量评测（40 题 × 4 路，零 token）：
-#   hybrid 1.0/1.0: R@5 0.39 MRR 0.58 Hit@5 0.72
-#   hybrid 1.0/2.0: R@5 0.47 MRR 0.68 Hit@5 0.88  ← 胜出，定为此口径
-# 注意：原生产 sparse=2.0 与评测 1.0/1.0 不一致，曾导致评测数字低估真实能力。
+# 混合检索权重：1.0/2.0 暂作为所有入口共享的生产 baseline。
+# 旧关键词评测已由 RAG-02 判定为无效，最终权重要等 V2 held-out 报告决定。
 HYBRID_DENSE_WEIGHT = 1.0
 HYBRID_SPARSE_WEIGHT = 2.0
 
 
 def _tool_search(query: str) -> str:
-    hs = _get_hybrid_search()
-    result = hs.search(query, top_k=SEARCH_N_RESULTS * 2,
-                       dense_weight=HYBRID_DENSE_WEIGHT, sparse_weight=HYBRID_SPARSE_WEIGHT)
-    hybrid = result.get("hybrid_top", [])
-    if hybrid:
-        return "\n".join(item["text"] for item in hybrid)
-    # 回退纯向量
-    results = collection.query(query_texts=[query], n_results=SEARCH_N_RESULTS)
-    docs = results.get("documents", [[]])[0]
-    return "\n".join(docs) if docs else "未找到相关信息"
+    result = _retrieve(
+        query,
+        RetrievalConfig(top_k=SEARCH_N_RESULTS * 2),
+        uuid.uuid4().hex,
+    )
+    chunks = result["selected"]
+    return "\n".join(item["text"] for item in chunks) if chunks else "未找到相关信息"
 
 
 def _tool_search_chunks(query: str) -> list:
-    hs = _get_hybrid_search()
-    result = hs.search(query, top_k=SEARCH_N_RESULTS * 2,
-                       dense_weight=HYBRID_DENSE_WEIGHT, sparse_weight=HYBRID_SPARSE_WEIGHT)
-    hybrid = result.get("hybrid_top", [])
-    if hybrid:
-        return [item["text"] for item in hybrid]
-    # 回退纯向量
-    results = collection.query(query_texts=[query], n_results=SEARCH_N_RESULTS)
-    return results.get("documents", [[]])[0]
+    result = _retrieve(
+        query,
+        RetrievalConfig(top_k=SEARCH_N_RESULTS * 2),
+        uuid.uuid4().hex,
+    )
+    return [item["text"] for item in result["selected"]]
 
 def _tool_add(title: str, content: str) -> str:
     full = f"{title}：{content}"
@@ -380,27 +382,16 @@ TOOL_IMPLS = {
     "translate": _tool_translate,
 }
 
-SYSTEM_PROMPT = (
-    "You are an AI assistant with a knowledge base.\n"
-    "Available tools: search_knowledge, add_document, summarize, translate.\n"
-    "Rules:\n"
-    "1. FOR TECHNICAL QUESTIONS, use search_knowledge first.\n"
-    "2. For chat, answer directly.\n"
-    "3. When asked to SUMMARIZE, call summarize.\n"
-    "4. When asked to TRANSLATE, call translate.\n"
-    "5. Answer in the same language as the user."
-)
-
-def rag_with_fc(query: str, trace_id: str = uuid.uuid4().hex) -> dict:
-    _log(trace_id, "rag_start", query=query[:80])
-    msgs = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": query}]
+def rag_with_fc(question: str, retrieval_result: dict, trace_id: str) -> dict:
+    _log(trace_id, "rag_start", query=question[:80])
+    context = build_generation_context(question, retrieval_result)
+    msgs = [{"role": "system", "content": GENERATION_SYSTEM_PROMPT}, {"role": "user", "content": context}]
     tool_rounds = 0
-    sources = []
     for _ in range(8):
-        msg = call_llm(msgs, tools=TOOLS)
+        msg = call_llm(msgs, tools=GENERATION_TOOLS)
         if not msg.get("tool_calls"):
             _log(trace_id, "rag_done", rounds=tool_rounds)
-            return {"answer": msg["content"], "sources": sources}
+            return {"answer": msg["content"]}
         msgs.append({"role": "assistant", "content": msg.get("content"), "tool_calls": msg["tool_calls"]})
         for tc in msg["tool_calls"]:
             fname = tc["function"]["name"]
@@ -408,16 +399,15 @@ def rag_with_fc(query: str, trace_id: str = uuid.uuid4().hex) -> dict:
             result = TOOL_IMPLS[fname](**fargs)
             _log_tool(trace_id, fname, fargs, result)
             msgs.append({"role": "tool", "tool_call_id": tc["id"], "content": str(result)})
-            if fname == "search_knowledge" and result and result != "未找到相关信息":
-                sources.append({"query": fargs.get("query", ""), "content": result[:300]})
             tool_rounds += 1
     _log(trace_id, "rag_max_rounds", rounds=tool_rounds)
-    return {"answer": msgs[-1].get("content", ""), "sources": sources}
+    return {"answer": msgs[-1].get("content", "")}
 
-async def stream_rag(query: str, trace_id: str):
-    msgs = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": query}]
+async def stream_rag(question: str, retrieval_result: dict, trace_id: str):
+    context = build_generation_context(question, retrieval_result)
+    msgs = [{"role": "system", "content": GENERATION_SYSTEM_PROMPT}, {"role": "user", "content": context}]
     for _ in range(8):
-        msg = call_llm(msgs, tools=TOOLS)
+        msg = call_llm(msgs, tools=GENERATION_TOOLS)
         if msg.get("tool_calls"):
             for tc in msg["tool_calls"]:
                 fname = tc["function"]["name"]
@@ -449,7 +439,7 @@ async def stream_rag(query: str, trace_id: str):
                     if content:
                         yield f"data: {json.dumps({'type': 'token', 'content': content})}\n\n"
         break
-    yield f"data: {json.dumps({'type': 'done'})}\n\n"
+    yield f"data: {json.dumps({'type': 'done', 'retrieval_trace': retrieval_result['trace']})}\n\n"
 
 # =============================================
 # FastAPI 应用
@@ -485,8 +475,9 @@ class DeleteDocsRequest(BaseModel):
 class HybridQueryRequest(BaseModel):
     question: str
     top_k: int = 10
-    dense_weight: float = 1.0
-    sparse_weight: float = 1.0
+    strategy: str = "hybrid"
+    dense_weight: float = HYBRID_DENSE_WEIGHT
+    sparse_weight: float = HYBRID_SPARSE_WEIGHT
     use_reranker: bool = False
 
 class AgentWriteRequest(BaseModel):
@@ -535,28 +526,25 @@ def query(req: QueryRequest, request: Request):
         raise HTTPException(400, "问题不能为空")
     trace_id = request.headers.get(TRACE_HEADER, uuid.uuid4().hex)
 
-    # 混合检索（稠密向量 + BM25 稀疏 + RRF 融合），偏关键词权重
-    kb_chunks = _tool_search_chunks(req.question)
-    context_parts = ["## 知识库检索结果（请基于此回答）"]
-    for i, chunk in enumerate(kb_chunks):
-        context_parts.append(f"--- 文档 {i+1} ---\n{chunk}")
-    context_parts.append(f"\n## 用户问题\n{req.question}")
-    context = "\n".join(context_parts)
-
-    result = rag_with_fc(context, trace_id)
-    sources = result.get("sources", [])
-    if not sources and kb_chunks:
-        sources = [{"query": req.question[:80], "content": c[:300]} for c in kb_chunks]
-
-    return {"answer": result["answer"], "sources": sources, "trace_id": trace_id}
+    retrieval_result = _retrieve(req.question, RetrievalConfig(), trace_id)
+    result = rag_with_fc(req.question, retrieval_result, trace_id)
+    return {
+        "answer": result["answer"],
+        "sources": build_sources(req.question, retrieval_result),
+        "retrieval_trace": retrieval_result["trace"],
+        "trace_id": trace_id,
+    }
 
 @app.post("/query/stream")
 async def query_stream(req: QueryRequest, request: Request):
     if not req.question.strip():
         raise HTTPException(400, "问题不能为空")
     trace_id = request.headers.get(TRACE_HEADER, uuid.uuid4().hex)
+    retrieval_result = await asyncio.to_thread(
+        _retrieve, req.question, RetrievalConfig(), trace_id
+    )
     return StreamingResponse(
-        stream_rag(req.question, trace_id),
+        stream_rag(req.question, retrieval_result, trace_id),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache", "Connection": "keep-alive",
@@ -579,6 +567,7 @@ def add_doc(req: DocRequest, request: Request):
 
 _hybrid_search = None
 _reranker = None
+_retrieval_service = None
 _corpus_version = 0
 
 def _get_hybrid_search():
@@ -610,6 +599,27 @@ def _get_reranker():
         from rag_advanced import Reranker
         _reranker = Reranker()
     return _reranker
+
+
+def _rerank_for_service(query: str, candidates: list[dict], top_k: int):
+    reranker = _get_reranker()
+    reranked = reranker.rerank(query, candidates, top_k=top_k)
+    return reranked, reranker.status()
+
+
+def _get_retrieval_service():
+    global _retrieval_service
+    if _retrieval_service is None:
+        _retrieval_service = RetrievalService(
+            search_provider=_get_hybrid_search,
+            rerank_provider=_rerank_for_service,
+            corpus_version_provider=lambda: _corpus_version,
+        )
+    return _retrieval_service
+
+
+def _retrieve(query: str, config: RetrievalConfig, trace_id: str) -> dict:
+    return _get_retrieval_service().retrieve(query, config, trace_id)
 
 @app.get("/kb/docs")
 def list_kb_docs(request: Request):
@@ -656,17 +666,19 @@ def hybrid_query(req: HybridQueryRequest, request: Request):
         raise HTTPException(400, "问题不能为空")
     trace_id = request.headers.get(TRACE_HEADER, uuid.uuid4().hex)
     _log(trace_id, "hybrid_query", query=req.question[:80])
-    hs = _get_hybrid_search()
-    result = hs.search(query=req.question, top_k=req.top_k,
-                       dense_weight=req.dense_weight, sparse_weight=req.sparse_weight)
-    if req.use_reranker:
-        from rag_advanced import select_reranker_candidates
-
-        reranker = _get_reranker()
-        candidates = select_reranker_candidates(result)
-        result["reranked"] = reranker.rerank(req.question, candidates, top_k=5)
-        result["reranker_status"] = reranker.status()
-        _log(trace_id, "reranker_done", candidates=len(candidates),
+    strategy = "reranked" if req.use_reranker else req.strategy
+    try:
+        config = RetrievalConfig(
+            strategy=strategy,
+            top_k=req.top_k,
+            dense_weight=req.dense_weight,
+            sparse_weight=req.sparse_weight,
+        )
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    result = _retrieve(req.question, config, trace_id)
+    if strategy == "reranked":
+        _log(trace_id, "reranker_done", candidates=len(result["hybrid_top"]),
              mode=result["reranker_status"]["mode"])
     _log(trace_id, "hybrid_done", dense=len(result["dense_top"]),
          hybrid=len(result["hybrid_top"]))
@@ -676,21 +688,15 @@ def hybrid_query(req: HybridQueryRequest, request: Request):
 # Multi-Agent 编排
 # =============================================
 
-def _kb_search(query: str, top_k: int = 5) -> list[dict]:
+def _kb_search(query: str, top_k: int = 5, trace_id: str | None = None) -> list[dict]:
     """知识库检索函数，注入到 MultiAgentWorkflow 供研究员使用。"""
     try:
-        hs = _get_hybrid_search()
-        raw = hs.search(query=query, top_k=top_k)
-        hybrid = raw.get("hybrid_top", [])
-        # 如果混合结果太少，补上稠密结果
-        if len(hybrid) < 3:
-            dense = raw.get("dense_top", [])
-            seen = set(d.get("id") for d in hybrid)
-            for d in dense:
-                if d["id"] not in seen:
-                    hybrid.append(d)
-                    seen.add(d["id"])
-        return hybrid[:top_k]
+        result = _retrieve(
+            query,
+            RetrievalConfig(strategy="hybrid", top_k=top_k),
+            trace_id or uuid.uuid4().hex,
+        )
+        return result["selected"]
     except Exception:
         return []
 
@@ -705,7 +711,9 @@ def agent_write(req: AgentWriteRequest, request: Request):
     wf = MultiAgentWorkflow(api_key=LLM_API_KEY,
                             base_url=LLM_BASE_URL,
                             model=LLM_MODEL,
-                            knowledge_fn=_kb_search)
+                            knowledge_fn=lambda query, top_k: _kb_search(
+                                query, top_k, trace_id
+                            ))
     result = wf.run(req.topic, max_retries=req.max_retries)
     _log(trace_id, "agent_write_done", passed=str(result["passed"]),
          rating=result["rating"], attempts=result["attempts"],

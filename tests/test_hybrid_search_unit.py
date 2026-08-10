@@ -67,6 +67,15 @@ class FakeCollection:
         }
 
 
+class FakeCollectionMany:
+    def query(self, n_results, **kwargs):
+        return {
+            "ids": [[f"chunk-{i}" for i in range(n_results)]],
+            "documents": [[f"text-{i}" for i in range(n_results)]],
+            "distances": [[0.1 * i for i in range(n_results)]],
+        }
+
+
 def _install_fake_bm25(monkeypatch):
     monkeypatch.setattr(rag_advanced, "BM25Okapi", FakeBM25)
     monkeypatch.setattr(rag_advanced, "_tokenize", lambda _: ["token"])
@@ -92,6 +101,21 @@ def test_search_fuses_same_chunk_once(monkeypatch):
     assert [item["id"] for item in result["hybrid_top"]] == ["chunk-real-a"]
     assert result["stats"]["overlap"] == 1
     assert result["hybrid_top"][0]["rrf_score"] == round(2 / 61, 4)
+
+
+def test_dense_top_respects_requested_top_k(monkeypatch):
+    _install_fake_bm25(monkeypatch)
+    records = [
+        {"id": f"chunk-{i}", "text": f"text-{i}"}
+        for i in range(7)
+    ]
+    search = rag_advanced.HybridSearch(
+        FakeCollectionMany(), lambda _: [], records
+    )
+
+    result = search.search("query", top_k=7)
+
+    assert len(result["dense_top"]) == 7
 
 
 def test_set_corpus_rebuilds_id_text_mapping(monkeypatch):
