@@ -4,6 +4,7 @@ from retrieval_service import (
     GENERATION_SYSTEM_PROMPT,
     RetrievalConfig,
     RetrievalService,
+    build_delivery_metadata,
     build_generation_context,
     build_sources,
     format_trace_summary,
@@ -179,6 +180,29 @@ def test_sources_preserve_selected_ids_and_order():
     assert [source["id"] for source in sources] == ["chunk-b", "chunk-a"]
     assert sources[0]["query"] == "q"
     assert len(sources[0]["content"]) == 300
+
+
+def test_delivery_metadata_preserves_shared_sources_and_trace():
+    retrieval = {
+        "selected": [
+            {"id": "chunk-b", "text": "second"},
+            {"id": "chunk-a", "text": "first"},
+        ],
+        "trace": {
+            "trace_id": "trace-shared",
+            "strategy": "hybrid",
+            "top_k": 2,
+        },
+    }
+
+    metadata = build_delivery_metadata("original question", retrieval, "trace-shared")
+
+    assert [source["id"] for source in metadata["sources"]] == [
+        "chunk-b",
+        "chunk-a",
+    ]
+    assert metadata["retrieval_trace"] is retrieval["trace"]
+    assert metadata["trace_id"] == "trace-shared"
 
 
 def test_generation_tools_exclude_retrieval_but_keep_other_tools():

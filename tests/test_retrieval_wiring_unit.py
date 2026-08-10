@@ -73,3 +73,10 @@ def test_mcp_requests_explicit_hybrid_strategy_and_formats_trace():
 
     assert '{"question": query, "top_k": top_k, "strategy": "hybrid"}' in source
     assert "format_trace_summary(result)" in source
+
+
+def test_rest_and_stream_share_delivery_metadata_builder():
+    tree = _module("rag_api.py")
+
+    assert _named_reference_count(_function(tree, "query"), "build_delivery_metadata") == 1
+    assert _named_reference_count(_function(tree, "stream_rag"), "build_delivery_metadata") == 1

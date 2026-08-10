@@ -11,8 +11,8 @@ from retrieval_service import (
     GENERATION_SYSTEM_PROMPT,
     RetrievalConfig,
     RetrievalService,
+    build_delivery_metadata,
     build_generation_context,
-    build_sources,
     without_retrieval_tool,
 )
 
@@ -454,7 +454,11 @@ async def stream_rag(question: str, retrieval_result: dict, trace_id: str):
                     if content:
                         yield f"data: {json.dumps({'type': 'token', 'content': content})}\n\n"
         break
-    yield f"data: {json.dumps({'type': 'done', 'retrieval_trace': retrieval_result['trace']})}\n\n"
+    done = {
+        "type": "done",
+        **build_delivery_metadata(question, retrieval_result, trace_id),
+    }
+    yield f"data: {json.dumps(done)}\n\n"
 
 # =============================================
 # FastAPI 应用
@@ -545,9 +549,7 @@ def query(req: QueryRequest, request: Request):
     result = rag_with_fc(req.question, retrieval_result, trace_id)
     return {
         "answer": result["answer"],
-        "sources": build_sources(req.question, retrieval_result),
-        "retrieval_trace": retrieval_result["trace"],
-        "trace_id": trace_id,
+        **build_delivery_metadata(req.question, retrieval_result, trace_id),
     }
 
 @app.post("/query/stream")

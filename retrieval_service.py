@@ -125,6 +125,19 @@ def build_sources(question: str, retrieval_result: dict) -> list[dict]:
     ]
 
 
+def build_delivery_metadata(
+    question: str,
+    retrieval_result: dict,
+    trace_id: str,
+) -> dict:
+    """把同一次检索投影成 REST/SSE 共用的交付元数据。"""
+    return {
+        "sources": build_sources(question, retrieval_result),
+        "retrieval_trace": retrieval_result.get("trace", {}),
+        "trace_id": trace_id,
+    }
+
+
 def without_retrieval_tool(tools: list[dict]) -> list[dict]:
     """生成阶段已有显式 context，不再允许同一请求二次检索。"""
     return [
