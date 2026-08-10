@@ -45,7 +45,7 @@
         <tr><td>ZHIPU_API_KEY</td><td>智谱 API Key（fallback）</td><td>可选</td></tr>
         <tr><td>LLM_BASE_URL</td><td>覆盖 LLM 端点</td><td>按 key 自动选</td></tr>
         <tr><td>LLM_MODEL</td><td>覆盖模型名</td><td>deepseek-v4-flash</td></tr>
-        <tr><td>RAG_API_KEY</td><td>API 鉴权密钥</td><td>rag-secret-key-2024</td></tr>
+        <tr><td>RAG_API_KEY</td><td>API 鉴权密钥</td><td>必填，无默认值</td></tr>
         <tr><td>RAG_RATE_LIMIT</td><td>每分钟最大请求数</td><td>30</td></tr>
       </tbody>
     </table>
@@ -84,12 +84,12 @@ docker compose up -d --build</code></pre>
     <h3>流式问答（PowerShell 用单引号包 JSON）</h3>
     <pre><code>curl.exe -N -X POST http://localhost:8000/query/stream ^
   -H "Content-Type: application/json" ^
-  -H "X-API-Key: rag-secret-key-2024" ^
+  -H "X-API-Key: &lt;project-key&gt;" ^
   -d '{"question":"什么是RAG"}'</code></pre>
     <h3>混合检索（稠密 + BM25 + Reranker）</h3>
     <pre><code>curl.exe -X POST http://localhost:8000/query/hybrid ^
   -H "Content-Type: application/json" ^
-  -H "X-API-Key: rag-secret-key-2024" ^
+  -H "X-API-Key: &lt;project-key&gt;" ^
   -d '{"question":"What is PyTorch?","use_reranker":true}'</code></pre>
   </section>
 

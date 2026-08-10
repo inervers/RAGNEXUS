@@ -12,7 +12,8 @@ services:
       - /data/chroma_db:size=256m
     environment:
       DEEPSEEK_API_KEY: smoke-placeholder-not-a-secret # pragma: allowlist secret -- non-routable test placeholder
-      RAG_API_KEY: rag-secret-key-2024 # pragma: allowlist secret -- matches existing local demo UI
+      RAG_API_KEY: ${RAG_SMOKE_API_KEY:?RAG_SMOKE_API_KEY must be set by the smoke runner}
+      RAG_CORS_ORIGINS: http://localhost:5173
       RAG_CHROMA_DIR: /data/chroma_db
       RAG_LOG_FILE: /tmp/rag_api.log
     healthcheck:

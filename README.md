@@ -41,7 +41,7 @@ RAGNEXUS/
 ### 本地运行
 
 ```powershell
-# 1. 配置环境变量（.env：DEEPSEEK_API_KEY 必填，ZHIPU_API_KEY 可选 fallback）
+# 1. 复制 .env.example 为 .env，填写 DEEPSEEK_API_KEY 与随机 RAG_API_KEY
 # 2. 启动 API 服务（默认 8000 端口）
 python rag_api.py
 
@@ -52,6 +52,7 @@ npm run dev
 ```
 
 浏览器打开 `http://localhost:5173`（vite dev 已配置代理转发到 8000）。
+首次使用时在侧边栏输入与后端一致的 `RAG_API_KEY`；它只保存在当前标签页的 `sessionStorage`，不会写入前端 bundle 或 localStorage。
 
 ### Docker 部署
 
@@ -229,13 +230,13 @@ python mcp_http_client_test.py --url http://127.0.0.1:8101/mcp
 
 ```powershell
 # 流式问答（PowerShell 用单引号包 JSON，\" 无效）
-curl.exe -N -X POST http://localhost:8000/query/stream -H "Content-Type: application/json" -H "X-API-Key: rag-secret-key-2024" -d '{"question":"什么是RAG"}'
+curl.exe -N -X POST http://localhost:8000/query/stream -H "Content-Type: application/json" -H "X-API-Key: $env:RAG_API_KEY" -d '{"question":"什么是RAG"}'
 
 # 混合检索（稠密 + BM25 + Reranker）
-curl.exe -X POST http://localhost:8000/query/hybrid -H "Content-Type: application/json" -H "X-API-Key: rag-secret-key-2024" -d '{"question":"What is PyTorch?","use_reranker":true}'
+curl.exe -X POST http://localhost:8000/query/hybrid -H "Content-Type: application/json" -H "X-API-Key: $env:RAG_API_KEY" -d '{"question":"What is PyTorch?","use_reranker":true}'
 
 # Multi-Agent 写作
-curl.exe -X POST http://localhost:8000/agent/write -H "Content-Type: application/json" -H "X-API-Key: rag-secret-key-2024" -d '{"topic":"PyTorch 动态计算图","max_retries":2}'
+curl.exe -X POST http://localhost:8000/agent/write -H "Content-Type: application/json" -H "X-API-Key: $env:RAG_API_KEY" -d '{"topic":"PyTorch 动态计算图","max_retries":2}'
 ```
 
 ---
@@ -250,7 +251,8 @@ curl.exe -X POST http://localhost:8000/agent/write -H "Content-Type: application
 | `ZHIPU_API_KEY` | 智谱 API Key（fallback） | 可选 |
 | `LLM_BASE_URL` | 覆盖 LLM 端点 | 按 key 自动选 |
 | `LLM_MODEL` | 覆盖模型名 | deepseek-v4-flash |
-| `RAG_API_KEY` | API 鉴权密钥 | rag-secret-key-2024 |
+| `RAG_API_KEY` | API 鉴权密钥；缺失、旧默认值或模板占位符会拒绝启动 | 必填，无默认值 |
+| `RAG_CORS_ORIGINS` | 浏览器精确 origin，逗号分隔，禁止 `*` | 本地 5173/8080 |
 | `RAG_RATE_LIMIT` | 每分钟最大请求数 | 30 |
 
 ---

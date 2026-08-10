@@ -21,7 +21,7 @@
   <header class="hero">
     <div class="kicker">API REFERENCE</div>
     <h1>HTTP API</h1>
-    <p>除健康检查外所有接口均需 <code>X-API-Key</code> 请求头鉴权（默认 <code>rag-secret-key-2024</code>），无 Key 返回 401，超限返回 429。</p>
+    <p>除健康检查外所有接口均需 <code>X-API-Key</code> 请求头鉴权；Key 必须通过环境配置且无默认值。无 Key 返回 401，错 Key 返回 403，超限返回 429。</p>
   </header>
 
   <section>
@@ -50,32 +50,32 @@
     <h3>流式问答</h3>
     <pre><code>curl.exe -N -X POST http://localhost:8000/query/stream ^
   -H "Content-Type: application/json" ^
-  -H "X-API-Key: rag-secret-key-2024" ^
+  -H "X-API-Key: &lt;project-key&gt;" ^
   -d '{"question":"什么是RAG"}'</code></pre>
     <p>SSE 事件流：<code>tool</code>（工具调用结果）→ <code>token</code>（增量 token）→ <code>done</code>（结束）。</p>
 
     <h3>混合检索</h3>
     <pre><code>curl.exe -X POST http://localhost:8000/query/hybrid ^
   -H "Content-Type: application/json" ^
-  -H "X-API-Key: rag-secret-key-2024" ^
+  -H "X-API-Key: &lt;project-key&gt;" ^
   -d '{"question":"What is PyTorch?","use_reranker":true}'</code></pre>
 
     <h3>Multi-Agent 写作</h3>
     <pre><code>curl.exe -X POST http://localhost:8000/agent/write ^
   -H "Content-Type: application/json" ^
-  -H "X-API-Key: rag-secret-key-2024" ^
+  -H "X-API-Key: &lt;project-key&gt;" ^
   -d '{"topic":"PyTorch 动态计算图","max_retries":2}'</code></pre>
 
     <h3>添加文档</h3>
     <pre><code>curl.exe -X POST http://localhost:8000/doc ^
   -H "Content-Type: application/json" ^
-  -H "X-API-Key: rag-secret-key-2024" ^
+  -H "X-API-Key: &lt;project-key&gt;" ^
   -d '{"title":"RAG 入门","content":"检索增强生成（RAG）..."}'</code></pre>
 
     <h3>删除文档（按 id 批量）</h3>
     <pre><code>curl.exe -X POST http://localhost:8000/kb/docs/delete ^
   -H "Content-Type: application/json" ^
-  -H "X-API-Key: rag-secret-key-2024" ^
+  -H "X-API-Key: &lt;project-key&gt;" ^
   -d '{"ids":["chunk-id-1","chunk-id-2"]}'</code></pre>
     <p>返回 <code>{"deleted": [...], "missing": [...], "remaining": N}</code>。</p>
   </section>

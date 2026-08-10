@@ -87,7 +87,7 @@ RUN npm config set registry https://registry.npmmirror.com \
 # .env（不进 git）
 DEEPSEEK_API_KEY=sk-xxx          # 主用
 ZHIPU_API_KEY=xxx                # fallback，备用
-RAG_API_KEY=rag-secret-key-2024
+RAG_API_KEY=<project-key>
 ```
 
 代码逻辑（rag_api.py）：
@@ -148,7 +148,7 @@ LLM_MODEL = os.environ.get("LLM_MODEL", "deepseek-v4-flash" if DEEPSEEK_API_KEY 
 curl.exe -s http://localhost:8000/health
 
 # JSON body 用单引号！\" 在 PowerShell 不是转义符 → 会 422
-curl.exe -N -X POST http://localhost:8000/query/stream -H "Content-Type: application/json" -H "X-API-Key: rag-secret-key-2024" -d '{"question":"什么是RAG"}'
+curl.exe -N -X POST http://localhost:8000/query/stream -H "Content-Type: application/json" -H "X-API-Key: $env:RAG_API_KEY" -d '{"question":"什么是RAG"}'
 
 # 直连 8000 绕过 nginx：判断问题在前端还是后端
 # 直连 OK + 浏览器不行 → 看 nginx / 前端缓存

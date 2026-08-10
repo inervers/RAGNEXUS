@@ -23,15 +23,15 @@ pip install -i https://mirrors.aliyun.com/pypi/simple/ fastmcp
 
 | 变量 | 必填 | 说明 |
 |---|---|---|
-| `RAGNEXUS_API_KEY` | 否 | 覆盖 API Key（优先级最高，留给 Cursor 等客户端注入）。**不设时自动读脚本同目录 `.env` 的 `RAG_API_KEY`，再兜底后端默认值 `rag-secret-key-2024`** |
+| `RAGNEXUS_API_KEY` | 条件必填 | 客户端显式注入的 API Key；未设置时只允许读取脚本同目录 `.env` 的 `RAG_API_KEY`，两者都缺失则拒绝启动 |
 | `RAGNEXUS_BASE_URL` | 否 | 默认 `http://127.0.0.1:8000` |
 
 **Key 自动发现逻辑**（与后端 rag_api.py 的 `RAG_API_KEY` 对齐）：
 1. 环境变量 `RAGNEXUS_API_KEY`（客户端注入优先）
 2. 脚本同目录 `.env` 里的 `RAG_API_KEY`（与后端共享同一配置源）
-3. 后端默认值 `rag-secret-key-2024`
+3. 不提供默认值；缺失、旧默认值或模板占位符均 fail-fast
 
-注意：RAGNEXUS 本地跑 `python rag_api.py` 时**不会加载 .env**（只有 docker compose 用 `env_file` 注入），所以本地后端实际用的很可能就是默认 key。若后端改过 key，在 MCP 配置里显式设 `RAGNEXUS_API_KEY` 即可。
+注意：后端与 MCP 都会读取项目 `.env`，但不会创建或回退到仓库内共享 Key。远程 MCP 客户端应显式注入 `RAGNEXUS_API_KEY`。
 
 ## 启动
 

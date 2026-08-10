@@ -1207,7 +1207,7 @@
   // ── 后端数据接入：状态卡 / 指标条 / 知识库 / 检索链路 读取正式应用真实数据 ──
   (function () {
     const API = 'http://localhost:8000';
-    const KEY = 'rag-secret-key-2024';
+    const KEY = sessionStorage.getItem('ragnexus_api_key') || '';
     const cards = Array.from(document.querySelectorAll('.hero-visual.vstack .v-card'));
     const setCard = (i, t, d) => {
       const c = cards[i];

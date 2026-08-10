@@ -3,7 +3,10 @@ $ErrorActionPreference = "Stop"
 $composeFile = Join-Path $PSScriptRoot "..\docker-compose.smoke.yml"
 $apiBase = "http://127.0.0.1:18000"
 $frontendBase = "http://127.0.0.1:18080"
-$headers = @{ "X-API-Key" = "rag-secret-key-2024" }
+$allowedOrigin = "http://localhost:5173"
+$deniedOrigin = "https://untrusted.example"
+$env:RAG_SMOKE_API_KEY = "smoke-$([guid]::NewGuid().ToString('N'))"
+$headers = @{ "X-API-Key" = $env:RAG_SMOKE_API_KEY }
 
 try {
     docker compose -f $composeFile up --build --detach --wait
@@ -19,6 +22,36 @@ try {
         throw "missing API key unexpectedly succeeded"
     } catch {
         if ($_.Exception.Response.StatusCode.value__ -ne 401) { throw }
+    }
+
+    try {
+        Invoke-WebRequest -Uri "$apiBase/kb/docs" -Headers @{ "X-API-Key" = "wrong-smoke-key" } `
+            -UseBasicParsing -TimeoutSec 10 | Out-Null
+        throw "wrong API key unexpectedly succeeded"
+    } catch {
+        if ($_.Exception.Response.StatusCode.value__ -ne 403) { throw }
+    }
+
+    $allowedPreflight = Invoke-WebRequest -Uri "$apiBase/query/hybrid" -Method Options -Headers @{
+        Origin = $allowedOrigin
+        "Access-Control-Request-Method" = "POST"
+        "Access-Control-Request-Headers" = "X-API-Key,Content-Type"
+    } -UseBasicParsing -TimeoutSec 10
+    if ($allowedPreflight.Headers["Access-Control-Allow-Origin"] -ne $allowedOrigin) {
+        throw "allowed CORS origin was not echoed"
+    }
+
+    try {
+        $deniedPreflight = Invoke-WebRequest -Uri "$apiBase/query/hybrid" -Method Options -Headers @{
+            Origin = $deniedOrigin
+            "Access-Control-Request-Method" = "POST"
+            "Access-Control-Request-Headers" = "X-API-Key,Content-Type"
+        } -UseBasicParsing -TimeoutSec 10
+    } catch {
+        $deniedPreflight = $_.Exception.Response
+    }
+    if ($deniedPreflight.Headers["Access-Control-Allow-Origin"]) {
+        throw "disallowed CORS origin received an allow-origin header"
     }
 
     $body = @{
@@ -43,6 +76,9 @@ try {
         ApiStatus = $health.status
         FixtureChunks = $health.chunks
         MissingKeyStatus = 401
+        WrongKeyStatus = 403
+        AllowedCorsOrigin = $allowedPreflight.Headers["Access-Control-Allow-Origin"]
+        DeniedCorsOrigin = "no allow-origin header"
         RetrievalStrategy = $hybrid.result.trace.strategy
         RetrievalSelected = $hybrid.result.selected.Count
         FrontendStatus = $frontend.StatusCode
@@ -50,4 +86,5 @@ try {
     } | Format-List
 } finally {
     docker compose -f $composeFile down --volumes --remove-orphans
+    Remove-Item Env:RAG_SMOKE_API_KEY -ErrorAction SilentlyContinue
 }
