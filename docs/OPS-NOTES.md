@@ -129,8 +129,8 @@ LLM_MODEL = os.environ.get("LLM_MODEL", "deepseek-v4-flash" if DEEPSEEK_API_KEY 
 | POST /doc | 上传文档 |
 | GET /kb/docs | 知识库列表 |
 | POST /doc/preview | `{filename, content: base64}` → `{title, preview, full_length, truncated}`，只用于展示 |
-| POST /doc/import | 从原始 base64 重新解析并写入完整文档，不使用 preview 作为数据源 |
-| POST /agent/write | 三角色有界协作 `{topic, max_retries}`，Reviewer issues 回灌 Writer |
+| POST /doc/import | 从原始 base64 重新解析并写入完整文档，不使用 preview 作为数据源；文件上限 10 MiB |
+| POST /agent/write | 三角色有界协作 `{topic, max_retries}`，重试严格 0–3，Reviewer issues 回灌 Writer |
 
 ---
 

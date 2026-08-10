@@ -23,7 +23,12 @@ import {
   readSessionApiKey,
   saveSessionApiKey,
 } from "./apiAuth"
-import { buildImportRequest, type SelectedDocumentFile } from "./documentImport"
+import {
+  FileSelectionGuard,
+  buildImportRequest,
+  validateSelectedFile,
+  type SelectedDocumentFile,
+} from "./documentImport"
 
 const API_BASE = ""
 
@@ -692,6 +697,7 @@ function KBTab({ apiKey, onApiError }: { apiKey: string; onApiError: OnApiError 
   const [kbSearch, setKbSearch] = useState("")
   const [deleting, setDeleting] = useState<string | null>(null)
   const requestScope = useProtectedRequestScope(apiKey)
+  const fileSelection = useRef(new FileSelectionGuard())
 
   const groups = useMemo<KbGroup[]>(() => {
     const map = new Map<string, KbGroup>()
@@ -774,6 +780,7 @@ function KBTab({ apiKey, onApiError }: { apiKey: string; onApiError: OnApiError 
       await ensureApiResponse(resp)
       const data = await resp.json()
       setStatusMsg(`${data.message}；完整导入 ${data.parsed_length} 字符`)
+      fileSelection.current.invalidate()
       setSelectedFile(null)
       await fetchDocs()
     } catch (error) {
@@ -808,8 +815,15 @@ function KBTab({ apiKey, onApiError }: { apiKey: string; onApiError: OnApiError 
   }
 
   async function fillFromFile(f: File) {
-    const ext = f.name.split(".").pop()?.toLowerCase()
-    if (ext !== "pdf" && ext !== "txt") return
+    const selection = fileSelection.current.begin()
+    setSelectedFile(null)
+    const validationError = validateSelectedFile(f)
+    if (validationError) {
+      setStatusMsg(validationError)
+      setUploadProgress(0)
+      setLoading(false)
+      return
+    }
     setStatusMsg("读取文件...")
     setUploadProgress(5)
     setLoading(true)
@@ -830,6 +844,7 @@ function KBTab({ apiKey, onApiError }: { apiKey: string; onApiError: OnApiError 
         reader.onerror = () => reject(reader.error)
         reader.readAsArrayBuffer(f)
       })
+      if (!fileSelection.current.isCurrent(selection)) return
       setUploadProgress(45)
       setStatusMsg("发送到服务器预览...")
       const signal = requestScope.begin()
@@ -840,8 +855,10 @@ function KBTab({ apiKey, onApiError }: { apiKey: string; onApiError: OnApiError 
         signal,
       })
       await ensureApiResponse(resp)
+      if (!fileSelection.current.isCurrent(selection)) return
       setUploadProgress(75)
       const data = await resp.json()
+      if (!fileSelection.current.isCurrent(selection)) return
       setSelectedFile({
         filename: f.name,
         encodedContent: b64,
@@ -853,11 +870,14 @@ function KBTab({ apiKey, onApiError }: { apiKey: string; onApiError: OnApiError 
       setUploadProgress(100)
       setStatusMsg(`预览完成（共 ${data.full_length} 字符，正式导入使用原始文件）`)
     } catch (error) {
+      if (!fileSelection.current.isCurrent(selection)) return
       onApiError(error)
       setStatusMsg(error instanceof Error ? `解析失败：${error.message}` : "解析失败，请重试")
     }
-    setUploadProgress(0)
-    setLoading(false)
+    if (fileSelection.current.isCurrent(selection)) {
+      setUploadProgress(0)
+      setLoading(false)
+    }
   }
 
   return (
@@ -899,7 +919,10 @@ function KBTab({ apiKey, onApiError }: { apiKey: string; onApiError: OnApiError 
           <div className="kb-preview">
             <div className="kb-preview-header">
               <span>{selectedFile.title} · {selectedFile.fullLength} 字符</span>
-              <button className="btn-close" onClick={() => setSelectedFile(null)}>清除</button>
+              <button className="btn-close" onClick={() => {
+                fileSelection.current.invalidate()
+                setSelectedFile(null)
+              }}>清除</button>
             </div>
             <p className="kb-preview-text">{selectedFile.preview}</p>
             {selectedFile.truncated && (

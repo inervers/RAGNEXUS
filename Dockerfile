@@ -36,7 +36,7 @@ RUN python /tmp/download_embedding_snapshot.py \
       --output /opt/models/all-MiniLM-L6-v2 \
     && rm /tmp/download_embedding_snapshot.py
 
-COPY rag_api.py rag_advanced.py rag_multiagent.py retrieval_service.py security_config.py document_ingest.py embedding_runtime.py pdf_parser.py ocr_client.py ./
+COPY rag_api.py rag_advanced.py rag_multiagent.py retrieval_service.py security_config.py document_ingest.py embedding_runtime.py agent_contract.py pdf_parser.py ocr_client.py ./
 
 EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=5s --start-period=40s --retries=6 \

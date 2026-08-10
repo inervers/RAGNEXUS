@@ -1,6 +1,13 @@
 import base64
 
-from document_ingest import build_preview, import_uploaded_document, parse_uploaded_document
+import pytest
+
+from document_ingest import (
+    DocumentIngestError,
+    build_preview,
+    import_uploaded_document,
+    parse_uploaded_document,
+)
 
 
 def test_preview_truncation_never_changes_import_source() -> None:
@@ -37,3 +44,32 @@ def test_formal_import_passes_all_parsed_text_to_kb_consumer() -> None:
         "message": "added",
         "chunks": 31,
     }
+
+
+def test_upload_rejects_decoded_content_over_limit() -> None:
+    encoded = base64.b64encode(b"12345").decode("ascii")
+
+    with pytest.raises(DocumentIngestError, match="超过"):
+        parse_uploaded_document("large.txt", encoded, max_bytes=4)
+
+
+def test_txt_rejects_invalid_utf8_instead_of_replacing_bytes() -> None:
+    encoded = base64.b64encode(b"valid\xffinvalid").decode("ascii")
+
+    with pytest.raises(DocumentIngestError, match="UTF-8"):
+        parse_uploaded_document("invalid.txt", encoded)
+
+
+def test_import_rejects_whitespace_only_text_before_kb_mutation() -> None:
+    encoded = base64.b64encode(" \n\t".encode("utf-8")).decode("ascii")
+    called = False
+
+    def add_document(title: str, content: str) -> dict:
+        nonlocal called
+        called = True
+        return {}
+
+    with pytest.raises(DocumentIngestError, match="有效文本"):
+        import_uploaded_document("empty.txt", encoded, add_document)
+
+    assert called is False

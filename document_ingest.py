@@ -7,6 +7,8 @@ import binascii
 from collections.abc import Callable
 from dataclasses import dataclass
 
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+
 
 class DocumentIngestError(ValueError):
     def __init__(self, message: str, *, status_code: int = 400) -> None:
@@ -20,26 +22,49 @@ class ParsedDocument:
     text: str
 
 
-def parse_uploaded_document(filename: str, encoded_content: str) -> ParsedDocument:
+def _require_meaningful_text(parsed: ParsedDocument) -> ParsedDocument:
+    if not parsed.text.strip():
+        raise DocumentIngestError("文档没有可导入的有效文本")
+    return parsed
+
+
+def parse_uploaded_document(
+    filename: str,
+    encoded_content: str,
+    *,
+    max_bytes: int = MAX_UPLOAD_BYTES,
+) -> ParsedDocument:
     clean_filename = filename.strip()
-    if not clean_filename or not encoded_content.strip():
+    encoded = encoded_content.strip()
+    if not clean_filename or not encoded:
         raise DocumentIngestError("文件名和内容不能为空")
+    max_encoded_length = 4 * ((max_bytes + 2) // 3)
+    if len(encoded) > max_encoded_length:
+        raise DocumentIngestError(f"文件超过 {max_bytes} 字节限制", status_code=413)
 
     try:
-        raw_bytes = base64.b64decode(encoded_content, validate=True)
+        raw_bytes = base64.b64decode(encoded, validate=True)
     except (binascii.Error, ValueError):
         raise DocumentIngestError("Base64 解码失败") from None
+    if len(raw_bytes) > max_bytes:
+        raise DocumentIngestError(f"文件超过 {max_bytes} 字节限制", status_code=413)
 
     ext = clean_filename.rsplit(".", 1)[-1].lower() if "." in clean_filename else ""
     title = clean_filename.rsplit(".", 1)[0]
     if ext == "txt":
-        return ParsedDocument(title=title, text=raw_bytes.decode("utf-8", errors="replace"))
+        try:
+            text = raw_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            raise DocumentIngestError("TXT 文件必须使用有效 UTF-8 编码") from None
+        return _require_meaningful_text(ParsedDocument(title=title, text=text))
     if ext == "pdf":
         try:
             from pdf_parser import extract_text
 
             parsed = extract_text(raw_bytes)
-            return ParsedDocument(title=title, text=parsed["text"])
+            return _require_meaningful_text(
+                ParsedDocument(title=title, text=parsed["text"])
+            )
         except Exception as error:
             raise DocumentIngestError(
                 f"PDF 解析失败：{error}", status_code=500

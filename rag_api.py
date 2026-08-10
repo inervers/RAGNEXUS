@@ -13,7 +13,12 @@ from document_ingest import (
     import_uploaded_document,
     parse_uploaded_document,
 )
-from embedding_runtime import embed_batch
+from embedding_runtime import (
+    embed_batch,
+    embedding_function_name,
+    resolve_pooling_mode,
+    validate_collection_pooling,
+)
 from security_config import load_api_key, parse_cors_origins
 
 from retrieval_service import (
@@ -85,7 +90,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import chromadb
 from chromadb.api.types import EmbeddingFunction
 
@@ -219,6 +224,7 @@ EMBEDDING_MODEL_REVISION = os.environ.get(
     "RAG_EMBEDDING_MODEL_REVISION",
     "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
 )
+EMBEDDING_POOLING = resolve_pooling_mode(os.environ.get("RAG_EMBEDDING_POOLING"))
 tokenizer = AutoTokenizer.from_pretrained(
     EMBEDDING_MODEL_ID,
     revision=EMBEDDING_MODEL_REVISION,
@@ -231,7 +237,7 @@ model = AutoModel.from_pretrained(
 )
 
 def embed_texts(texts):
-    return embed_batch(texts, tokenizer, model, torch)
+    return embed_batch(texts, tokenizer, model, torch, pooling=EMBEDDING_POOLING)
 
 class MiniLMEmbedding(EmbeddingFunction):
     """适配 ChromaDB 1.x：需实现 __init__ 与 name()，query 输入可能是 Document 对象。"""
@@ -248,14 +254,19 @@ class MiniLMEmbedding(EmbeddingFunction):
         return [e.tolist() for e in embed_texts(texts)]
 
     def name(self) -> str:
-        return "MiniLM-L6-v2-mean-pooling"
+        return embedding_function_name(EMBEDDING_POOLING)
 
 # =============================================
 # Chroma 持久化
 # =============================================
 CHROMA_DIR = os.environ.get("RAG_CHROMA_DIR", os.path.join(os.path.dirname(__file__), "chroma_db"))
 client = chromadb.PersistentClient(path=CHROMA_DIR, settings=chromadb.config.Settings(anonymized_telemetry=False))
-collection = client.get_or_create_collection(name="rag_knowledge", embedding_function=MiniLMEmbedding())
+collection = client.get_or_create_collection(
+    name="rag_knowledge",
+    embedding_function=MiniLMEmbedding(),
+    metadata={"embedding_pooling": EMBEDDING_POOLING},
+)
+validate_collection_pooling(EMBEDDING_POOLING, collection.count(), collection.metadata)
 splitter = RecursiveCharacterTextSplitter(chunk_size=200, chunk_overlap=20)
 
 def _doc_count() -> int:
@@ -520,7 +531,7 @@ class HybridQueryRequest(BaseModel):
 
 class AgentWriteRequest(BaseModel):
     topic: str
-    max_retries: int = 1
+    max_retries: int = Field(default=1, ge=0, le=3, strict=True)
 
 @app.post("/doc/preview")
 def preview_doc(req: UploadDocRequest, request: Request):
@@ -549,6 +560,7 @@ def health(request: Request):
         "tools": list(TOOL_IMPLS.keys()),
         "auth_required": True,
         "rate_limit": f"{RATE_LIMIT}/min",
+        "embedding_pooling": EMBEDDING_POOLING,
         "version": "0.7.1",
     }
 

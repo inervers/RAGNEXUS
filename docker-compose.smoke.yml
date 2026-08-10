@@ -16,6 +16,7 @@ services:
       RAG_CORS_ORIGINS: http://localhost:5173
       RAG_RATE_LIMIT: 6
       RAG_CHROMA_DIR: /data/chroma_db
+      RAG_EMBEDDING_POOLING: masked_mean
       RAG_LOG_FILE: /tmp/rag_api.log
     healthcheck:
       test: ["CMD", "python", "-c", "import json,urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)); assert data['status']=='ok'"]

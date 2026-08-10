@@ -5,12 +5,47 @@ rag_multiagent.py — L7 Multi-Agent 编排模块
 可直接调用，也可通过 API 触发。
 """
 
-import json, os, time, uuid
+import hashlib, json, os, time, uuid
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 from openai import OpenAI
 
+from agent_contract import validate_max_retries
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+@dataclass(frozen=True)
+class ReviewResult:
+    issues: list[str]
+    rating: int
+    verdict: str
+
+
+def parse_review_result(review_raw) -> ReviewResult:
+    fallback = ReviewResult(["审核结果格式无效"], 0, "需要修改")
+    if not isinstance(review_raw, str):
+        return fallback
+    cleaned = review_raw.strip().removeprefix("```json").removesuffix("```").strip()
+    try:
+        payload = json.loads(cleaned)
+    except (json.JSONDecodeError, TypeError):
+        return fallback
+    if not isinstance(payload, dict):
+        return fallback
+    issues = payload.get("issues")
+    rating = payload.get("rating")
+    verdict = payload.get("verdict")
+    if not isinstance(issues, list) or not all(isinstance(issue, str) for issue in issues):
+        return fallback
+    if isinstance(rating, bool) or not isinstance(rating, int) or not 1 <= rating <= 5:
+        return fallback
+    if verdict not in {"通过", "需要修改"}:
+        return fallback
+    if (rating >= 4) != (verdict == "通过"):
+        return fallback
+    return ReviewResult(issues, rating, verdict)
 
 
 # =============================================
@@ -193,6 +228,7 @@ class MultiAgentWorkflow:
                 "memory_sizes": {...}
             }
         """
+        max_retries = validate_max_retries(max_retries)
         start = time.time()
 
         # 初始化记忆
@@ -271,16 +307,10 @@ class MultiAgentWorkflow:
             )
 
             # 解析审核结果
-            cleaned = review_raw.strip().removeprefix("```json").removesuffix("```").strip()
-            try:
-                review = json.loads(cleaned)
-            except json.JSONDecodeError:
-                review = {"issues": ["解析失败"], "rating": 3, "verdict": "需要修改"}
-
-            final_rating = review.get("rating", 0)
-            verdict = review.get("verdict", "需要修改")
-            issues = review.get("issues", [])
-            review_feedback = [str(issue) for issue in issues] if isinstance(issues, list) else [str(issues)]
+            review = parse_review_result(review_raw)
+            final_rating = review.rating
+            verdict = review.verdict
+            review_feedback = review.issues
 
             reviewer_mem.add({
                 "task": f"审核{topic}第{attempt}稿",
@@ -303,6 +333,9 @@ class MultiAgentWorkflow:
                 detail=f"round={attempt}, issues={len(review_feedback)}",
                 target="writer",
                 issue_count=len(review_feedback),
+                feedback_sha256=hashlib.sha256(
+                    "\n".join(review_feedback).encode("utf-8")
+                ).hexdigest()[:16],
             )
 
         elapsed = round(time.time() - start, 1)

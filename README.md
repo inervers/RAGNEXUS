@@ -95,7 +95,7 @@ Agent 的写作记忆保存在本地 `memory/` 目录，容器重建后记忆不
 | **混合检索** | 稠密向量 + BM25 + RRF；V2 评测冻结 Dense:Sparse=1:2，目标 Embedding 为 multilingual MiniLM |
 | **Reranker 精排** | 可选 Cross-Encoder；模型缺失会显式 fallback，RAG-06 未把 fallback 计作有效成绩 |
 | **Multi-Agent 写作** | Researcher→Writer→Reviewer 有界协作流水线；未达阈值时 Reviewer issues 回灌下一轮 Writer，带 trace 与持久化记忆 |
-| **知识库管理** | 支持 .txt/.pdf 拖拽上传；preview 最多展示 5000 字符，正式 import 从原始文件重新解析完整文本 |
+| **知识库管理** | 支持 10 MiB 内 UTF-8 TXT/PDF；preview 最多展示 5000 字符，正式 import 从原始文件重新解析完整文本 |
 
 前端为终端风格 4-tab 布局：问答 / 混合检索 / 知识库 / Agent 写作，支持暗色主题与 localStorage 会话持久化。
 
@@ -225,7 +225,7 @@ python mcp_http_client_test.py --url http://127.0.0.1:8101/mcp
 | `GET /kb/docs` | X-API-Key | 获取知识库全部文档 |
 | `POST /doc/preview` | X-API-Key | 文档预览（`{filename, content: base64}` → `preview/full_length/truncated`） |
 | `POST /doc/import` | X-API-Key | 从原始 base64 重新解析并导入完整文档，不消费 preview 文本 |
-| `POST /agent/write` | X-API-Key | 三角色有界协作流水线，Reviewer 反馈最多按 `max_retries` 回灌 Writer |
+| `POST /agent/write` | X-API-Key | 三角色有界协作流水线，`max_retries` 严格限制为 0–3 |
 
 ### 测试示例
 
@@ -296,7 +296,7 @@ python materialize_kb_v2.py --artifact kb_v2/build --target chroma_db_v2 --check
 python materialize_kb_v2.py --artifact kb_v2/build --target chroma_db_v2 --batch-size 1
 ```
 
-V2 的目标 Embedding 已根据评测选为 multilingual MiniLM，但默认 `rag_api.py` 与真实持久库尚未直接切换：现有 document embeddings 来自旧 model/pooling，只换 query encoder 会造成向量口径不一致。生产迁移必须在新数据库中全量重算 184 chunks、校验后再显式切换，并保留旧库回滚。
+V2 的目标 Embedding 已根据评测选为 multilingual MiniLM，但真实持久库尚未切换。`RAG_EMBEDDING_POOLING` 对旧 V1 默认保持 `legacy_mean`；新建或全量重嵌入的库显式使用 `masked_mean`，并把 pooling 写入 collection metadata。非空库与运行配置不一致时服务 fail-fast，禁止把 legacy/masked vectors 静默混写。生产迁移仍必须在新数据库中全量重算 184 chunks、校验后再显式切换，并保留旧库回滚。
 
 ## 运行测试
 
