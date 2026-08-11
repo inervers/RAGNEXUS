@@ -39,7 +39,9 @@ test("newer file selection invalidates every older async completion", () => {
 
 
 test("file validation rejects unsupported and oversized selections", () => {
-  assert.equal(validateSelectedFile({ name: "notes.md", size: 12 }), "仅支持 PDF/TXT 文件")
-  assert.match(validateSelectedFile({ name: "large.txt", size: 10 * 1024 * 1024 + 1 }) ?? "", /10 MiB/)
+  assert.equal(validateSelectedFile({ name: "report.docx", size: 1024 }), null)
+  assert.equal(validateSelectedFile({ name: "REPORT.DOCX", size: 1024 }), null)
+  assert.equal(validateSelectedFile({ name: "notes.md", size: 12 }), "仅支持 PDF/TXT/DOCX 文件")
+  assert.match(validateSelectedFile({ name: "large.docx", size: 25 * 1024 * 1024 + 1 }) ?? "", /25 MiB/)
   assert.equal(validateSelectedFile({ name: "safe.txt", size: 1024 }), null)
 })

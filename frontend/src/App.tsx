@@ -907,14 +907,17 @@ function KBTab({ apiKey, onApiError }: { apiKey: string; onApiError: OnApiError 
             if (f) fillFromFile(f)
           }}
           onClick={() => document.getElementById("file-input")?.click()}>
-          <span className="upload-hint">拖拽文件到此处，或点击选择</span>
+          <span className="upload-hint">
+            拖拽文件到此处，或点击选择<br />
+            支持 PDF / UTF-8 TXT / DOCX，最大 25 MB
+          </span>
         </div>
         {uploadProgress > 0 && (
           <div className="progress-track">
             <div className="progress-fill" style={{ width: `${uploadProgress}%` }} />
           </div>
         )}
-        <input id="file-input" type="file" accept=".pdf,.txt"
+        <input id="file-input" type="file" accept=".pdf,.txt,.docx"
           style={{ display: "none" }}
           onChange={(e) => {
             const f = e.target.files?.[0] ?? null

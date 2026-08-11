@@ -6,8 +6,15 @@ import base64
 import binascii
 from collections.abc import Callable
 from dataclasses import dataclass
+from io import BytesIO
 
-MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+from docx import Document
+from docx.oxml.table import CT_Tbl
+from docx.oxml.text.paragraph import CT_P
+from docx.table import Table
+from docx.text.paragraph import Paragraph
+
+MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 
 
 class DocumentIngestError(ValueError):
@@ -20,6 +27,27 @@ class DocumentIngestError(ValueError):
 class ParsedDocument:
     title: str
     text: str
+
+
+def _extract_docx_text(raw_bytes: bytes) -> str:
+    document = Document(BytesIO(raw_bytes))
+    blocks: list[str] = []
+
+    for child in document.element.body.iterchildren():
+        if isinstance(child, CT_P):
+            text = Paragraph(child, document).text.strip()
+            if text:
+                blocks.append(text)
+        elif isinstance(child, CT_Tbl):
+            table = Table(child, document)
+            for row in table.rows:
+                for cell in row.cells:
+                    for paragraph in cell.paragraphs:
+                        text = paragraph.text.strip()
+                        if text:
+                            blocks.append(text)
+
+    return "\n".join(blocks)
 
 
 def _require_meaningful_text(parsed: ParsedDocument) -> ParsedDocument:
@@ -71,7 +99,15 @@ def parse_uploaded_document(
             raise DocumentIngestError(
                 f"PDF 解析失败：{error}", status_code=500
             ) from error
-    raise DocumentIngestError(f"不支持的文件格式：.{ext}（仅支持 pdf/txt）")
+    if ext == "docx":
+        try:
+            text = _extract_docx_text(raw_bytes)
+        except Exception:
+            raise DocumentIngestError(
+                "DOCX 解析失败：文件损坏、加密或格式不受支持"
+            ) from None
+        return _require_meaningful_text(ParsedDocument(title=title, text=text))
+    raise DocumentIngestError(f"不支持的文件格式：.{ext}（仅支持 pdf/txt/docx）")
 
 
 def build_preview(parsed: ParsedDocument, limit: int = 5000) -> dict:

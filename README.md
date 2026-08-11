@@ -101,7 +101,9 @@ Agent 的写作记忆保存在本地 `memory/` 目录，容器重建后记忆不
 | **混合检索** | 稠密向量 + BM25 + RRF；V2 评测冻结 Dense:Sparse=1:2，目标 Embedding 为 multilingual MiniLM |
 | **Reranker 精排** | 可选 Cross-Encoder；模型缺失会显式 fallback，RAG-06 未把 fallback 计作有效成绩 |
 | **Multi-Agent 写作** | Researcher→Writer→Reviewer 有界协作流水线；未达阈值时 Reviewer issues 回灌下一轮 Writer，带 trace 与持久化记忆 |
-| **知识库管理** | 支持 10 MiB 内 UTF-8 TXT/PDF；preview 最多展示 5000 字符，正式 import 从原始文件重新解析完整文本 |
+| **知识库管理** | 支持 25 MiB 内 PDF、UTF-8 TXT 与 DOCX；preview 最多展示 5000 字符，正式 import 从原始文件重新解析完整文本 |
+
+DOCX 按正文顺序提取普通段落与表格文字；旧版 `.doc`、OCR、页眉页脚和批注不在当前导入范围内。
 
 前端为终端风格 4-tab 布局：问答 / 混合检索 / 知识库 / Agent 写作，支持暗色主题与 localStorage 会话持久化。
 

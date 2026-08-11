@@ -1,13 +1,22 @@
 import base64
+import io
 
 import pytest
+from docx import Document
 
 from document_ingest import (
     DocumentIngestError,
+    MAX_UPLOAD_BYTES,
     build_preview,
     import_uploaded_document,
     parse_uploaded_document,
 )
+
+
+def _encode_docx(document: Document) -> str:
+    stream = io.BytesIO()
+    document.save(stream)
+    return base64.b64encode(stream.getvalue()).decode("ascii")
 
 
 def test_preview_truncation_never_changes_import_source() -> None:
@@ -85,3 +94,64 @@ def test_empty_pdf_is_a_sanitized_client_validation_error(monkeypatch) -> None:
         parse_uploaded_document("empty.pdf", encoded)
 
     assert raised.value.status_code == 400
+
+
+def test_docx_extracts_paragraphs_and_table_cells_in_body_order() -> None:
+    document = Document()
+    document.add_paragraph("开头段落")
+    table = document.add_table(rows=2, cols=2)
+    table.cell(0, 0).text = "表格 A"
+    table.cell(0, 1).text = "表格 B"
+    table.cell(1, 0).text = "表格 C"
+    table.cell(1, 1).text = "表格 D"
+    document.add_paragraph("结尾段落")
+
+    parsed = parse_uploaded_document("ordered.docx", _encode_docx(document))
+
+    assert parsed.title == "ordered"
+    assert parsed.text == "开头段落\n表格 A\n表格 B\n表格 C\n表格 D\n结尾段落"
+
+
+def test_docx_parse_error_is_sanitized_for_corrupt_input() -> None:
+    encoded = base64.b64encode(b"not-a-docx-package").decode("ascii")
+
+    with pytest.raises(DocumentIngestError, match="DOCX 解析失败") as raised:
+        parse_uploaded_document("broken.docx", encoded)
+
+    assert raised.value.status_code == 400
+
+
+def test_empty_docx_is_rejected_before_kb_mutation() -> None:
+    encoded = _encode_docx(Document())
+    called = False
+
+    def add_document(title: str, content: str) -> dict:
+        nonlocal called
+        called = True
+        return {}
+
+    with pytest.raises(DocumentIngestError, match="有效文本"):
+        import_uploaded_document("empty.docx", encoded, add_document)
+
+    assert called is False
+
+
+def test_formal_docx_import_passes_complete_extracted_text() -> None:
+    document = Document()
+    document.add_paragraph("第一段")
+    document.add_paragraph("第二段")
+    encoded = _encode_docx(document)
+    received: list[tuple[str, str]] = []
+
+    def add_document(title: str, content: str) -> dict:
+        received.append((title, content))
+        return {"message": "added", "chunks": 1}
+
+    result = import_uploaded_document("report.docx", encoded, add_document)
+
+    assert received == [("report", "第一段\n第二段")]
+    assert result["parsed_length"] == len("第一段\n第二段")
+
+
+def test_default_upload_limit_is_25_mib() -> None:
+    assert MAX_UPLOAD_BYTES == 25 * 1024 * 1024
