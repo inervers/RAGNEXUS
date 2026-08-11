@@ -8,7 +8,7 @@ rag_multiagent.py — L7 Multi-Agent 编排模块
 import hashlib, json, os, time, uuid
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+from typing import Callable, Optional
 from openai import OpenAI
 
 from agent_contract import validate_max_retries
@@ -105,28 +105,47 @@ class AgentMemory:
 # =============================================
 
 class TraceLogger:
-    """结构化日志：每一步都有 trace_id、Agent、耗时、状态"""
+    """记录实际执行事件，并可将脱敏事件实时交给传输层。"""
 
-    def __init__(self):
-        self.trace_id = uuid.uuid4().hex[:12]
+    def __init__(
+        self,
+        trace_id: str | None = None,
+        event_callback: Callable[[dict], None] | None = None,
+    ):
+        self.trace_id = trace_id or uuid.uuid4().hex[:12]
+        self.event_callback = event_callback
         self.events: list[dict] = []
-        self.round = 0
+        self.sequence = 0
 
-    def log(self, agent: str, action: str, status: str,
-            detail: str = "", duration: float = 0.0, **extra):
-        self.round += 1
+    def emit(
+        self,
+        event_type: str,
+        agent: str,
+        status: str,
+        *,
+        attempt: int | None = None,
+        duration_s: float | None = None,
+        tokens: int | None = None,
+        detail: dict | None = None,
+        result: dict | None = None,
+    ) -> dict:
+        self.sequence += 1
         event = {
-            "round": self.round,
+            "type": event_type,
             "trace_id": self.trace_id,
+            "sequence": self.sequence,
             "timestamp": datetime.now().isoformat(),
             "agent": agent,
-            "action": action,
+            "attempt": attempt,
             "status": status,
-            "duration_s": round(duration, 2),
-            "detail": detail[:120],
-            **extra
+            "duration_s": round(duration_s, 2) if duration_s is not None else None,
+            "tokens": tokens,
+            "detail": detail or {},
+            "result": result,
         }
         self.events.append(event)
+        if self.event_callback is not None:
+            self.event_callback(event.copy())
         return event
 
     def summary(self) -> dict:
@@ -135,28 +154,39 @@ class TraceLogger:
             return {"error": "no events"}
 
         by_agent = defaultdict(list)
-        for e in self.events:
+        metric_events = [
+            event
+            for event in self.events
+            if event["type"] in {"agent_completed", "agent_failed"}
+            and event["agent"] in {"researcher", "writer", "reviewer"}
+        ]
+        for e in metric_events:
             by_agent[e["agent"]].append(e)
 
         agent_metrics = {}
         for agent, evts in by_agent.items():
-            durations = [e["duration_s"] for e in evts if e["duration_s"] > 0]
-            success = [e for e in evts if e["status"] == "ok"]
+            durations = [
+                e["duration_s"] for e in evts if e["duration_s"] is not None
+            ]
+            success = [e for e in evts if e["type"] == "agent_completed"]
+            known_tokens = [e["tokens"] for e in evts if e["tokens"] is not None]
             agent_metrics[agent] = {
                 "calls": len(evts),
                 "success": len(success),
                 "avg_duration_s": round(sum(durations) / len(durations), 2) if durations else 0,
                 "total_duration_s": round(sum(durations), 2),
+                "total_tokens": sum(known_tokens) if known_tokens else None,
             }
 
-        bottleneck = max(agent_metrics.items(),
-                         key=lambda x: x[1]["avg_duration_s"])
+        bottleneck = max(
+            agent_metrics.items(), key=lambda x: x[1]["avg_duration_s"]
+        )[0] if agent_metrics else None
 
         return {
             "trace_id": self.trace_id,
             "total_events": len(self.events),
             "agent_metrics": dict(agent_metrics),
-            "bottleneck": bottleneck[0],
+            "bottleneck": bottleneck,
         }
 
 
@@ -176,7 +206,7 @@ class MultiAgentWorkflow:
 
     def __init__(self, api_key: str, base_url: str = "https://api.deepseek.com",
                  model: str = "deepseek-v4-flash",
-                 knowledge_fn=None):
+                 knowledge_fn=None, event_callback=None, trace_id: str | None = None):
         """
         knowledge_fn: 可选的检索函数。
             签名: fn(query: str, top_k: int) -> list[dict]
@@ -185,12 +215,18 @@ class MultiAgentWorkflow:
         """
         self.client = OpenAI(api_key=api_key, base_url=base_url)
         self.model = model
-        self.trace = TraceLogger()
+        self.trace = TraceLogger(trace_id=trace_id, event_callback=event_callback)
         self.knowledge_fn = knowledge_fn
 
     def _call_llm(self, system: str, user: str,
-                  temperature: float = 0.3) -> str:
+                  temperature: float = 0.3, *, agent: str = "llm",
+                  attempt: int | None = None,
+                  event_detail: dict | None = None) -> str:
         start = time.time()
+        self.trace.emit(
+            "agent_started", agent, "running", attempt=attempt,
+            detail=event_detail,
+        )
         try:
             resp = self.client.chat.completions.create(
                 model=self.model,
@@ -202,15 +238,20 @@ class MultiAgentWorkflow:
                 max_tokens=2048
             )
             result = resp.choices[0].message.content
-            tokens = resp.usage.total_tokens if resp.usage else 0
-            self.trace.log("llm", "call", "ok",
-                           detail=f"tokens={tokens}",
-                           duration=time.time() - start)
+            usage = getattr(resp, "usage", None)
+            tokens = getattr(usage, "total_tokens", None) if usage else None
+            self.trace.emit(
+                "agent_completed", agent, "ok", attempt=attempt,
+                duration_s=time.time() - start, tokens=tokens,
+                detail=event_detail,
+            )
             return result
         except Exception as e:
-            self.trace.log("llm", "call", "fail",
-                           detail=str(e)[:80],
-                           duration=time.time() - start)
+            self.trace.emit(
+                "agent_failed", agent, "fail", attempt=attempt,
+                duration_s=time.time() - start,
+                detail={"error_type": type(e).__name__},
+            )
             raise
 
     def run(self, topic: str, max_retries: int = 2,
@@ -240,17 +281,12 @@ class MultiAgentWorkflow:
         reviewer_mem = AgentMemory("reviewer")
 
         # === 研究员：先查知识库，再产出研究结论 ===
-        self.trace.log("researcher", "research", "ok", detail=f"topic={topic[:40]}")
-
         kb_docs = []
         if self.knowledge_fn:
-            self.trace.log("researcher", "kb_search", "ok", detail=f"query={topic[:40]}")
             try:
                 kb_docs = self.knowledge_fn(topic, top_k=5)
-                self.trace.log("researcher", "kb_result", "ok",
-                               detail=f"found={len(kb_docs)} docs")
-            except Exception as e:
-                self.trace.log("researcher", "kb_search", "fail", detail=str(e)[:60])
+            except Exception:
+                kb_docs = []
 
         kb_context = ""
         if kb_docs:
@@ -261,7 +297,8 @@ class MultiAgentWorkflow:
         research = self._call_llm(
             "你是研究员。输出 JSON：{\"key_points\": [\"...\"], \"confidence\": 0-1}",
             f"研究：{topic}\n请基于知识库内容（如有）和你的知识综合分析。{kb_context}",
-            temperature=0.1
+            temperature=0.1, agent="researcher",
+            event_detail={"kb_docs": len(kb_docs)},
         )
         researcher_mem.add({"task": topic, "outcome": (research or "")[:200],
                            "role": "research", "kb_docs": len(kb_docs)})
@@ -273,9 +310,6 @@ class MultiAgentWorkflow:
         review_feedback: list[str] = []
 
         for attempt in range(1, max_retries + 2):
-            self.trace.log("writer", "write", "ok",
-                           detail=f"round={attempt}, topic={topic[:30]}")
-
             # 查记忆：之前为什么被驳回
             mem_context = ""
             mems = writer_mem.query(topic)
@@ -295,18 +329,17 @@ class MultiAgentWorkflow:
                 f"主题：{topic}\n研究资料：{research or ''}\n"
                 + (f"知识库来源：{kb_context}\n" if kb_context else "")
                 + f"{mem_context}{feedback_context}",
-                temperature=0.4
+                temperature=0.4, agent="writer", attempt=attempt,
             ) or ""
             writer_mem.add({"task": f"写作{topic}第{attempt}稿",
                            "outcome": article[:200], "round": attempt})
 
             # 审核
-            self.trace.log("reviewer", "review", "ok", detail=f"round={attempt}")
             review_raw = self._call_llm(
                 "你是严格的内容审核员。输出 JSON：{\"issues\": [...], \"rating\": 1-5, \"verdict\": \"通过/需要修改\"}\n"
                 "评分低于 4 必须输出需要修改。",
                 f"审核文章：\n{article[:1500]}\n\n参考：{research}",
-                temperature=0.1
+                temperature=0.1, agent="reviewer", attempt=attempt,
             )
 
             # 解析审核结果
@@ -314,6 +347,14 @@ class MultiAgentWorkflow:
             final_rating = review.rating
             verdict = review.verdict
             review_feedback = review.issues
+            self.trace.emit(
+                "review_completed", "reviewer", "ok", attempt=attempt,
+                detail={
+                    "rating": final_rating,
+                    "verdict": verdict,
+                    "issue_count": len(review_feedback),
+                },
+            )
 
             reviewer_mem.add({
                 "task": f"审核{topic}第{attempt}稿",
@@ -329,16 +370,15 @@ class MultiAgentWorkflow:
 
             if attempt > max_retries:
                 break
-            self.trace.log(
-                "reviewer",
-                "feedback_to_writer",
-                "ok",
-                detail=f"round={attempt}, issues={len(review_feedback)}",
-                target="writer",
-                issue_count=len(review_feedback),
-                feedback_sha256=hashlib.sha256(
-                    "\n".join(review_feedback).encode("utf-8")
-                ).hexdigest()[:16],
+            self.trace.emit(
+                "retry_scheduled", "reviewer", "ok", attempt=attempt,
+                detail={
+                    "next_attempt": attempt + 1,
+                    "issue_count": len(review_feedback),
+                    "feedback_sha256": hashlib.sha256(
+                        "\n".join(review_feedback).encode("utf-8")
+                    ).hexdigest()[:16],
+                },
             )
 
         elapsed = round(time.time() - start, 1)

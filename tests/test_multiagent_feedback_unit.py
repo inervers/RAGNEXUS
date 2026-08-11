@@ -34,7 +34,9 @@ def run_workflow(monkeypatch, tmp_path, review_ratings: list[int]):
             ]
         )
 
-    def fake_llm(system: str, user: str, temperature: float = 0.3) -> str:
+    def fake_llm(
+        system: str, user: str, temperature: float = 0.3, **_event_context
+    ) -> str:
         calls.append((system, user))
         return responses[len(calls) - 1]
 
@@ -51,10 +53,10 @@ def test_reviewer_issues_reach_next_writer_prompt_and_trace(monkeypatch, tmp_pat
     assert "缺少可核验引用" in second_writer_user_prompt
     assert any(
         event["agent"] == "reviewer"
-        and event["action"] == "feedback_to_writer"
-        and event["target"] == "writer"
-        and event["issue_count"] == 1
-        and event["feedback_sha256"]
+        and event["type"] == "retry_scheduled"
+        and event["detail"]["next_attempt"] == 2
+        and event["detail"]["issue_count"] == 1
+        and event["detail"]["feedback_sha256"]
         == hashlib.sha256("缺少可核验引用".encode("utf-8")).hexdigest()[:16]
         for event in events
     )
@@ -91,7 +93,9 @@ def test_malformed_reviewer_payload_falls_back_to_failed_review(
         json.dumps({"title": "文章", "content": "正文", "word_count": 2}),
         review_response,
     ]
-    workflow._call_llm = lambda system, user, temperature=0.3: responses.pop(0)
+    workflow._call_llm = (
+        lambda system, user, temperature=0.3, **_event_context: responses.pop(0)
+    )
 
     result = workflow.run("RAG", max_retries=0)
 
