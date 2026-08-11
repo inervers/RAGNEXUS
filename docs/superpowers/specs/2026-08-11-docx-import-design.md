@@ -7,7 +7,7 @@ Extend the existing knowledge-base file import flow to accept modern Word `.docx
 ## Scope
 
 - Support `.docx` only; legacy `.doc`, `.docm`, OCR, comments, headers, and footers remain unsupported.
-- Keep the existing 10 MB encoded-upload guard and meaningful-text validation.
+- Raise the decoded-upload limit from 10 MB to 25 MB for PDF, UTF-8 TXT, and DOCX, while preserving meaningful-text validation.
 - Preserve the current API request and response contracts for preview and full import.
 - Update the frontend picker and visible copy to advertise PDF, UTF-8 TXT, and DOCX.
 
@@ -21,13 +21,13 @@ The preview route continues to return at most 5,000 characters, while formal imp
 
 - A malformed, encrypted, or otherwise unreadable `.docx` returns `DocumentIngestError` with HTTP 400 semantics and a DOCX-specific message.
 - A structurally valid document with no meaningful paragraph or table text returns the existing empty-document error.
-- Files larger than 10 MB continue to return HTTP 413 before parsing.
+- Files larger than 25 MB return HTTP 413 before parsing.
 - Unsupported extensions continue to return HTTP 400, with the supported-format message updated to `pdf/txt/docx`.
 
 ## Frontend
 
 - Change the hidden file input to `accept=".pdf,.txt,.docx"`.
-- Add visible text in the upload zone: `支持 PDF / UTF-8 TXT / DOCX，最大 10 MB`.
+- Add visible text in the upload zone: `支持 PDF / UTF-8 TXT / DOCX，最大 25 MB`.
 - Keep drag-and-drop, preview, progress, and full-import behavior unchanged.
 
 ## Dependency
