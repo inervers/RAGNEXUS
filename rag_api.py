@@ -13,6 +13,7 @@ from document_ingest import (
     import_uploaded_document,
     parse_uploaded_document,
 )
+from agent_event_stream import stream_workflow_events
 from embedding_runtime import (
     VerifiedEmbedding,
     resolve_embedding_runtime_config,
@@ -722,25 +723,53 @@ def _kb_search(query: str, top_k: int = 5, trace_id: str | None = None) -> list[
         return []
 
 
+def _build_agent_workflow(event_callback=None, trace_id: str | None = None):
+    from rag_multiagent import MultiAgentWorkflow
+
+    return MultiAgentWorkflow(
+        api_key=LLM_API_KEY,
+        base_url=LLM_BASE_URL,
+        model=LLM_MODEL,
+        knowledge_fn=lambda query, top_k: _kb_search(query, top_k, trace_id),
+        event_callback=event_callback,
+        trace_id=trace_id,
+    )
+
+
 @app.post("/agent/write")
 def agent_write(req: AgentWriteRequest, request: Request):
     if not req.topic.strip():
         raise HTTPException(400, "主题不能为空")
     trace_id = request.headers.get(TRACE_HEADER, uuid.uuid4().hex)
     _log(trace_id, "agent_write_start", topic=req.topic[:40])
-    from rag_multiagent import MultiAgentWorkflow
-    wf = MultiAgentWorkflow(api_key=LLM_API_KEY,
-                            base_url=LLM_BASE_URL,
-                            model=LLM_MODEL,
-                            knowledge_fn=lambda query, top_k: _kb_search(
-                                query, top_k, trace_id
-                            ))
+    wf = _build_agent_workflow(trace_id=trace_id)
     result = wf.run(req.topic, max_retries=req.max_retries)
     _log(trace_id, "agent_write_done", passed=str(result["passed"]),
          rating=result["rating"], attempts=result["attempts"],
          duration=f"{result['duration_s']}s",
          kb_docs=result.get("kb_docs", 0))
     return {"result": result, "trace_id": trace_id}
+
+
+@app.post("/agent/write/stream")
+def agent_write_stream(req: AgentWriteRequest, request: Request):
+    if not req.topic.strip():
+        raise HTTPException(400, "主题不能为空")
+    trace_id = request.headers.get(TRACE_HEADER, uuid.uuid4().hex)
+    _log(trace_id, "agent_write_stream_start", topic=req.topic[:40])
+    return StreamingResponse(
+        stream_workflow_events(
+            _build_agent_workflow,
+            req.topic,
+            req.max_retries,
+            trace_id,
+        ),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 if __name__ == "__main__":
     import uvicorn
