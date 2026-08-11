@@ -86,7 +86,7 @@ def test_stream_emits_each_event_and_completes():
     assert payloads[-1]["result"]["article"] == "正文"
 
 
-def test_stream_sanitizes_unhandled_failures():
+def test_safe_failure():
     payloads = asyncio.run(
         collect(
             lambda event_callback, trace_id: FakeWorkflow(

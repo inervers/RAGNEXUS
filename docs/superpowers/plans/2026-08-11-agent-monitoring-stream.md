@@ -165,7 +165,7 @@ async def test_stream_emits_each_event_and_completes():
     assert payloads[-1]["result"]["article"] == "正文"
 
 @pytest.mark.asyncio
-async def test_stream_sanitizes_unhandled_failures():
+async def test_safe_failure():
     payloads = await collect_payloads(failing_workflow_factory)
     assert payloads[-1]["type"] == "workflow_failed"
     assert payloads[-1]["detail"] == {"error_type": "RuntimeError"}
