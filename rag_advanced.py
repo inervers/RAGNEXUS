@@ -189,10 +189,16 @@ class Reranker:
         self._fallback_reason = "cross_encoder_dependency_unavailable"
         if CrossEncoder is not None:
             try:
-                path = model_path or os.path.join(
-                    os.path.dirname(__file__), "models", "cross-encoder"
+                path = (
+                    model_path
+                    or os.environ.get("RAG_RERANKER_MODEL_SOURCE")
+                    or os.path.join(os.path.dirname(__file__), "models", "cross-encoder")
                 )
-                self.model = CrossEncoder(path)
+                self.model = CrossEncoder(
+                    path,
+                    tokenizer_args={"local_files_only": True},
+                    automodel_args={"local_files_only": True},
+                )
                 self._fallback_reason = None
             except Exception as e:
                 self._fallback_reason = f"model_load_failed:{type(e).__name__}"

@@ -152,6 +152,30 @@ class FakeCrossEncoder:
         return [0.2, 0.9]
 
 
+def test_reranker_uses_explicit_offline_model_source(monkeypatch, tmp_path):
+    captured = {}
+
+    class CapturingCrossEncoder:
+        def __init__(self, path, *, tokenizer_args=None, automodel_args=None):
+            captured.update(
+                path=path,
+                tokenizer_args=tokenizer_args,
+                automodel_args=automodel_args,
+            )
+
+    monkeypatch.setenv("RAG_RERANKER_MODEL_SOURCE", str(tmp_path))
+    monkeypatch.setattr(rag_advanced, "CrossEncoder", CapturingCrossEncoder)
+
+    reranker = rag_advanced.Reranker()
+
+    assert reranker.status() == {"mode": "cross_encoder", "reason": None}
+    assert captured == {
+        "path": str(tmp_path),
+        "tokenizer_args": {"local_files_only": True},
+        "automodel_args": {"local_files_only": True},
+    }
+
+
 def test_reranker_deduplicates_ids_before_model_call():
     reranker = rag_advanced.Reranker.__new__(rag_advanced.Reranker)
     reranker.model = FakeCrossEncoder()

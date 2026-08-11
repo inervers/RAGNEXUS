@@ -19,12 +19,12 @@ API_KEY = load_api_key_from_sources(
 )
 HDR = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 
-def _req(method, path, body=None):
+def _req(method, path, body=None, timeout=30):
     url = f"{API_BASE}{path}"
     data = json.dumps(body).encode("utf-8") if body else None
     req = urllib.request.Request(url, data=data, headers=HDR, method=method)
     try:
-        resp = urllib.request.urlopen(req, timeout=30)
+        resp = urllib.request.urlopen(req, timeout=timeout)
         return json.loads(resp.read().decode("utf-8")), resp.status
     except urllib.request.HTTPError as e:
         return json.loads(e.read().decode("utf-8")), e.code
@@ -110,12 +110,12 @@ def test_agent_write():
     data, code = _req("POST", "/agent/write", {
         "topic": "什么是深度学习",
         "max_retries": 1,
-    })
+    }, timeout=90)
     assert code == 200, f"状态码 {code}"
     result = data.get("result", {})
-    content = result.get("content", "")
-    assert len(content) > 50, "写作内容应超过 50 字"
-    ok("Multi-Agent 写作", f"内容长度 {len(content)} 字")
+    article = result.get("article", "")
+    assert len(article) > 50, "写作内容应超过 50 字"
+    ok("Multi-Agent 写作", f"内容长度 {len(article)} 字")
 
 
 def test_kb_docs():

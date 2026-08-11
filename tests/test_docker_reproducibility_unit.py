@@ -41,6 +41,24 @@ def test_standard_image_contains_public_v2_materialization_assets():
     assert "kb_v2/build" in dockerfile
 
 
+def test_standard_image_contains_verified_cross_encoder_snapshot():
+    dockerfile = _read("Dockerfile")
+    compose = _read("docker-compose.yml")
+    manifest = load_download_manifest(
+        ROOT / "models/manifests/cross-encoder-mmarco-minilm-l12-v1.json"
+    )
+
+    assert manifest.model_id == "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
+    assert manifest.revision == "1427fd652930e4ba29e8149678df786c240d8825"  # pragma: allowlist secret -- public Hugging Face revision
+    assert manifest.files["model.safetensors"] == {
+        "size": 470592698,
+        "sha256": "5daeca2481a76b5976a2bdc32f0a78532b6716da4f8cd3ff59460ef8d2f359b4",  # pragma: allowlist secret -- public model checksum
+    }
+    assert "/opt/models/cross-encoder" in dockerfile
+    assert "cross-encoder-mmarco-minilm-l12-v1.json" in dockerfile
+    assert "RAG_RERANKER_MODEL_SOURCE=${RAG_RERANKER_MODEL_SOURCE:-/opt/models/cross-encoder}" in compose
+
+
 def test_legacy_dockerfile_is_explicitly_non_default():
     legacy = _read("Dockerfile.legacy")
     legacy_ignore = _read("Dockerfile.legacy.dockerignore")

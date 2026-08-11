@@ -1,0 +1,9 @@
+{
+  "model_id": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1",
+  "revision": "1427fd652930e4ba29e8149678df786c240d8825",
+  "files": [
+    {"path": "model.safetensors", "size": 470592698, "sha256": "5daeca2481a76b5976a2bdc32f0a78532b6716da4f8cd3ff59460ef8d2f359b4"},
+    {"path": "sentencepiece.bpe.model", "size": 5069051, "sha256": "cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865"},
+    {"path": "tokenizer.json", "size": 17082660, "sha256": "62c24cdc13d4c9952d63718d6c9fa4c287974249e16b7ade6d5a85e7bbb75626"}
+  ]
+}

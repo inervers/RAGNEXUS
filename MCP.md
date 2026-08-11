@@ -76,7 +76,7 @@ Settings → MCP → Add new MCP server：
   "mcpServers": {
     "ragnexus": {
       "command": "python",
-      "args": ["C:/Users/inervers/Desktop/OH-WorkSpace/RAGNEXUS/mcp_server.py"],
+      "args": ["<RAGNEXUS 项目绝对路径>/mcp_server.py"],
       "env": { "RAGNEXUS_API_KEY": "<你的 key>" }
     }
   }
