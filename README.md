@@ -100,7 +100,7 @@ Agent 的写作记忆保存在本地 `memory/` 目录，容器重建后记忆不
 | **标准 RAG 问答** | Function Calling 驱动，自动检索知识库 + LLM 回答，SSE 流式 + 打字动画 + 取消 |
 | **混合检索** | 稠密向量 + BM25 + RRF；V2 评测冻结 Dense:Sparse=1:2，目标 Embedding 为 multilingual MiniLM |
 | **Reranker 精排** | 可选 Cross-Encoder；模型缺失会显式 fallback，RAG-06 未把 fallback 计作有效成绩 |
-| **Multi-Agent 写作** | Researcher→Writer→Reviewer 有界协作流水线；未达阈值时 Reviewer issues 回灌下一轮 Writer，带 trace 与持久化记忆 |
+| **Multi-Agent 写作** | Researcher→Writer→Reviewer 有界协作流水线；Reviewer issues 回灌下一轮 Writer，SSE 实时返回角色状态、真实耗时、Token、审核与重试事件 |
 | **知识库管理** | 支持 25 MiB 内 PDF、UTF-8 TXT 与 DOCX；preview 最多展示 5000 字符，正式 import 从原始文件重新解析完整文本 |
 
 DOCX 按正文顺序提取普通段落与表格文字；旧版 `.doc`、OCR、页眉页脚和批注不在当前导入范围内。
@@ -201,6 +201,7 @@ python mcp_http_client_test.py --url http://127.0.0.1:8101/mcp
 
 - Researcher 负责检索与材料整理，Writer 负责生成，Reviewer 输出结构化 `issues/rating/verdict`。
 - 未通过时，Reviewer issues 会显式进入下一轮 Writer prompt，并写入 trace，避免质量反馈只停留在日志中。
+- 写作页通过 SSE 实时展示每个角色的开始、完成或失败状态，以及实际模型耗时、供应商返回的 Token、知识库命中数、审核评分和重试轮次；供应商未返回 usage 时明确显示未知，不用零值代替。
 - 工作流设置有界重试；只有满足通过条件时标记成功，重试耗尽则返回失败状态。对于不需要角色分工和反馈循环的简单请求，标准单次 RAG 路径仍是更低成本的选择。
 
 ---
@@ -218,6 +219,7 @@ python mcp_http_client_test.py --url http://127.0.0.1:8101/mcp
 | `POST /doc/preview` | X-API-Key | 文档预览（`{filename, content: base64}` → `preview/full_length/truncated`） |
 | `POST /doc/import` | X-API-Key | 从原始 base64 重新解析并导入完整文档，不消费 preview 文本 |
 | `POST /agent/write` | X-API-Key | 三角色有界协作流水线，`max_retries` 严格限制为 0–3 |
+| `POST /agent/write/stream` | X-API-Key | 写作流水线 SSE 实时事件；最终返回 `workflow_completed` 或脱敏的 `workflow_failed` |
 
 ### 测试示例
 
@@ -228,8 +230,8 @@ curl.exe -N -X POST http://localhost:8000/query/stream -H "Content-Type: applica
 # 混合检索（稠密 + BM25 + Reranker）
 curl.exe -X POST http://localhost:8000/query/hybrid -H "Content-Type: application/json" -H "X-API-Key: $env:RAG_API_KEY" -d '{"question":"What is PyTorch?","use_reranker":true}'
 
-# Multi-Agent 写作
-curl.exe -X POST http://localhost:8000/agent/write -H "Content-Type: application/json" -H "X-API-Key: $env:RAG_API_KEY" -d '{"topic":"PyTorch 动态计算图","max_retries":2}'
+# Multi-Agent 写作实时监控
+curl.exe -N -X POST http://localhost:8000/agent/write/stream -H "Content-Type: application/json" -H "X-API-Key: $env:RAG_API_KEY" -d '{"topic":"PyTorch 动态计算图","max_retries":2}'
 ```
 
 ---

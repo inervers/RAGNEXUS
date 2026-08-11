@@ -34,6 +34,13 @@ import {
   AGENT_RETRY_MIN,
   normalizeAgentRetry,
 } from "./agentRetry"
+import {
+  AgentStreamParser,
+  createAgentMonitorState,
+  reduceAgentEvent,
+  type AgentEvent,
+  type AgentRole,
+} from "./agentMonitoring"
 
 const API_BASE = ""
 
@@ -1015,29 +1022,88 @@ function AgentTab({ apiKey, onApiError }: { apiKey: string; onApiError: OnApiErr
   const [topic, setTopic] = useState("")
   const [maxRetries, setMaxRetries] = useState(2)
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<Record<string, any> | null>(null)
+  const [monitor, setMonitor] = useState(createAgentMonitorState)
+  const [streamError, setStreamError] = useState("")
   const requestScope = useProtectedRequestScope(apiKey)
+  const result = monitor.result
 
   async function handleStart() {
     if (!apiKey || !topic.trim() || loading) return
     setLoading(true)
-    setResult(null)
+    setMonitor(createAgentMonitorState())
+    setStreamError("")
     try {
       const signal = requestScope.begin()
-      const resp = await fetch(`${API_BASE}/agent/write`, {
+      const resp = await fetch(`${API_BASE}/agent/write/stream`, {
         method: "POST",
         headers: authHeaders(apiKey, { "Content-Type": "application/json" }),
         body: JSON.stringify({ topic: topic.trim(), max_retries: maxRetries }),
         signal,
       })
       await ensureApiResponse(resp)
-      const data = await resp.json()
-      setResult(data.result ?? null)
+      if (!resp.body) throw new Error("浏览器未提供可读事件流")
+      const parser = new AgentStreamParser()
+      const reader = resp.body.getReader()
+      const decoder = new TextDecoder()
+      let sawTerminalEvent = false
+
+      const applyEvents = (events: AgentEvent[]) => {
+        for (const event of events) {
+          if (event.type === "workflow_completed" || event.type === "workflow_failed") {
+            sawTerminalEvent = true
+          }
+          setMonitor((current) => reduceAgentEvent(current, event))
+        }
+      }
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        applyEvents(parser.push(decoder.decode(value, { stream: true })))
+      }
+      applyEvents(parser.push(decoder.decode()))
+      applyEvents(parser.finish())
+      if (!sawTerminalEvent) throw new Error("Agent 事件流提前中断")
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setLoading(false)
+        return
+      }
       onApiError(error)
-      setResult(null)
+      setStreamError(error instanceof Error ? error.message : "Agent 写作请求失败")
     }
     setLoading(false)
+  }
+
+  const roleNames: Record<AgentRole, string> = {
+    researcher: "Researcher",
+    writer: "Writer",
+    reviewer: "Reviewer",
+  }
+  const statusNames = {
+    waiting: "等待",
+    running: "执行中",
+    success: "成功",
+    failed: "失败",
+  }
+
+  function eventDescription(event: AgentEvent): string {
+    if (event.type === "agent_started") return "开始调用模型"
+    if (event.type === "agent_completed") {
+      const tokenText = event.tokens === null ? "Token 未返回" : `${event.tokens} Token`
+      return `完成 · ${event.duration_s ?? 0}s · ${tokenText}`
+    }
+    if (event.type === "agent_failed") {
+      return `失败 · ${String(event.detail.error_type ?? "UnknownError")}`
+    }
+    if (event.type === "review_completed") {
+      return `审核 ${event.detail.rating ?? 0}/5 · ${event.detail.verdict ?? "未知"} · ${event.detail.issue_count ?? 0} 个问题`
+    }
+    if (event.type === "retry_scheduled") {
+      return `进入第 ${event.detail.next_attempt ?? "?"} 轮修改`
+    }
+    if (event.type === "workflow_completed") return "工作流完成"
+    return `工作流失败 · ${String(event.detail.error_type ?? "UnknownError")}`
   }
 
   return (
@@ -1057,7 +1123,51 @@ function AgentTab({ apiKey, onApiError }: { apiKey: string; onApiError: OnApiErr
         </div>
       </div>
 
-      {loading && <p className="loading-text">Agent 正在协作写作...</p>}
+      {loading && <p className="loading-text">Agent 正在协作写作，监控数据实时更新...</p>}
+
+      {(loading || monitor.timeline.length > 0 || Boolean(streamError)) && (
+        <div className="agent-monitor" aria-live="polite">
+          <h4>Agent 实时监控</h4>
+          <div className="monitor-grid">
+            {(Object.entries(monitor.roles) as [AgentRole, typeof monitor.roles[AgentRole]][]).map(([name, metrics]) => (
+              <div key={name} className={`monitor-card monitor-card--${metrics.status}`}>
+                <div className="monitor-card-title">
+                  <strong>{roleNames[name]}</strong>
+                  <span className={`monitor-status monitor-status--${metrics.status}`}>{statusNames[metrics.status]}</span>
+                </div>
+                <div className="monitor-stats">
+                  <span>{metrics.calls} 次真实调用</span>
+                  <span>平均 {metrics.calls ? `${metrics.avgDurationS}s` : "—"}</span>
+                  <span>成功 {metrics.success}/{metrics.calls}</span>
+                  <span>Token {metrics.calls ? (metrics.totalTokens ?? "供应商未返回") : "—"}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {monitor.review && (
+            <div className="monitor-review">
+              第 {monitor.review.attempt} 轮审核 · {monitor.review.rating}/5 · {monitor.review.verdict}
+              · {monitor.review.issueCount} 个问题
+              {monitor.review.nextAttempt ? ` · 准备第 ${monitor.review.nextAttempt} 轮` : ""}
+            </div>
+          )}
+
+          <div className="monitor-timeline">
+            {monitor.timeline.map((event) => (
+              <div className={`timeline-row timeline-row--${event.status}`} key={event.sequence}>
+                <span className="timeline-seq">#{event.sequence}</span>
+                <span className="timeline-agent">{event.agent === "workflow" ? "Workflow" : roleNames[event.agent]}</span>
+                <span className="timeline-detail">{eventDescription(event)}</span>
+                <time>{new Date(event.timestamp).toLocaleTimeString()}</time>
+              </div>
+            ))}
+          </div>
+          {(monitor.error || streamError) && (
+            <p className="monitor-error">{monitor.error || streamError}</p>
+          )}
+        </div>
+      )}
 
       {result && (
         <AnimatedContent distance={16} duration={0.5} threshold={0.05} container="#agent-scroll">
@@ -1090,24 +1200,6 @@ function AgentTab({ apiKey, onApiError }: { apiKey: string; onApiError: OnApiErr
               </div>
             ) : (
               <p className="empty-text">本次未生成文章内容，请重试。</p>
-            )}
-
-            {result.monitor?.agent_metrics && (
-              <div className="agent-monitor">
-                <h4>Agent 监控</h4>
-                <div className="monitor-grid">
-                  {Object.entries(result.monitor.agent_metrics).map(([name, m]: any) => (
-                    <div key={name} className="monitor-card">
-                      <strong>{name}</strong>
-                      <div className="monitor-stats">
-                        <span>{m.calls} 次调用</span>
-                        <span>平均 {m.avg_duration_s}s</span>
-                        <span>成功率 {m.success}/{m.calls}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             )}
           </div>
         </AnimatedContent>
