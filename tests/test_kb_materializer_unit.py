@@ -8,6 +8,8 @@ import pytest
 
 from materialize_kb_v2 import (
     MaterializationError,
+    build_parser,
+    create_verified_collection,
     load_verified_corpus,
     materialize_records,
     validate_target,
@@ -101,6 +103,7 @@ def test_load_verified_corpus_rejects_duplicate_or_inconsistent_ids(tmp_path: Pa
 class FakeCollection:
     def __init__(self) -> None:
         self.records: dict[str, tuple[str, dict]] = {}
+        self.metadata: dict = {}
 
     def count(self) -> int:
         return len(self.records)
@@ -130,3 +133,47 @@ def test_materialize_records_refuses_non_empty_collection() -> None:
 
     with pytest.raises(MaterializationError, match="collection is not empty"):
         materialize_records([record()], collection)
+
+
+def test_materializer_defaults_to_candidate_and_protects_both_existing_databases() -> None:
+    args = build_parser().parse_args([])
+
+    assert args.target == "chroma_db_v2_candidate"
+    assert args.protected == ["chroma_db", "chroma_db_v2"]
+    assert args.model_dir == ".rag06-models/multilingual-minilm-l12-v2"
+    assert args.model_manifest == "models/manifests/paraphrase-multilingual-MiniLM-L12-v2.json"
+
+
+class FakeEmbedding:
+    def provenance(self) -> dict[str, str]:
+        return {
+            "embedding_model_id": "sentence-transformers/example",
+            "embedding_model_revision": "frozen-revision",
+            "embedding_pooling": "masked_mean",
+            "embedding_snapshot_sha256": "a" * 64,
+        }
+
+
+class FakeClient:
+    def __init__(self) -> None:
+        self.kwargs = None
+
+    def get_or_create_collection(self, **kwargs):
+        self.kwargs = kwargs
+        collection = FakeCollection()
+        collection.metadata = kwargs["metadata"]
+        return collection
+
+
+def test_materializer_creates_collection_with_verified_embedding_provenance() -> None:
+    client = FakeClient()
+    embedding = FakeEmbedding()
+
+    collection = create_verified_collection(client, "rag_knowledge", embedding)
+
+    assert isinstance(collection, FakeCollection)
+    assert client.kwargs == {
+        "name": "rag_knowledge",
+        "embedding_function": embedding,
+        "metadata": embedding.provenance(),
+    }

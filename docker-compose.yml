@@ -10,7 +10,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./chroma_db:/data/chroma_db
+      - ${RAG_CHROMA_HOST_DIR:-./chroma_db_v2_candidate}:/data/chroma_db
       - hf_cache:/root/.cache/huggingface
       - ./logs:/data/logs
       - ./rag_api.py:/app/rag_api.py
@@ -22,8 +22,15 @@ services:
     env_file:
       - .env
     environment:
+      - RAG_API_KEY=${RAG_API_KEY}
+      - RAG_RATE_LIMIT=${RAG_RATE_LIMIT:-30}
       - RAG_CHROMA_DIR=/data/chroma_db
       - RAG_LOG_FILE=/data/logs/rag_api.log
+      - RAG_EMBEDDING_MODEL_SOURCE=${RAG_EMBEDDING_MODEL_SOURCE:-/opt/models/multilingual-minilm-l12-v2}
+      - RAG_EMBEDDING_MANIFEST=${RAG_EMBEDDING_MANIFEST:-/opt/models/manifests/paraphrase-multilingual-MiniLM-L12-v2.json}
+      - RAG_EMBEDDING_MODEL_ID=${RAG_EMBEDDING_MODEL_ID:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+      - RAG_EMBEDDING_MODEL_REVISION=${RAG_EMBEDDING_MODEL_REVISION:-e8f8c211226b894fcb81acc59f3b34ba3efd5f42}
+      - RAG_EMBEDDING_POOLING=${RAG_EMBEDDING_POOLING:-masked_mean}
       - HF_HOME=/root/.cache/huggingface
       - HF_HUB_DISABLE_SYMLINKS=1
 
@@ -35,6 +42,21 @@ services:
       - "8080:80"
     depends_on:
       - rag-api
+
+  kb-materialize:
+    image: ragnxus-rag-api:latest
+    profiles: ["tools"]
+    command: >-
+      python materialize_kb_v2.py
+      --artifact /app/kb_v2/build
+      --target /data/chroma_db_v2_candidate
+      --protected /data/chroma_db_v1
+      --protected /data/chroma_db_v2
+      --model-dir /opt/models/multilingual-minilm-l12-v2
+      --model-manifest /opt/models/manifests/paraphrase-multilingual-MiniLM-L12-v2.json
+      --batch-size 32
+    volumes:
+      - ${RAG_CHROMA_HOST_DIR:-./chroma_db_v2_candidate}:/data/chroma_db_v2_candidate
 
 volumes:
   hf_cache:

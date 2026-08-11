@@ -7,7 +7,9 @@ stream_out*
 .env.*
 .wheels/
 .agents/
-models/
+models/*
+!models/manifests/
+!models/manifests/*.json
 kb_summary.txt
 .git/
 .gitignore

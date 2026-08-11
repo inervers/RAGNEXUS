@@ -366,7 +366,8 @@ def chunk_projected_document(
             groups.append(current)
 
         for group in groups:
-            chunk_text = normalize_text(f"{prefix}\n\n{'\n\n'.join(group)}")
+            group_text = "\n\n".join(group)
+            chunk_text = normalize_text(f"{prefix}\n\n{group_text}")
             chunk_id = make_chunk_id(document.doc_id, chunk_text)
             if chunk_id in seen_ids:
                 raise CatalogError(f"duplicate chunk identity for {document.doc_id}: {chunk_id}")

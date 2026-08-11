@@ -3,7 +3,8 @@ import hashlib
 
 import pytest
 
-from scripts.download_embedding_snapshot import _download
+from embedding_runtime import resolve_embedding_runtime_config
+from scripts.download_embedding_snapshot import _download, load_download_manifest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,8 +21,24 @@ def test_default_dockerfile_is_independent_of_personal_build_assets():
     assert "ragnxus-rag-api" not in dockerfile
     assert ".wheels" not in dockerfile
     assert "requirements-api.txt" in dockerfile
-    assert "RAG_EMBEDDING_MODEL_REVISION" in dockerfile
-    assert "1110a243fdf4706b3f48f1d95db1a4f5529b4d41" in dockerfile  # pragma: allowlist secret -- public model revision
+    assert "paraphrase-multilingual-MiniLM-L12-v2.json" in dockerfile
+    assert "e8f8c211226b894fcb81acc59f3b34ba3efd5f42" in dockerfile  # pragma: allowlist secret -- public model revision
+    assert "RAG_EMBEDDING_POOLING=masked_mean" in dockerfile
+
+
+def test_standard_image_keeps_verified_v1_snapshot_for_explicit_rollback():
+    dockerfile = _read("Dockerfile")
+
+    assert "all-MiniLM-L6-v2.json" in dockerfile
+    assert "/opt/models/legacy-minilm-l6-v2" in dockerfile
+    assert "/opt/models/multilingual-minilm-l12-v2" in dockerfile
+
+
+def test_standard_image_contains_public_v2_materialization_assets():
+    dockerfile = _read("Dockerfile")
+
+    assert "materialize_kb_v2.py" in dockerfile
+    assert "kb_v2/build" in dockerfile
 
 
 def test_legacy_dockerfile_is_explicitly_non_default():
@@ -49,19 +66,33 @@ def test_smoke_compose_uses_tmpfs_and_never_mounts_real_database():
 def test_docker_context_excludes_local_and_sensitive_assets():
     dockerignore = _read(".dockerignore")
 
-    for excluded in (".env", ".wheels/", ".agents/", "chroma_db*/", "models/"):
+    for excluded in (".env", ".wheels/", ".agents/", "chroma_db*/", "models/*"):
         assert excluded in dockerignore
+    assert "!models/manifests/" in dockerignore
+    assert "!models/manifests/*.json" in dockerignore
 
 
-def test_runtime_embedding_revision_is_configurable_and_pinned_by_default():
-    api = _read("rag_api.py")
+def test_compose_defaults_to_candidate_and_exposes_explicit_embedding_switches():
+    compose = _read("docker-compose.yml")
 
-    assert "EMBEDDING_MODEL_ID = os.environ.get(" in api
-    assert '"RAG_EMBEDDING_MODEL_ID"' in api
-    assert "EMBEDDING_MODEL_REVISION = os.environ.get(" in api
-    assert '"RAG_EMBEDDING_MODEL_REVISION"' in api
-    assert "revision=EMBEDDING_MODEL_REVISION" in api
-    assert "local_files_only=True" in api
+    assert "${RAG_CHROMA_HOST_DIR:-./chroma_db_v2_candidate}:/data/chroma_db" in compose
+    assert "RAG_API_KEY=${RAG_API_KEY}" in compose
+    assert "RAG_RATE_LIMIT=${RAG_RATE_LIMIT:-30}" in compose
+    assert "RAG_EMBEDDING_MODEL_SOURCE=${RAG_EMBEDDING_MODEL_SOURCE:-/opt/models/multilingual-minilm-l12-v2}" in compose
+    assert "RAG_EMBEDDING_MANIFEST=${RAG_EMBEDDING_MANIFEST:-/opt/models/manifests/paraphrase-multilingual-MiniLM-L12-v2.json}" in compose
+    assert "kb-materialize:" in compose
+    assert 'profiles: ["tools"]' in compose
+    assert "python materialize_kb_v2.py" in compose
+
+
+def test_runtime_embedding_defaults_are_pinned_by_tracked_manifest():
+    config = resolve_embedding_runtime_config({}, ROOT)
+
+    assert config.spec.model_id == (
+        "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    )
+    assert config.spec.revision == "e8f8c211226b894fcb81acc59f3b34ba3efd5f42"  # pragma: allowlist secret -- public model revision
+    assert config.spec.pooling == "masked_mean"
 
 
 def test_api_image_copies_local_runtime_dependencies():
@@ -96,3 +127,47 @@ def test_snapshot_download_rejects_wrong_hash(tmp_path):
 
     assert not destination.exists()
     assert not destination.with_suffix(".bin.part").exists()
+
+
+def test_snapshot_downloader_consumes_tracked_manifest(tmp_path):
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(
+        """{
+          "model_id": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+          "revision": "frozen-revision",
+          "pooling": "masked_mean",
+          "files": [
+            {"path": "config.json", "size": 6, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+          ]
+        }""",
+        encoding="utf-8",
+    )
+
+    spec = load_download_manifest(manifest)
+
+    assert spec.model_id.endswith("paraphrase-multilingual-MiniLM-L12-v2")
+    assert spec.revision == "frozen-revision"
+    assert spec.files == {
+        "config.json": {
+            "size": 6,
+            "sha256": "a" * 64,
+        }
+    }
+
+
+def test_snapshot_downloader_rejects_unsafe_manifest_path(tmp_path):
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(
+        """{
+          "model_id": "sentence-transformers/example",
+          "revision": "frozen-revision",
+          "pooling": "masked_mean",
+          "files": [
+            {"path": "../escape.bin", "size": 1, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+          ]
+        }""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="unsafe"):
+        load_download_manifest(manifest)

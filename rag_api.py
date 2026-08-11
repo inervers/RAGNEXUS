@@ -14,10 +14,9 @@ from document_ingest import (
     parse_uploaded_document,
 )
 from embedding_runtime import (
-    embed_batch,
-    embedding_function_name,
-    resolve_pooling_mode,
-    validate_collection_pooling,
+    VerifiedEmbedding,
+    resolve_embedding_runtime_config,
+    validate_collection_provenance,
 )
 from security_config import load_api_key, parse_cors_origins
 
@@ -30,6 +29,7 @@ from retrieval_service import (
     without_retrieval_tool,
 )
 from request_limits import MAX_REQUEST_BODY_BYTES, RequestBodyLimitMiddleware
+from runtime_bootstrap import should_seed_initial_fixtures
 
 # Windows user-site 兼容（Docker 中直接跳过）
 _REAL_USER_SITE = os.environ.get("PYTHON_USER_SITE")
@@ -84,8 +84,6 @@ if not LLM_API_KEY:
 
 import time, uuid, logging, traceback
 import httpx
-from transformers import AutoTokenizer, AutoModel
-import torch
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from fastapi import FastAPI, HTTPException, Request
@@ -93,7 +91,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel, Field
 import chromadb
-from chromadb.api.types import EmbeddingFunction
 
 # =============================================
 # 结构化日志（终端 + 文件）
@@ -218,44 +215,22 @@ async def security_middleware(request: Request, call_next):
 # =============================================
 # 嵌入模型
 # =============================================
-EMBEDDING_MODEL_ID = os.environ.get(
-    "RAG_EMBEDDING_MODEL_ID", "sentence-transformers/all-MiniLM-L6-v2"
+EMBEDDING_CONFIG = resolve_embedding_runtime_config(
+    os.environ, os.path.dirname(__file__)
 )
-EMBEDDING_MODEL_REVISION = os.environ.get(
-    "RAG_EMBEDDING_MODEL_REVISION",
-    "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+embedding = VerifiedEmbedding(
+    EMBEDDING_CONFIG.snapshot_dir,
+    EMBEDDING_CONFIG.manifest_path,
+    EMBEDDING_CONFIG.spec,
 )
-EMBEDDING_POOLING = resolve_pooling_mode(os.environ.get("RAG_EMBEDDING_POOLING"))
-tokenizer = AutoTokenizer.from_pretrained(
-    EMBEDDING_MODEL_ID,
-    revision=EMBEDDING_MODEL_REVISION,
-    local_files_only=True,
-)
-model = AutoModel.from_pretrained(
-    EMBEDDING_MODEL_ID,
-    revision=EMBEDDING_MODEL_REVISION,
-    local_files_only=True,
-)
+EMBEDDING_MODEL_ID = embedding.spec.model_id
+EMBEDDING_MODEL_REVISION = embedding.spec.revision
+EMBEDDING_POOLING = embedding.spec.pooling
+EMBEDDING_PROVENANCE = embedding.provenance()
+
 
 def embed_texts(texts):
-    return embed_batch(texts, tokenizer, model, torch, pooling=EMBEDDING_POOLING)
-
-class MiniLMEmbedding(EmbeddingFunction):
-    """适配 ChromaDB 1.x：需实现 __init__ 与 name()，query 输入可能是 Document 对象。"""
-
-    def __init__(self):
-        pass
-
-    def __call__(self, input):
-        # 1.x 的 query 输入可能是 Document 对象列表（带 .text），统一提取
-        if isinstance(input, (list, tuple)):
-            texts = [d.text if hasattr(d, "text") else d for d in input]
-        else:
-            texts = [input]
-        return [e.tolist() for e in embed_texts(texts)]
-
-    def name(self) -> str:
-        return embedding_function_name(EMBEDDING_POOLING)
+    return embedding._embed(texts)
 
 # =============================================
 # Chroma 持久化
@@ -264,10 +239,12 @@ CHROMA_DIR = os.environ.get("RAG_CHROMA_DIR", os.path.join(os.path.dirname(__fil
 client = chromadb.PersistentClient(path=CHROMA_DIR, settings=chromadb.config.Settings(anonymized_telemetry=False))
 collection = client.get_or_create_collection(
     name="rag_knowledge",
-    embedding_function=MiniLMEmbedding(),
-    metadata={"embedding_pooling": EMBEDDING_POOLING},
+    embedding_function=embedding,
+    metadata=EMBEDDING_PROVENANCE,
 )
-validate_collection_pooling(EMBEDDING_POOLING, collection.count(), collection.metadata)
+validate_collection_provenance(
+    EMBEDDING_PROVENANCE, collection.count(), collection.metadata
+)
 splitter = RecursiveCharacterTextSplitter(chunk_size=200, chunk_overlap=20)
 
 def _doc_count() -> int:
@@ -279,7 +256,7 @@ def _doc_count() -> int:
 def _doc_ids(start: int, n: int) -> list[str]:
     return [f"doc_{start + i}" for i in range(n)]
 
-if _doc_count() == 0:
+if should_seed_initial_fixtures(os.environ, _doc_count()):
     init_texts = [
         "Python was created by Guido van Rossum and first released in 1991. It is a high-level general-purpose programming language emphasizing code readability with significant indentation.",
         "PyTorch was developed by Meta AI (Facebook AI Research) and released in 2016. Key features include dynamic computation graphs, GPU-accelerated tensor computation, automatic differentiation with Autograd.",

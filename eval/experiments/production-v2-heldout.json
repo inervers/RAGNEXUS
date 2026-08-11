@@ -1,0 +1,564 @@
+{
+  "generated_at": "2026-08-11T18:07:47",
+  "set": "eval/eval_set.json",
+  "manifest": "kb_v2/build/manifest.json",
+  "split": "heldout",
+  "n_questions": 16,
+  "questions": [
+    {
+      "id": "v2-007",
+      "question": "RAGNEXUS Hybrid baseline 的 Dense 与 Sparse 权重是多少？",
+      "category": "exact",
+      "split": "heldout",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.25,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.25,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-008",
+      "question": "Prism 归档 baseline 的任务数、平均重写次数和平均耗时分别是多少？",
+      "category": "exact",
+      "split": "heldout",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.3333333333333333,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-009",
+      "question": "Tradewind 浏览器绿色版启动器绑定哪个地址和端口？",
+      "category": "exact",
+      "split": "heldout",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.25,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-010",
+      "question": "ChromaDB 0.5.17 到 1.5.9 的迁移中，重新嵌入时沿用了哪个模型系列？",
+      "category": "exact",
+      "split": "heldout",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.5,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-016",
+      "question": "为什么 RAGNEXUS 的 trace 中必须记录实际 reranker mode，而不能只记录 use_reranker=true？",
+      "category": "semantic",
+      "split": "heldout",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.14285714285714285,
+            "hit_rate_at_5": 0.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-017",
+      "question": "为什么 Tradewind 的 ZIP checksum 能证明完整性，却不能证明软件安全？",
+      "category": "semantic",
+      "split": "heldout",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.0,
+            "recall_at_10": 0.0,
+            "mrr_at_10": 0.0,
+            "hit_rate_at_5": 0.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.5,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-018",
+      "question": "Prism 为什么要给 Reviewer 循环设上限，但达到上限时不应把状态写成 approved？",
+      "category": "semantic",
+      "split": "heldout",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.14285714285714285,
+            "hit_rate_at_5": 0.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.5,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-024",
+      "question": "SSE 发生生成错误时客户端只看到空流，接口契约应补什么？",
+      "category": "troubleshooting",
+      "split": "heldout",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.2,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.3333333333333333,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-025",
+      "question": "Tradewind Tauri sidecar 目前为什么不应重新分发，应该先改哪里？",
+      "category": "troubleshooting",
+      "split": "heldout",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.5,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.5,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.5,
+            "recall_at_10": 0.5,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-026",
+      "question": "Prism Reviewer 的 JSON 解析失败会 fail-open，怎样修复才不会把执行故障当质量通过？",
+      "category": "troubleshooting",
+      "split": "heldout",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.3333333333333333,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-031",
+      "question": "比较 RAGNEXUS 的检索 trace 与 Prism 的执行 trace：为什么两者都不能只记录配置意图？",
+      "category": "multidoc",
+      "split": "heldout",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.5,
+            "recall_at_10": 0.5,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.5,
+            "recall_at_10": 0.5,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-032",
+      "question": "结合 RAGNEXUS 与 Tradewind 的部署材料，说明为什么“构建成功”不能直接等同于“可交付运行”。",
+      "category": "multidoc",
+      "split": "heldout",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.0,
+            "recall_at_10": 0.5,
+            "mrr_at_10": 0.125,
+            "hit_rate_at_5": 0.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.5,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-035",
+      "question": "Prism README 所称“SQLite checkpointer 持久化”在默认新安装中是否有保证？",
+      "category": "version_conflict",
+      "split": "heldout",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-036",
+      "question": "RAGNEXUS 文档中的旧 benchmark 数字现在能否作为 Hybrid/Reranker 增益证据？",
+      "category": "version_conflict",
+      "split": "heldout",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.25,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.5,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-039",
+      "question": "Prism 的 Reviewer 相比人工专家评审提升了多少准确率？",
+      "category": "unanswerable",
+      "split": "heldout",
+      "retrieval": {
+        "dense": {
+          "status": "unscored",
+          "reason": "missing_relevant_chunk_ids"
+        },
+        "hybrid": {
+          "status": "unscored",
+          "reason": "missing_relevant_chunk_ids"
+        },
+        "reranked": {
+          "status": "unscored",
+          "reason": "missing_relevant_chunk_ids"
+        }
+      }
+    },
+    {
+      "id": "v2-040",
+      "question": "RAGNEXUS 当前生产环境每天有多少真实活跃用户？",
+      "category": "unanswerable",
+      "split": "heldout",
+      "retrieval": {
+        "dense": {
+          "status": "unscored",
+          "reason": "missing_relevant_chunk_ids"
+        },
+        "hybrid": {
+          "status": "unscored",
+          "reason": "missing_relevant_chunk_ids"
+        },
+        "reranked": {
+          "status": "unscored",
+          "reason": "missing_relevant_chunk_ids"
+        }
+      }
+    }
+  ],
+  "retrieval_summary": {
+    "dense": {
+      "counts": {
+        "total": 16,
+        "scored": 14,
+        "ok": 14,
+        "empty": 0,
+        "error": 0,
+        "unscored": 2,
+        "fallback": 0
+      },
+      "metrics": {
+        "recall_at_5": 0.64,
+        "recall_at_10": 0.86,
+        "mrr_at_10": 0.36,
+        "hit_rate_at_5": 0.71
+      }
+    },
+    "hybrid": {
+      "counts": {
+        "total": 16,
+        "scored": 14,
+        "ok": 14,
+        "empty": 0,
+        "error": 0,
+        "unscored": 2,
+        "fallback": 0
+      },
+      "metrics": {
+        "recall_at_5": 0.89,
+        "recall_at_10": 0.93,
+        "mrr_at_10": 0.79,
+        "hit_rate_at_5": 1.0
+      }
+    },
+    "reranked": {
+      "counts": {
+        "total": 16,
+        "scored": 0,
+        "ok": 0,
+        "empty": 0,
+        "error": 0,
+        "unscored": 2,
+        "fallback": 14
+      },
+      "metrics": {
+        "recall_at_5": null,
+        "recall_at_10": null,
+        "mrr_at_10": null,
+        "hit_rate_at_5": null
+      }
+    }
+  }
+}

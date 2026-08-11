@@ -9,6 +9,8 @@ import json
 from pathlib import Path
 from typing import Any, Iterable
 
+from embedding_runtime import VerifiedEmbedding
+
 
 class MaterializationError(RuntimeError):
     """Raised before an unsafe or unverifiable materialization step."""
@@ -99,15 +101,46 @@ def materialize_records(
     return {"chunks": len(expected_ids), "verified_ids": len(actual_ids)}
 
 
-def main() -> None:
+def create_verified_collection(client: Any, name: str, embedding: Any) -> Any:
+    provenance = embedding.provenance()
+    collection = client.get_or_create_collection(
+        name=name,
+        embedding_function=embedding,
+        metadata=provenance,
+    )
+    if collection.metadata != provenance:
+        raise MaterializationError(
+            f"collection provenance mismatch: expected={provenance} "
+            f"actual={collection.metadata}"
+        )
+    return collection
+
+
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--artifact", default="kb_v2/build")
-    parser.add_argument("--target", default="chroma_db_v2")
-    parser.add_argument("--protected", action="append", default=["chroma_db"])
+    parser.add_argument("--target", default="chroma_db_v2_candidate")
+    parser.add_argument(
+        "--protected",
+        action="append",
+        default=["chroma_db", "chroma_db_v2"],
+    )
     parser.add_argument("--collection", default="rag_knowledge")
     parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument(
+        "--model-dir",
+        default=".rag06-models/multilingual-minilm-l12-v2",
+    )
+    parser.add_argument(
+        "--model-manifest",
+        default="models/manifests/paraphrase-multilingual-MiniLM-L12-v2.json",
+    )
     parser.add_argument("--check-only", action="store_true")
-    args = parser.parse_args()
+    return parser
+
+
+def main() -> None:
+    args = build_parser().parse_args()
 
     target = validate_target(args.target, args.protected)
     records = load_verified_corpus(args.artifact)
@@ -116,18 +149,15 @@ def main() -> None:
         print(f"safe_target={target}")
         return
 
-    target.mkdir(parents=True, exist_ok=False)
+    embedding = VerifiedEmbedding(args.model_dir, args.model_manifest)
+    target.mkdir(parents=True, exist_ok=True)
     import chromadb
-    from migrate_chroma import MiniLMEmbedding
 
     client = chromadb.PersistentClient(
         path=str(target),
         settings=chromadb.config.Settings(anonymized_telemetry=False),
     )
-    collection = client.get_or_create_collection(
-        name=args.collection,
-        embedding_function=MiniLMEmbedding(),
-    )
+    collection = create_verified_collection(client, args.collection, embedding)
     result = materialize_records(records, collection, batch_size=args.batch_size)
     print(f"target={target}")
     print(f"collection={args.collection}")

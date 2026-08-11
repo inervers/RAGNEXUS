@@ -1,0 +1,828 @@
+{
+  "generated_at": "2026-08-11T18:07:42",
+  "set": "eval/eval_set.json",
+  "manifest": "kb_v2/build/manifest.json",
+  "split": "development",
+  "n_questions": 24,
+  "questions": [
+    {
+      "id": "v2-001",
+      "question": "RAGNEXUS 生产查询统一使用哪个检索服务？生成阶段为什么排除 search_knowledge？",
+      "category": "exact",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-002",
+      "question": "RAGNEXUS Docker Compose 对外暴露哪些端口，前端流量如何转发？",
+      "category": "exact",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.0,
+            "recall_at_10": 0.0,
+            "mrr_at_10": 0.0,
+            "hit_rate_at_5": 0.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.3333333333333333,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-003",
+      "question": "知识库消失事故中，named volume 和本地 bind mount 分别看到了多少条数据？",
+      "category": "exact",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.2,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.5,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-004",
+      "question": "MCP 的 retrieve_knowledge 工具允许的 top_k 范围是多少？",
+      "category": "exact",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-005",
+      "question": "Tradewind 为什么没有在当前小规模本地知识库中引入向量数据库？",
+      "category": "exact",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.5,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-006",
+      "question": "Prism 的 context compaction 每轮怎样缩短 evidence？",
+      "category": "exact",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.5,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-011",
+      "question": "为什么 bind mount 解决了“容器和宿主机看到不同知识库”的问题，却没有解决并发写安全？",
+      "category": "semantic",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.5,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-012",
+      "question": "为什么 MCP Server 被设计成 HTTP 薄壳，而不是直接 import RAG API 的内部模块？",
+      "category": "semantic",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-013",
+      "question": "为什么 SSE 返回 HTTP 200 仍不能证明一次问答成功？",
+      "category": "semantic",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.5,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-014",
+      "question": "Tradewind 的“完整交付闭环”为什么不等同于“完整业务闭环”？",
+      "category": "semantic",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.5,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-015",
+      "question": "为什么 Prism 的长期记忆已经接入 Planner，也不能据此声称它提升了研究质量？",
+      "category": "semantic",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.5,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.5,
+            "recall_at_10": 0.5,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-019",
+      "question": "容器内调用 LLM 出现 SSL EOF，但宿主机正常。第一轮应如何隔离根因？",
+      "category": "troubleshooting",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.3333333333333333,
+            "recall_at_10": 0.6666666666666666,
+            "mrr_at_10": 0.2,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.3333333333333333,
+            "recall_at_10": 0.6666666666666666,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-020",
+      "question": "切换 Chroma 持久化目录前，为什么要先停止 API，并在切换后核对数量？",
+      "category": "troubleshooting",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.0,
+            "recall_at_10": 0.0,
+            "mrr_at_10": 0.0,
+            "hit_rate_at_5": 0.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.0,
+            "recall_at_10": 0.0,
+            "mrr_at_10": 0.0,
+            "hit_rate_at_5": 0.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-021",
+      "question": "Reranker 请求成功但实际发生 fallback，评测脚本应该怎样处理，为什么？",
+      "category": "troubleshooting",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.0,
+            "recall_at_10": 0.0,
+            "mrr_at_10": 0.0,
+            "hit_rate_at_5": 0.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.0,
+            "recall_at_10": 0.0,
+            "mrr_at_10": 0.0,
+            "hit_rate_at_5": 0.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-022",
+      "question": "Tradewind 一次整体覆盖产品数据导致用户导入记录丢失，正确的修复边界是什么？",
+      "category": "troubleshooting",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-023",
+      "question": "Prism 重复运行同一 topic 可能复用旧 checkpoint state，应怎样修复评测隔离？",
+      "category": "troubleshooting",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-027",
+      "question": "结合 RAGNEXUS 统一检索与 MCP 设计，说明一次 MCP 检索怎样保持与生产查询相同的结果口径。",
+      "category": "multidoc",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.3333333333333333,
+            "recall_at_10": 0.3333333333333333,
+            "mrr_at_10": 0.5,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.3333333333333333,
+            "recall_at_10": 0.6666666666666666,
+            "mrr_at_10": 0.2,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-028",
+      "question": "从 RAGNEXUS 的存储事故和容器 SSL 事故中，总结可复用的故障定位方法。",
+      "category": "multidoc",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.0,
+            "recall_at_10": 0.0,
+            "mrr_at_10": 0.0,
+            "hit_rate_at_5": 0.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.0,
+            "recall_at_10": 0.5,
+            "mrr_at_10": 0.14285714285714285,
+            "hit_rate_at_5": 0.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-029",
+      "question": "比较 Tradewind 与 Prism 的“指标不能过度解读”边界，各举一个真实例子。",
+      "category": "multidoc",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.0,
+            "recall_at_10": 0.0,
+            "mrr_at_10": 0.0,
+            "hit_rate_at_5": 0.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.0,
+            "recall_at_10": 0.0,
+            "mrr_at_10": 0.0,
+            "hit_rate_at_5": 0.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-030",
+      "question": "三个项目分别有哪些“数据或状态隔离”风险？请给出一项对应治理措施。",
+      "category": "multidoc",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.0,
+            "recall_at_10": 0.0,
+            "mrr_at_10": 0.0,
+            "hit_rate_at_5": 0.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.0,
+            "recall_at_10": 0.0,
+            "mrr_at_10": 0.0,
+            "hit_rate_at_5": 0.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-033",
+      "question": "Prism 归档 baseline 能否证明当前 HEAD 的质量与成本？请说明版本原因。",
+      "category": "version_conflict",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.0,
+            "recall_at_10": 0.5,
+            "mrr_at_10": 0.16666666666666666,
+            "hit_rate_at_5": 0.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.5,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 1.0,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-034",
+      "question": "Tradewind 现有 portable ZIP 是否代表当前源码？为什么不能这么说？",
+      "category": "version_conflict",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 0.0,
+            "recall_at_10": 0.5,
+            "mrr_at_10": 0.16666666666666666,
+            "hit_rate_at_5": 0.0
+          }
+        },
+        "hybrid": {
+          "status": "ok",
+          "n": 10,
+          "metrics": {
+            "recall_at_5": 1.0,
+            "recall_at_10": 1.0,
+            "mrr_at_10": 0.5,
+            "hit_rate_at_5": 1.0
+          }
+        },
+        "reranked": {
+          "status": "fallback",
+          "reason": "model_load_failed:OSError",
+          "n": 10
+        }
+      }
+    },
+    {
+      "id": "v2-037",
+      "question": "RAGNEXUS 在 1,000 名并发用户下的 P95 延迟是多少？",
+      "category": "unanswerable",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "unscored",
+          "reason": "missing_relevant_chunk_ids"
+        },
+        "hybrid": {
+          "status": "unscored",
+          "reason": "missing_relevant_chunk_ids"
+        },
+        "reranked": {
+          "status": "unscored",
+          "reason": "missing_relevant_chunk_ids"
+        }
+      }
+    },
+    {
+      "id": "v2-038",
+      "question": "Tradewind 已经通过真实客户邮件发送带来了多少成交额？",
+      "category": "unanswerable",
+      "split": "development",
+      "retrieval": {
+        "dense": {
+          "status": "unscored",
+          "reason": "missing_relevant_chunk_ids"
+        },
+        "hybrid": {
+          "status": "unscored",
+          "reason": "missing_relevant_chunk_ids"
+        },
+        "reranked": {
+          "status": "unscored",
+          "reason": "missing_relevant_chunk_ids"
+        }
+      }
+    }
+  ],
+  "retrieval_summary": {
+    "dense": {
+      "counts": {
+        "total": 24,
+        "scored": 22,
+        "ok": 22,
+        "empty": 0,
+        "error": 0,
+        "unscored": 2,
+        "fallback": 0
+      },
+      "metrics": {
+        "recall_at_5": 0.55,
+        "recall_at_10": 0.64,
+        "mrr_at_10": 0.51,
+        "hit_rate_at_5": 0.64
+      }
+    },
+    "hybrid": {
+      "counts": {
+        "total": 24,
+        "scored": 22,
+        "ok": 22,
+        "empty": 0,
+        "error": 0,
+        "unscored": 2,
+        "fallback": 0
+      },
+      "metrics": {
+        "recall_at_5": 0.67,
+        "recall_at_10": 0.74,
+        "mrr_at_10": 0.6,
+        "hit_rate_at_5": 0.77
+      }
+    },
+    "reranked": {
+      "counts": {
+        "total": 24,
+        "scored": 0,
+        "ok": 0,
+        "empty": 0,
+        "error": 0,
+        "unscored": 2,
+        "fallback": 22
+      },
+      "metrics": {
+        "recall_at_5": null,
+        "recall_at_10": null,
+        "mrr_at_10": null,
+        "hit_rate_at_5": null
+      }
+    }
+  }
+}

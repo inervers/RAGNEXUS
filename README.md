@@ -60,7 +60,13 @@ npm run dev
 # 先复制示例配置并填写真实 key
 Copy-Item .env.example .env
 
-# 默认标准构建：Python 3.11 + CPU Torch + 固定 MiniLM snapshot
+# fresh clone 先构建包含 verified V2/V1 snapshots 的标准镜像
+docker compose build rag-api
+
+# 只对不存在/空的 candidate 执行一次；非空目标会 fail-fast
+docker compose --profile tools run --rm kb-materialize
+
+# 启动 API + 前端；已有 verified candidate 时直接执行这一行
 docker compose up -d --build
 ```
 
@@ -69,7 +75,7 @@ docker compose up -d --build
 - API 服务 → `http://localhost:8000`
 - 前端 API 走同源（`API_BASE=""`），由 nginx 正则转发 `/health|/query|/doc|/kb|/agent`，无需跨域配置
 
-默认镜像不依赖个人旧镜像、`.wheels`、本机模型目录或真实数据库。MiniLM revision 固定为 `1110a243fdf4706b3f48f1d95db1a4f5529b4d41`，6 个必需文件在 build 阶段逐一校验 SHA256，运行时仍为 `local_files_only`。CPU Torch 从官方 CPU wheel index 安装，其余 Python 依赖默认使用阿里云镜像；均可通过 build args 覆盖。
+默认镜像不依赖个人旧镜像、`.wheels`、本机模型目录或真实数据库。生产 Embedding 固定为 `paraphrase-multilingual-MiniLM-L12-v2@e8f8c211... + masked_mean`；镜像按 tracked manifest 下载并逐文件校验 size/SHA256，运行时只从本地 snapshot 加载。镜像同时保留经过 manifest 校验的 V1 MiniLM snapshot，供数据库与模型成对回滚。CPU Torch 从官方 CPU wheel index 安装，其余 Python 依赖默认使用阿里云镜像。
 
 提交或部署前可先运行完全隔离的 smoke：
 
@@ -239,6 +245,9 @@ curl.exe -X POST http://localhost:8000/agent/write -H "Content-Type: application
 | `RAG_API_KEY` | API 鉴权密钥；缺失、旧默认值或模板占位符会拒绝启动 | 必填，无默认值 |
 | `RAG_CORS_ORIGINS` | 浏览器精确 origin，逗号分隔，禁止 `*` | 本地 5173/8080 |
 | `RAG_RATE_LIMIT` | 每分钟最大请求数 | 30 |
+| `RAG_CHROMA_HOST_DIR` | Compose 挂载的宿主机 Chroma 目录 | `./chroma_db_v2_candidate` |
+| `RAG_EMBEDDING_MODEL_SOURCE` | 镜像内或本地 verified snapshot 路径 | multilingual V2 snapshot |
+| `RAG_EMBEDDING_MANIFEST` | 模型 ID/revision/pooling/files 的 tracked manifest | multilingual V2 manifest |
 
 ---
 
@@ -251,7 +260,7 @@ RAG-04 已建立隔离的 V2 corpus：
 - 10 个逻辑文档，184 个唯一 chunks；只允许 `public + current`。
 - chunk ID：`doc_id#sha256(normalized_chunk_text)[:16]`。
 - corpus SHA256：`175a3b5f11b4db312418ebfb73ee1c5439519dd7a191faffc3bcaad0076c6802`。
-- `chroma_db_v2` 与 V1 `chroma_db` 独立；物化前必须停容器，禁止本地/容器并发访问同一 bind mount。
+- `chroma_db_v2_candidate` 与 V1 `chroma_db`、来源待核验的 `chroma_db_v2` 独立；物化前必须停容器，禁止本地/容器并发访问同一 bind mount。
 
 RAG-05 已冻结绑定 V2 manifest 的新版 40 题：`exact` 10、`semantic` 8、`troubleshooting` 8、`multidoc` 6、`version_conflict` 4、`unanswerable` 4。其中 development 24 题用于配置迭代，heldout 16 题只在配置冻结后运行。所有正样本都绑定真实 doc/chunk ID 和 `doc_id@commit`；无答案题不伪造 relevant IDs。
 
@@ -274,13 +283,31 @@ RAG-06 只用 development 选择并冻结 `paraphrase-multilingual-MiniLM-L12-v2
 python build_kb_v2.py --catalog kb_v2/catalog.json --output kb_v2/build
 
 # 只验证 artifact 与目标路径安全性
-python materialize_kb_v2.py --artifact kb_v2/build --target chroma_db_v2 --check-only
+python materialize_kb_v2.py --artifact kb_v2/build --target chroma_db_v2_candidate --check-only
 
 # 仅在目标不存在/为空、rag-api 已停止时物化
-python materialize_kb_v2.py --artifact kb_v2/build --target chroma_db_v2 --batch-size 1
+python materialize_kb_v2.py --artifact kb_v2/build --target chroma_db_v2_candidate --batch-size 32
 ```
 
-V2 的目标 Embedding 已根据评测选为 multilingual MiniLM，但真实持久库尚未切换。`RAG_EMBEDDING_POOLING` 对旧 V1 默认保持 `legacy_mean`；新建或全量重嵌入的库显式使用 `masked_mean`，并把 pooling 写入 collection metadata。非空库与运行配置不一致时服务 fail-fast，禁止把 legacy/masked vectors 静默混写。生产迁移仍必须在新数据库中全量重算 184 chunks、校验后再显式切换，并保留旧库回滚。
+上面的 Python 命令适合本机已经存在 `.rag06-models` snapshot 的开发环境。fresh clone 推荐使用 `docker compose --profile tools run --rm kb-materialize`：标准镜像内已经包含公开 V2 artifact、materializer 与经过 manifest 校验的模型，不需要本机另装 Python/Torch/Chroma。
+
+生产 API、物化器与 RAG-06 实验共用同一个 verified embedding runtime。V2 collection metadata 同时记录 model ID、revision、pooling 与 snapshot aggregate SHA256；任一项与运行配置不一致时服务 fail-fast，禁止把不同向量空间静默混写。Compose 默认目标为 `chroma_db_v2_candidate`，旧 V1 库不覆盖、不删除。
+
+2026-08-11 的生产迁移验收已完成：candidate 为 184 chunks，stored/corpus IDs 完全一致；production development 24 题与 heldout 16 题相对 RAG-06 frozen `hybrid-1-2` 逐题指标均为 0 mismatch。API health 返回 `chunks=184 + masked_mean`，前端与 Nginx proxy smoke 通过。原始 API 路径评测保存在 [`production-v2-development.json`](eval/experiments/production-v2-development.json) 与 [`production-v2-heldout.json`](eval/experiments/production-v2-heldout.json)。Reranker 仍是显式 fallback，不计作 Cross-Encoder 成绩。
+
+回滚必须让数据库和 Embedding 成对切换，不能只换数据库路径：
+
+```powershell
+$env:RAG_CHROMA_HOST_DIR="./chroma_db"
+$env:RAG_EMBEDDING_MODEL_SOURCE="/opt/models/legacy-minilm-l6-v2"
+$env:RAG_EMBEDDING_MANIFEST="/opt/models/manifests/all-MiniLM-L6-v2.json"
+$env:RAG_EMBEDDING_MODEL_ID="sentence-transformers/all-MiniLM-L6-v2"
+$env:RAG_EMBEDDING_MODEL_REVISION="1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
+$env:RAG_EMBEDDING_POOLING="legacy_mean"
+docker compose up -d
+```
+
+恢复 V2 时移除这 6 个当前终端环境变量，再执行 `docker compose up -d`。
 
 ## 运行测试
 
