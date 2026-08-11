@@ -43,7 +43,7 @@ RUN python /tmp/download_embedding_snapshot.py \
       --output /opt/models/legacy-minilm-l6-v2 \
     && rm /tmp/download_embedding_snapshot.py
 
-COPY rag_api.py rag_advanced.py rag_multiagent.py retrieval_service.py security_config.py document_ingest.py embedding_runtime.py runtime_bootstrap.py agent_contract.py request_limits.py pdf_parser.py ocr_client.py materialize_kb_v2.py ./
+COPY rag_api.py rag_advanced.py rag_multiagent.py agent_event_stream.py retrieval_service.py security_config.py document_ingest.py embedding_runtime.py runtime_bootstrap.py agent_contract.py request_limits.py pdf_parser.py ocr_client.py materialize_kb_v2.py ./
 COPY kb_v2/build /app/kb_v2/build
 
 EXPOSE 8000

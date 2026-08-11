@@ -98,6 +98,7 @@ def test_runtime_embedding_defaults_are_pinned_by_tracked_manifest():
 def test_api_image_copies_local_runtime_dependencies():
     for dockerfile_name in ("Dockerfile", "Dockerfile.legacy"):
         dockerfile = _read(dockerfile_name)
+        assert "agent_event_stream.py" in dockerfile
         assert "security_config.py" in dockerfile
         assert "document_ingest.py" in dockerfile
         assert "embedding_runtime.py" in dockerfile
