@@ -46,6 +46,10 @@
   transform: none;
 }
 
+.specular-button:disabled .specular-button__fx {
+  visibility: hidden;
+}
+
 .specular-button--sm {
   font-size: 0.85rem;
   padding: 10px 22px;

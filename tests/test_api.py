@@ -113,9 +113,9 @@ def test_agent_write():
     })
     assert code == 200, f"状态码 {code}"
     result = data.get("result", {})
-    content = result.get("content", "")
-    assert len(content) > 50, "写作内容应超过 50 字"
-    ok("Multi-Agent 写作", f"内容长度 {len(content)} 字")
+    article = result.get("article", "")
+    assert len(article) > 50, "写作内容应超过 50 字"
+    ok("Multi-Agent 写作", f"内容长度 {len(article)} 字")
 
 
 def test_kb_docs():

@@ -5,4 +5,4 @@ FROM ragnxus-rag-api:0.5.17-backup
 COPY .wheels /wheels
 RUN pip install --no-index --find-links=/wheels chromadb==1.5.9 && rm -rf /wheels
 
-COPY rag_api.py rag_advanced.py rag_multiagent.py retrieval_service.py security_config.py document_ingest.py embedding_runtime.py agent_contract.py request_limits.py pdf_parser.py ocr_client.py ./
+COPY rag_api.py rag_advanced.py rag_multiagent.py agent_event_stream.py retrieval_service.py security_config.py document_ingest.py embedding_runtime.py agent_contract.py request_limits.py pdf_parser.py ocr_client.py ./

@@ -43,7 +43,24 @@ RUN python /tmp/download_embedding_snapshot.py \
       --output /opt/models/legacy-minilm-l6-v2 \
     && rm /tmp/download_embedding_snapshot.py
 
-COPY rag_api.py rag_advanced.py rag_multiagent.py retrieval_service.py security_config.py document_ingest.py embedding_runtime.py runtime_bootstrap.py agent_contract.py request_limits.py pdf_parser.py ocr_client.py materialize_kb_v2.py ./
+# Cross-Encoder is a separate layer so existing embedding snapshots remain cached.
+COPY scripts/download_embedding_snapshot.py /tmp/download_cross_encoder_snapshot.py
+COPY models/manifests/cross-encoder-mmarco-minilm-l12-v1.json /opt/models/manifests/cross-encoder-mmarco-minilm-l12-v1.json
+COPY models/manifests/cross-encoder-config.json /opt/models/manifests/cross-encoder-config.json
+COPY models/manifests/cross-encoder-special-tokens-map.json /opt/models/manifests/cross-encoder-special-tokens-map.json
+COPY models/manifests/cross-encoder-tokenizer-config.json /opt/models/manifests/cross-encoder-tokenizer-config.json
+RUN python /tmp/download_cross_encoder_snapshot.py \
+      --endpoint "${HF_ENDPOINT}" \
+      --manifest /opt/models/manifests/cross-encoder-mmarco-minilm-l12-v1.json \
+      --output /opt/models/cross-encoder \
+    && cp /opt/models/manifests/cross-encoder-config.json /opt/models/cross-encoder/config.json \
+    && cp /opt/models/manifests/cross-encoder-special-tokens-map.json /opt/models/cross-encoder/special_tokens_map.json \
+    && cp /opt/models/manifests/cross-encoder-tokenizer-config.json /opt/models/cross-encoder/tokenizer_config.json \
+    && rm /tmp/download_cross_encoder_snapshot.py
+
+ENV RAG_RERANKER_MODEL_SOURCE=/opt/models/cross-encoder
+
+COPY rag_api.py rag_advanced.py rag_multiagent.py agent_event_stream.py retrieval_service.py security_config.py document_ingest.py embedding_runtime.py runtime_bootstrap.py agent_contract.py request_limits.py pdf_parser.py ocr_client.py materialize_kb_v2.py ./
 COPY kb_v2/build /app/kb_v2/build
 
 EXPOSE 8000

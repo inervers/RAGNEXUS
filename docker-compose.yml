@@ -31,6 +31,7 @@ services:
       - RAG_EMBEDDING_MODEL_ID=${RAG_EMBEDDING_MODEL_ID:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
       - RAG_EMBEDDING_MODEL_REVISION=${RAG_EMBEDDING_MODEL_REVISION:-e8f8c211226b894fcb81acc59f3b34ba3efd5f42}
       - RAG_EMBEDDING_POOLING=${RAG_EMBEDDING_POOLING:-masked_mean}
+      - RAG_RERANKER_MODEL_SOURCE=${RAG_RERANKER_MODEL_SOURCE:-/opt/models/cross-encoder}
       - HF_HOME=/root/.cache/huggingface
       - HF_HUB_DISABLE_SYMLINKS=1
 

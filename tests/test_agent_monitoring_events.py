@@ -54,6 +54,16 @@ def passing_responses():
     ]
 
 
+def test_workflow_client_bounds_provider_wait_without_sdk_retries():
+    workflow = MultiAgentWorkflow(
+        api_key="offline-test-key-not-secret",
+        base_url="http://127.0.0.1:9",
+    )
+
+    assert workflow.client.timeout == 60.0
+    assert workflow.client.max_retries == 0
+
+
 def test_workflow_emits_role_events_with_real_metrics(monkeypatch, tmp_path):
     events = []
     workflow = build_workflow(

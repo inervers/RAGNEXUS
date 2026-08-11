@@ -213,7 +213,12 @@ class MultiAgentWorkflow:
             返回: [{"text": "...", "id": "...", "rrf_score": ...}, ...]
             传 None 时研究员用 LLM 自有知识。
         """
-        self.client = OpenAI(api_key=api_key, base_url=base_url)
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url=base_url,
+            timeout=60.0,
+            max_retries=0,
+        )
         self.model = model
         self.trace = TraceLogger(trace_id=trace_id, event_callback=event_callback)
         self.knowledge_fn = knowledge_fn
