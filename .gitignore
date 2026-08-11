@@ -31,3 +31,6 @@ kb_export*.json
 # React 前端
 frontend/node_modules/
 frontend/dist/
+
+# Isolated feature worktrees
+.worktrees/
