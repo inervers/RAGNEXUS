@@ -29,6 +29,11 @@ import {
   validateSelectedFile,
   type SelectedDocumentFile,
 } from "./documentImport"
+import {
+  AGENT_RETRY_MAX,
+  AGENT_RETRY_MIN,
+  normalizeAgentRetry,
+} from "./agentRetry"
 
 const API_BASE = ""
 
@@ -1040,8 +1045,8 @@ function AgentTab({ apiKey, onApiError }: { apiKey: string; onApiError: OnApiErr
         <input value={topic} onChange={(e) => setTopic(e.target.value)}
           placeholder="输入主题..." disabled={loading} />
         <div className="agent-options">
-          <label>最大重试 <input type="number" min={1} max={5} value={maxRetries}
-            onChange={(e) => setMaxRetries(+e.target.value)} /></label>
+          <label>最大重试 <input type="number" min={AGENT_RETRY_MIN} max={AGENT_RETRY_MAX} value={maxRetries}
+            onChange={(e) => setMaxRetries(normalizeAgentRetry(e.target.valueAsNumber))} /></label>
           <SpecularButton {...FX_BUTTON} onClick={handleStart}
             disabled={!apiKey || loading || !topic.trim()}>
             {loading ? "写作中..." : "开始写作"}
