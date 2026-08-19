@@ -8,6 +8,7 @@ stream_out*
 !.env.example
 *.local
 *.pem
+*.key
 credentials.*
 memory/
 models/*
