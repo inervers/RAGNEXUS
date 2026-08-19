@@ -1,7 +1,46 @@
 # RAGNEXUS
 
-生产级 RAG 服务，集成 Hybrid Search、Cross-Encoder Reranker、Multi-Agent 编排。
-终端风格 React 前端（4-tab），Docker 一键部署（后端 8000 + 前端 8080）。
+[![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-API-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=111)](https://react.dev/)
+[![ChromaDB 1.5.9](https://img.shields.io/badge/ChromaDB-1.5.9-F97316)](https://www.trychroma.com/)
+[![Secrets Scan](https://github.com/inervers/RAGNEXUS/actions/workflows/secrets-scan.yml/badge.svg)](https://github.com/inervers/RAGNEXUS/actions/workflows/secrets-scan.yml)
+
+一个可评测、可追踪、可复现部署的 RAG 与 Multi-Agent 应用平台。RAGNEXUS 把
+Hybrid Search、Cross-Encoder 精排、引用式生成、三角色写作工作流与知识库管理
+放进同一套 FastAPI + React 工程，并通过冻结语料、held-out 评测和 Docker smoke
+约束“检索有效”与“环境可复现”这两类常被混在一起的问题。
+
+> README 截图使用隔离 mock 后端和合成文档生成，不连接本地 `.env`、ChromaDB
+> 或真实知识库；仓库中的 Key 仅保留变量名与占位符。
+
+<p align="center">
+  <img src="docs/assets/ragnexus-overview.png" width="100%" alt="RAGNEXUS RAG 编排平台概览，使用合成演示数据" />
+</p>
+
+## 30 秒看懂项目
+
+| 问题 | RAGNEXUS 的回答 |
+|---|---|
+| 输入是什么 | PDF / TXT / DOCX 文档、自然语言问题，以及 Agent 写作主题 |
+| RAG 做什么 | 解析与切块 → Dense + BM25 双路召回 → 加权 RRF → 可选 Cross-Encoder → 带引用生成 |
+| Agent 做什么 | Researcher 检索材料 → Writer 生成 → Reviewer 输出结构化问题 → 有界回灌重写 |
+| 输出是什么 | SSE 流式答案、检索候选与 trace、带引用报告，以及可追踪的 Agent 角色状态 |
+| 工程重点 | 数据集契约、held-out 评测、模型/数据库成对校验、可观测检索链路、Docker 可复现交付 |
+| 明确边界 | 当前 184-chunk 项目知识域结果不代表开放域泛化；单实例限流不冒充多实例全局限流 |
+
+## 可验证的工程证据
+
+| 维度 | 仓库内证据 |
+|---|---|
+| 检索链路 | `rag_advanced.py`：Dense / BM25 候选、加权 RRF、Cross-Encoder 与 fallback 状态 |
+| 评测契约 | `eval/`：40 题 development / held-out 隔离、真实 chunk ID 标注、manifest 与 schema 校验 |
+| 冻结结果 | held-out 正样本 Recall@5 `0.8929`、Recall@10 `0.9286`、MRR@10 `0.7917`、HitRate@5 `1.0000` |
+| Agent 编排 | `rag_multiagent.py`：Researcher → Writer → Reviewer，有界重试并把 issues 回灌下一轮 |
+| 运行可靠性 | `rag_api.py`：鉴权、滑动窗口限流、SSE、trace_id 与稳定错误契约 |
+| 可复现交付 | 模型 revision + 文件 SHA256 manifest、隔离 tmpfs smoke、Web / API 双容器部署 |
+| 协议接入 | `mcp_server.py`：stdio 与 streamable HTTP thin wrapper，复用生产检索与鉴权路径 |
+| 质量保障 | 223 项离线 Python 测试、21 项前端测试、TypeScript 检查与生产构建（2026-08-20 重跑） |
 
 ---
 
@@ -34,6 +73,14 @@ RAGNEXUS/
 └── requirements-mcp.txt ← 可选 MCP server/client 的 pinned 依赖
 ```
 
+### 建议代码阅读路径
+
+1. `rag_api.py`：从 API 鉴权、统一检索服务、SSE 和 trace 契约看生产入口。
+2. `rag_advanced.py`：查看 Dense / BM25 / RRF / Reranker 的候选与排序数据如何流动。
+3. `eval_dataset.py`、`eval_rag.py` 与 `eval/experiments/`：核对指标、数据集冻结和 held-out 边界。
+4. `rag_multiagent.py`：理解 Reviewer issues 如何进入下一轮 Writer，而不是只写进日志。
+5. `docker-compose.yml` 与 `scripts/smoke-docker.ps1`：检查模型快照、数据库挂载和隔离验收。
+
 ---
 
 ## 快速开始
@@ -53,6 +100,11 @@ npm run dev
 
 浏览器打开 `http://localhost:5173`（vite dev 已配置代理转发到 8000）。
 首次使用时在侧边栏输入与后端一致的 `RAG_API_KEY`；它只保存在当前标签页的 `sessionStorage`，不会写入前端 bundle 或 localStorage。
+
+这里有两类 Key，作用不能混用：
+
+- `RAG_API_KEY` 是 RAGNEXUS 自己的接口鉴权密钥，前端侧边栏填写 `.env` 中这个变量的值。
+- `DEEPSEEK_API_KEY` / `ZHIPU_API_KEY` 只供后端调用 LLM，不能填写到前端，也不能提交到 Git。
 
 ### Docker 部署
 
@@ -75,7 +127,7 @@ docker compose up -d --build
 - API 服务 → `http://localhost:8000`
 - 前端 API 走同源（`API_BASE=""`），由 nginx 正则转发 `/health|/query|/doc|/kb|/agent`，无需跨域配置
 
-默认镜像不依赖个人旧镜像、`.wheels`、本机模型目录或真实数据库。生产 Embedding 固定为 `paraphrase-multilingual-MiniLM-L12-v2@e8f8c211... + masked_mean`；镜像按 tracked manifest 下载并逐文件校验 size/SHA256，运行时只从本地 snapshot 加载。镜像同时保留经过 manifest 校验的 V1 MiniLM snapshot，供数据库与模型成对回滚。CPU Torch 从官方 CPU wheel index 安装，其余 Python 依赖默认使用阿里云镜像。
+默认镜像不依赖个人旧镜像、`.wheels`、本机模型目录或真实数据库。生产 Embedding 固定为 `paraphrase-multilingual-MiniLM-L12-v2@e8f8c211... + masked_mean`；Cross-Encoder 固定为 `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1@1427fd65...`。两类模型都由 tracked manifest 固定 revision，并对下载文件逐项校验 size/SHA256，运行时只从镜像内本地 snapshot 加载。镜像同时保留经过 manifest 校验的 V1 MiniLM snapshot，供数据库与 Embedding 成对回滚。CPU Torch 从官方 CPU wheel index 安装，其余 Python 依赖默认使用阿里云镜像。
 
 提交或部署前可先运行完全隔离的 smoke：
 
@@ -99,7 +151,7 @@ Agent 的写作记忆保存在本地 `memory/` 目录，容器重建后记忆不
 |------|------|
 | **标准 RAG 问答** | Function Calling 驱动，自动检索知识库 + LLM 回答，SSE 流式 + 打字动画 + 取消 |
 | **混合检索** | 稠密向量 + BM25 + RRF；V2 评测冻结 Dense:Sparse=1:2，目标 Embedding 为 multilingual MiniLM |
-| **Reranker 精排** | 可选 Cross-Encoder；模型缺失会显式 fallback，RAG-06 未把 fallback 计作有效成绩 |
+| **Reranker 精排** | Hybrid 初召回后使用中文 Cross-Encoder 精排；标准镜像内置 verified snapshot，加载失败会显式 fallback，历史 RAG-06 fallback 不计作有效成绩 |
 | **Multi-Agent 写作** | Researcher→Writer→Reviewer 有界协作流水线；Reviewer issues 回灌下一轮 Writer，SSE 实时返回角色状态、真实耗时、Token、审核与重试事件 |
 | **知识库管理** | 支持 25 MiB 内 PDF、UTF-8 TXT 与 DOCX；preview 最多展示 5000 字符，正式 import 从原始文件重新解析完整文本 |
 
@@ -190,7 +242,8 @@ python mcp_http_client_test.py --url http://127.0.0.1:8101/mcp
 
 - 检索使用 dense + BM25 两路召回，并通过可配置权重的 RRF 融合排名。RAG-06 在 development split 比较 1:1、1:2、1:3 后选择 Dense:Sparse = 1:2，再冻结到 held-out 验证。
 - 关键检索流程由项目代码实现，以暴露候选集、权重、排名和 trace，便于定位 `retrieve()`、RRF 融合或 Reranker 阶段的问题。
-- Cross-Encoder 是可选精排层。标准可复现实验镜像缺少 verified snapshot 时显式标记 `fallback` 或 `not_evaluated`，不计为有效重排成绩。
+- Cross-Encoder 是可选精排层。标准镜像现已包含固定 revision、逐文件校验的中文模型 snapshot，运行时通过 `local_files_only` 加载；API 用 `reranker_status.mode` 明确区分真实 `cross_encoder` 与 `fallback`。
+- 容器级中文 smoke 中，相关文本与无关文本的原始 relevance logits 分别为 `8.0824` 和 `-6.4258`，排序方向正确。该结果只证明模型加载、中文区分和重排链路可用，不等同于 40 题评测上的整体收益；RAG-06 的历史 fallback 结果仍不计作 Cross-Encoder 成绩。
 
 ### 限流
 
@@ -242,16 +295,17 @@ curl.exe -N -X POST http://localhost:8000/agent/write/stream -H "Content-Type: a
 
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
-| `DEEPSEEK_API_KEY` | DeepSeek API Key | 必填 |
-| `ZHIPU_API_KEY` | 智谱 API Key（fallback） | 可选 |
+| `DEEPSEEK_API_KEY` | 后端调用 DeepSeek 的供应商密钥，不进入前端 | 必填 |
+| `ZHIPU_API_KEY` | 后端调用智谱的供应商密钥（fallback），不进入前端 | 可选 |
 | `LLM_BASE_URL` | 覆盖 LLM 端点 | 按 key 自动选 |
 | `LLM_MODEL` | 覆盖模型名 | deepseek-v4-flash |
-| `RAG_API_KEY` | API 鉴权密钥；缺失、旧默认值或模板占位符会拒绝启动 | 必填，无默认值 |
+| `RAG_API_KEY` | RAGNEXUS 接口鉴权密钥；前端侧边栏填写此值，缺失、旧默认值或模板占位符会拒绝启动 | 必填，无默认值 |
 | `RAG_CORS_ORIGINS` | 浏览器精确 origin，逗号分隔，禁止 `*` | 本地 5173/8080 |
 | `RAG_RATE_LIMIT` | 每分钟最大请求数 | 30 |
 | `RAG_CHROMA_HOST_DIR` | Compose 挂载的宿主机 Chroma 目录 | `./chroma_db_v2_candidate` |
 | `RAG_EMBEDDING_MODEL_SOURCE` | 镜像内或本地 verified snapshot 路径 | multilingual V2 snapshot |
 | `RAG_EMBEDDING_MANIFEST` | 模型 ID/revision/pooling/files 的 tracked manifest | multilingual V2 manifest |
+| `RAG_RERANKER_MODEL_SOURCE` | Cross-Encoder 本地 snapshot 路径；运行时禁止联网补文件 | `/opt/models/cross-encoder` |
 
 ---
 
@@ -297,7 +351,7 @@ python materialize_kb_v2.py --artifact kb_v2/build --target chroma_db_v2_candida
 
 生产 API、物化器与 RAG-06 实验共用同一个 verified embedding runtime。V2 collection metadata 同时记录 model ID、revision、pooling 与 snapshot aggregate SHA256；任一项与运行配置不一致时服务 fail-fast，禁止把不同向量空间静默混写。Compose 默认目标为 `chroma_db_v2_candidate`，旧 V1 库不覆盖、不删除。
 
-2026-08-11 的生产迁移验收已完成：candidate 为 184 chunks，stored/corpus IDs 完全一致；production development 24 题与 heldout 16 题相对 RAG-06 frozen `hybrid-1-2` 逐题指标均为 0 mismatch。API health 返回 `chunks=184 + masked_mean`，前端与 Nginx proxy smoke 通过。原始 API 路径评测保存在 [`production-v2-development.json`](eval/experiments/production-v2-development.json) 与 [`production-v2-heldout.json`](eval/experiments/production-v2-heldout.json)。Reranker 仍是显式 fallback，不计作 Cross-Encoder 成绩。
+2026-08-11 的生产迁移验收已完成：candidate 为 184 chunks，stored/corpus IDs 完全一致；production development 24 题与 heldout 16 题相对 RAG-06 frozen `hybrid-1-2` 逐题指标均为 0 mismatch。API health 返回 `chunks=184 + masked_mean`，前端与 Nginx proxy smoke 通过。原始 API 路径评测保存在 [`production-v2-development.json`](eval/experiments/production-v2-development.json) 与 [`production-v2-heldout.json`](eval/experiments/production-v2-heldout.json)。2026-08-12 又完成 verified Cross-Encoder 镜像加载和中文排序 smoke；这次 smoke 不改写 RAG-06 的冻结检索指标，待用同一 40 题契约完成受控对比后，才能报告 Reranker 的整体增益。
 
 回滚必须让数据库和 Embedding 成对切换，不能只换数据库路径：
 
@@ -316,10 +370,20 @@ docker compose up -d
 ## 运行测试
 
 ```powershell
+# 离线 Python 回归
+python -m pytest tests -q
+
+# 需要 Docker 容器运行的 API 集成测试
 python tests\test_api.py
+
+# 前端单测、类型检查与生产构建
+cd frontend
+npm test
+npm run build:check
+npm run build
 ```
 
-需要 Docker 容器运行中。测试项包括：健康检查、RAG 查询、混合检索、Reranker、API 鉴权、知识库统计、限流。
+API 集成测试覆盖健康检查、RAG 查询、混合检索、Cross-Encoder、API 鉴权、知识库统计、限流与 Agent 写作。2026-08-20 公开文档更新前重跑不依赖容器的 Python 套件为 `223 passed`，frontend 为 `21 passed`，`build:check` 与生产构建通过；`tests/test_api.py` 必须在真实 Docker API 启动后单独执行，不能混入离线结果。
 
 ## 运维
 
